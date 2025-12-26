@@ -49,13 +49,14 @@ export function createPlayer(startPos) {
   ]);
 
   // Visual parts (children follow parent)
-  // Shadow
+  // Shadow (flat oval approximation using rect)
   const shadow = add([
-    ellipse(9, 4),
+    rect(18, 6),
     pos(0, 0),
     color(0, 0, 0),
-    opacity(0.4),
+    opacity(0.3),
     z(9),
+    anchor('center'),
     'player-visual',
   ]);
 
