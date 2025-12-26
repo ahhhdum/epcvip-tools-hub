@@ -264,7 +264,7 @@ export function throwFritelle(playerPos, direction) {
   }[direction] || vec2(0, 1);
 
   // Create thrown fritelle projectile
-  add([
+  const thrown = add([
     sprite('fritelle'),
     pos(playerPos.x, playerPos.y),
     move(dirVec, 200),
@@ -274,6 +274,31 @@ export function throwFritelle(playerPos, direction) {
     z(15),
     'thrown-fritelle',
   ]);
+
+  // Splat effect helper
+  const createSplat = (position) => {
+    for (let i = 0; i < 5; i++) {
+      add([
+        rect(4, 4),
+        pos(position.x + rand(-8, 8), position.y + rand(-8, 8)),
+        color(255, 200, 100),
+        opacity(1),
+        lifespan(0.3, { fade: 0.2 }),
+        z(16),
+      ]);
+    }
+  };
+
+  // Destroy on collision with buildings or trees
+  thrown.onCollide('building', () => {
+    createSplat(thrown.pos);
+    destroy(thrown);
+  });
+
+  thrown.onCollide('tree', () => {
+    createSplat(thrown.pos);
+    destroy(thrown);
+  });
 
   return true;
 }
