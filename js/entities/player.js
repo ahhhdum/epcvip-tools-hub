@@ -6,7 +6,7 @@
  */
 
 import { GAME_CONFIG, COLORS } from '../config.js';
-import { virtualInput, setInteractCallback } from '../systems/input.js';
+import { virtualInput, setInteractCallback, setPauseCallback } from '../systems/input.js';
 import { updateCamera } from '../systems/camera.js';
 
 export function createPlayer(startPos) {
@@ -179,8 +179,14 @@ export function createPlayer(startPos) {
   onKeyPress('enter', () => player.interact());
   onKeyPress('space', () => player.interact());
 
+  // Pause menu
+  onKeyPress('escape', () => go('pause'));
+
   // Register virtual A button for interaction
   setInteractCallback(() => player.interact());
+
+  // Register virtual B button for pause
+  setPauseCallback(() => go('pause'));
 
   // Virtual D-pad input (from on-screen buttons)
   player.onUpdate(() => {

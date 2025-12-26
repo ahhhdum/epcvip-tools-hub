@@ -17,9 +17,14 @@ export const virtualInput = {
 
 // Callbacks for button presses
 let onInteractCallback = null;
+let onPauseCallback = null;
 
 export function setInteractCallback(callback) {
   onInteractCallback = callback;
+}
+
+export function setPauseCallback(callback) {
+  onPauseCallback = callback;
 }
 
 export function initInput() {
@@ -87,6 +92,7 @@ export function initInput() {
     btnB.addEventListener('mousedown', (e) => {
       e.preventDefault();
       virtualInput.b = true;
+      if (onPauseCallback) onPauseCallback();
     });
 
     btnB.addEventListener('mouseup', () => {
@@ -96,6 +102,7 @@ export function initInput() {
     btnB.addEventListener('touchstart', (e) => {
       e.preventDefault();
       virtualInput.b = true;
+      if (onPauseCallback) onPauseCallback();
     });
 
     btnB.addEventListener('touchend', () => {
