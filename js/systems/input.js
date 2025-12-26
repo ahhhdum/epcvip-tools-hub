@@ -17,14 +17,14 @@ export const virtualInput = {
 
 // Callbacks for button presses
 let onInteractCallback = null;
-let onPauseCallback = null;
+let onThrowCallback = null;
 
 export function setInteractCallback(callback) {
   onInteractCallback = callback;
 }
 
-export function setPauseCallback(callback) {
-  onPauseCallback = callback;
+export function setThrowCallback(callback) {
+  onThrowCallback = callback;
 }
 
 export function initInput() {
@@ -86,13 +86,13 @@ export function initInput() {
     });
   }
 
-  // B button (could be used for cancel/back in future)
+  // B button (throw fritelle)
   const btnB = document.getElementById('btnB');
   if (btnB) {
     btnB.addEventListener('mousedown', (e) => {
       e.preventDefault();
       virtualInput.b = true;
-      if (onPauseCallback) onPauseCallback();
+      if (onThrowCallback) onThrowCallback();
     });
 
     btnB.addEventListener('mouseup', () => {
@@ -102,7 +102,7 @@ export function initInput() {
     btnB.addEventListener('touchstart', (e) => {
       e.preventDefault();
       virtualInput.b = true;
-      if (onPauseCallback) onPauseCallback();
+      if (onThrowCallback) onThrowCallback();
     });
 
     btnB.addEventListener('touchend', () => {

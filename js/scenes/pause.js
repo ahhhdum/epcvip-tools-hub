@@ -2,7 +2,7 @@
  * Pause Scene
  *
  * Shows game controls, quick links to tools, and resume option.
- * Triggered by ESC or B button.
+ * Triggered by ESC key.
  */
 
 import { GAME_CONFIG, COLORS, TOOLS } from '../config.js';
@@ -61,9 +61,9 @@ export function pauseScene() {
 
   const controls = [
     ['Arrow Keys / WASD', 'Move'],
-    ['Enter / A', 'Interact with buildings'],
-    ['ESC / B', 'Pause / Resume'],
-    ['Click building', 'Quick open tool'],
+    ['Enter / Space / A', 'Interact with buildings'],
+    ['B', 'Throw fritelle'],
+    ['ESC', 'Pause menu'],
   ];
 
   controls.forEach(([key, action], i) => {
@@ -126,7 +126,7 @@ export function pauseScene() {
 
   // Footer hint
   add([
-    text('Press ESC or B to resume', { size: 10 }),
+    text('Press ESC to resume', { size: 10 }),
     pos(width() / 2, height() - 45),
     anchor('center'),
     color(120, 120, 120),
@@ -135,7 +135,6 @@ export function pauseScene() {
 
   // Resume handlers
   onKeyPress('escape', () => go('overworld'));
-  onKeyPress('b', () => go('overworld'));
   resumeBtn.onClick(() => go('overworld'));
 
   // Number keys for quick links

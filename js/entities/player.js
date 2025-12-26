@@ -6,8 +6,9 @@
  */
 
 import { GAME_CONFIG, COLORS } from '../config.js';
-import { virtualInput, setInteractCallback, setPauseCallback } from '../systems/input.js';
+import { virtualInput, setInteractCallback, setThrowCallback } from '../systems/input.js';
 import { updateCamera } from '../systems/camera.js';
+import { throwFritelle } from './collectible.js';
 
 export function createPlayer(startPos) {
   const TILE = GAME_CONFIG.tileSize;
@@ -185,8 +186,11 @@ export function createPlayer(startPos) {
   // Register virtual A button for interaction
   setInteractCallback(() => player.interact());
 
-  // Register virtual B button for pause
-  setPauseCallback(() => go('pause'));
+  // Register virtual B button for throwing fritelles
+  setThrowCallback(() => throwFritelle(player.pos, player.direction));
+
+  // Keyboard B for throwing
+  onKeyPress('b', () => throwFritelle(player.pos, player.direction));
 
   // Virtual D-pad input (from on-screen buttons)
   player.onUpdate(() => {

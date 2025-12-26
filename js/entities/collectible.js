@@ -110,6 +110,10 @@ function getRandomSpawnPosition() {
  * Create a single fritelle at a random valid position
  */
 export function createFritelle() {
+  // Safety cap - don't spawn if too many on screen
+  const currentFritelles = get('fritelle').length;
+  if (currentFritelles >= 12) return null;
+
   const spawnPos = getRandomSpawnPosition();
 
   const fritelle = add([
@@ -200,6 +204,18 @@ export function initFritelleSystem(player) {
       createFritelle();
     });
   });
+
+  // Magnet effect - at 15+ fritelles, nearby ones drift toward player
+  onUpdate(() => {
+    if (fritelleCount >= 15) {
+      get('fritelle').forEach(f => {
+        const dist = player.pos.dist(f.pos);
+        if (dist < 100 && dist > 10) {
+          f.pos = f.pos.lerp(player.pos, 0.03);
+        }
+      });
+    }
+  });
 }
 
 /**
@@ -229,4 +245,34 @@ export function getFritelleCount() {
 export function resetFritelleCount() {
   fritelleCount = 0;
   updateHUD();
+}
+
+/**
+ * Throw a fritelle in a direction (costs 1 fritelle)
+ */
+export function throwFritelle(playerPos, direction) {
+  if (fritelleCount <= 0) return false;
+
+  fritelleCount--;
+  updateHUD();
+
+  const dirVec = {
+    up: vec2(0, -1),
+    down: vec2(0, 1),
+    left: vec2(-1, 0),
+    right: vec2(1, 0),
+  }[direction] || vec2(0, 1);
+
+  // Create thrown fritelle projectile
+  add([
+    sprite('fritelle'),
+    pos(playerPos.x, playerPos.y),
+    move(dirVec, 200),
+    area(),
+    lifespan(1.5, { fade: 0.3 }),
+    z(15),
+    'thrown-fritelle',
+  ]);
+
+  return true;
 }
