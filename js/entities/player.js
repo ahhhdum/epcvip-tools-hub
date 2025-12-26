@@ -6,6 +6,7 @@
  */
 
 import { GAME_CONFIG, COLORS } from '../config.js';
+import { virtualInput, setInteractCallback } from '../systems/input.js';
 
 export function createPlayer(startPos) {
   const TILE = GAME_CONFIG.tileSize;
@@ -176,6 +177,29 @@ export function createPlayer(startPos) {
   // Interaction
   onKeyPress('enter', () => player.interact());
   onKeyPress('space', () => player.interact());
+
+  // Register virtual A button for interaction
+  setInteractCallback(() => player.interact());
+
+  // Virtual D-pad input (from on-screen buttons)
+  player.onUpdate(() => {
+    if (virtualInput.left) {
+      player.direction = 'left';
+      player.move(-speed, 0);
+    }
+    if (virtualInput.right) {
+      player.direction = 'right';
+      player.move(speed, 0);
+    }
+    if (virtualInput.up) {
+      player.direction = 'up';
+      player.move(0, -speed);
+    }
+    if (virtualInput.down) {
+      player.direction = 'down';
+      player.move(0, speed);
+    }
+  });
 
   // Keep player in bounds
   player.onUpdate(() => {

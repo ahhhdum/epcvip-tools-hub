@@ -8,6 +8,7 @@ import kaplay from 'https://unpkg.com/kaplay@3001/dist/kaplay.mjs';
 import { GAME_CONFIG, COLORS } from './config.js';
 import { loadingScene } from './scenes/loading.js';
 import { overworldScene } from './scenes/overworld.js';
+import { initInput } from './systems/input.js';
 
 // Initialize KaPlay
 const k = kaplay({
@@ -24,6 +25,9 @@ const k = kaplay({
 // Register scenes
 scene('loading', loadingScene);
 scene('overworld', overworldScene);
+
+// Initialize virtual button inputs (D-pad, A, B)
+initInput();
 
 // Start with loading scene
 go('loading');
