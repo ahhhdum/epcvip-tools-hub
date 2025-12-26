@@ -116,6 +116,9 @@ export function createFritelle() {
 
   const spawnPos = getRandomSpawnPosition();
 
+  // 2% chance for golden fritelle (worth 15x)
+  const isGolden = Math.random() < 0.02;
+
   const fritelle = add([
     sprite('fritelle'),
     pos(spawnPos.x, spawnPos.y),
@@ -124,7 +127,37 @@ export function createFritelle() {
     z(8),
     'fritelle',
     'collectible',
+    {
+      isGolden: isGolden,
+      value: isGolden ? 15 : 1,
+    },
   ]);
+
+  // Add pulsing yellow halo for golden fritelles
+  if (isGolden) {
+    const halo = add([
+      circle(20),
+      pos(spawnPos.x, spawnPos.y),
+      color(255, 215, 0),
+      opacity(0.7),
+      anchor('center'),
+      z(7),
+      'golden-halo',
+      {
+        parentFritelle: fritelle,
+      },
+    ]);
+
+    // Pulsing effect - follows fritelle and pulses opacity
+    halo.onUpdate(() => {
+      if (fritelle.exists()) {
+        halo.pos = fritelle.pos;
+        halo.opacity = 0.4 + Math.sin(time() * 5) * 0.35;
+      } else {
+        destroy(halo);
+      }
+    });
+  }
 
   return fritelle;
 }
@@ -179,24 +212,28 @@ export function initFritelleSystem(player) {
 
   // Handle collection
   player.onCollide('fritelle', (f) => {
-    // Increment counter
-    fritelleCount++;
+    // Increment counter (golden = 15, regular = 1)
+    fritelleCount += f.value || 1;
     updateHUD();
 
-    // Sparkle effect
-    for (let i = 0; i < 5; i++) {
+    // Sparkle effect (bigger for golden)
+    const sparkleCount = f.isGolden ? 15 : 5;
+    const sparkleColor = f.isGolden ? [255, 200, 50] : [255, 220, 100];
+    const sparkleSize = f.isGolden ? 5 : 3;
+
+    for (let i = 0; i < sparkleCount; i++) {
       add([
-        rect(3, 3),
-        pos(f.pos.x + rand(-10, 10), f.pos.y + rand(-10, 10)),
-        color(255, 220, 100),
+        rect(sparkleSize, sparkleSize),
+        pos(f.pos.x + rand(-12, 12), f.pos.y + rand(-12, 12)),
+        color(...sparkleColor),
         opacity(1),
         z(15),
-        lifespan(0.3, { fade: 0.2 }),
-        move(rand(0, 360), rand(20, 50)),
+        lifespan(f.isGolden ? 0.5 : 0.3, { fade: 0.2 }),
+        move(rand(0, 360), rand(20, 60)),
       ]);
     }
 
-    // Remove the fritelle
+    // Remove the fritelle (halo auto-destroys via its onUpdate)
     destroy(f);
 
     // Respawn a new one after a delay
