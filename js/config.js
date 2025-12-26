@@ -17,6 +17,11 @@ export const GAME_CONFIG = {
 
   playerSpeed: 120,
   dialogHeight: 70,
+
+  // Fritelle collectibles
+  fritelleCount: 8,        // Number of fritelles to spawn
+  fritelleRespawnMin: 3,   // Min seconds before respawn
+  fritelleRespawnMax: 8,   // Max seconds before respawn
 };
 
 export const COLORS = {

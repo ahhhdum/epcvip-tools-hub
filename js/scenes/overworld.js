@@ -9,6 +9,7 @@ import { createPlayer } from '../entities/player.js';
 import { createBuilding } from '../entities/building.js';
 import { createTree, createFlower, drawGround } from '../entities/decoration.js';
 import { initDialog, showDialog, clearDialog } from '../systems/dialog.js';
+import { initFritelleSystem } from '../entities/collectible.js';
 
 export function overworldScene() {
   const TILE = GAME_CONFIG.tileSize;
@@ -34,6 +35,9 @@ export function overworldScene() {
   // Initialize dialog system
   initDialog();
   clearDialog();
+
+  // Initialize fritelle collectibles
+  initFritelleSystem(player);
 
   // Proximity detection for dialog hints
   onUpdate(() => {
