@@ -1,0 +1,290 @@
+/**
+ * EPCVIP Tools Hub - GameBoy Style CSS
+ */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: #0f0f0f;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: monospace;
+    overflow: hidden;
+    padding: 20px;
+}
+
+/* GameBoy Frame */
+.gameboy-frame {
+    background: linear-gradient(145deg, #1a1a1a, #0d0d0d);
+    padding: 20px;
+    border-radius: 10px 10px 30px 30px;
+    box-shadow:
+        inset 2px 2px 4px rgba(255, 255, 255, 0.1),
+        inset -2px -2px 4px rgba(0, 0, 0, 0.5),
+        0 10px 30px rgba(0, 0, 0, 0.5),
+        0 0 0 3px #f0c000;
+}
+
+.screen-frame {
+    background: #0a0a0a;
+    padding: 15px;
+    border-radius: 5px;
+    box-shadow: inset 2px 2px 8px rgba(0, 0, 0, 0.8);
+    border: 2px solid #f0c000;
+}
+
+.screen-inner {
+    background: #0f0f0f;
+    padding: 8px;
+    border-radius: 3px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.title-bar {
+    color: #f0c000;
+    font-size: 10px;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    width: 100%;
+}
+
+/* Game Canvas */
+#gameCanvas {
+    display: block;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    border: 2px solid #2a2a2a;
+    width: 100%;
+    height: auto;
+    max-width: 480px;
+    background: #58a028;
+}
+
+/* Dialog Box */
+.dialog-box {
+    background: #1a1a1a;
+    border: 3px solid #f0c000;
+    padding: 12px 16px;
+    margin-top: 8px;
+    min-height: 60px;
+    width: 100%;
+    max-width: 480px;
+    color: #f0c000;
+    font-size: 14px;
+    line-height: 1.4;
+    position: relative;
+    box-sizing: border-box;
+}
+
+.dialog-box::after {
+    content: "\25BC";
+    position: absolute;
+    bottom: 4px;
+    right: 8px;
+    color: #f0c000;
+    animation: blink 0.8s infinite;
+}
+
+@keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+}
+
+/* Controls */
+.controls {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+    padding: 0 10px;
+}
+
+.dpad {
+    width: 90px;
+    height: 90px;
+    position: relative;
+}
+
+.dpad-btn {
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    background: #1a1a1a;
+    border: 2px solid #f0c000;
+    cursor: pointer;
+    color: #f0c000;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 3px;
+    box-shadow:
+        inset 1px 1px 2px rgba(240, 192, 0, 0.2),
+        2px 2px 4px rgba(0, 0, 0, 0.5);
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+}
+
+.dpad-btn:active {
+    box-shadow: inset 2px 2px 4px rgba(0, 0, 0, 0.5);
+    background: #2a2a0a;
+}
+
+.dpad-up { top: 0; left: 30px; }
+.dpad-down { bottom: 0; left: 30px; }
+.dpad-left { top: 30px; left: 0; }
+.dpad-right { top: 30px; right: 0; }
+.dpad-center {
+    top: 30px;
+    left: 30px;
+    background: #0d0d0d;
+    border-color: #3a3a00;
+    cursor: default;
+}
+
+/* Action Buttons */
+.action-buttons {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.action-btn {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    border: 2px solid #f0c000;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 12px;
+    font-family: monospace;
+    box-shadow:
+        inset 1px 1px 2px rgba(240, 192, 0, 0.3),
+        3px 3px 6px rgba(0, 0, 0, 0.5);
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+}
+
+.action-btn:active {
+    box-shadow: inset 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.btn-a {
+    background: #f0c000;
+    color: #0a0a0a;
+}
+
+.btn-b {
+    background: #1a1a1a;
+    color: #f0c000;
+}
+
+/* Brand */
+.brand {
+    color: #f0c000;
+    font-size: 18px;
+    font-weight: bold;
+    font-style: italic;
+    margin-top: 15px;
+    text-align: center;
+    text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5);
+}
+
+/* Instructions */
+.instructions {
+    color: #f0c000;
+    font-size: 11px;
+    text-align: center;
+    margin-top: 20px;
+    line-height: 1.6;
+    opacity: 0.8;
+}
+
+.instructions kbd {
+    background: #1a1a1a;
+    padding: 2px 6px;
+    border-radius: 3px;
+    border: 1px solid #f0c000;
+    color: #f0c000;
+}
+
+/* Fallback link */
+.fallback-link {
+    margin-top: 15px;
+}
+
+.fallback-link a {
+    color: #666;
+    font-size: 11px;
+    text-decoration: none;
+}
+
+.fallback-link a:hover {
+    color: #f0c000;
+}
+
+/* Responsive */
+@media (max-width: 540px) {
+    .gameboy-frame {
+        padding: 15px;
+        width: 100%;
+        max-width: 340px;
+    }
+
+    .screen-frame {
+        padding: 10px;
+    }
+
+    #gameCanvas {
+        max-width: 100%;
+    }
+
+    .dialog-box {
+        font-size: 12px;
+        padding: 10px 12px;
+        min-height: 50px;
+    }
+
+    .controls {
+        margin-top: 15px;
+    }
+
+    .dpad {
+        width: 80px;
+        height: 80px;
+    }
+
+    .dpad-btn {
+        width: 26px;
+        height: 26px;
+        font-size: 14px;
+    }
+
+    .dpad-up { left: 27px; }
+    .dpad-down { left: 27px; }
+    .dpad-left { top: 27px; }
+    .dpad-right { top: 27px; }
+    .dpad-center { top: 27px; left: 27px; }
+
+    .action-btn {
+        width: 40px;
+        height: 40px;
+    }
+
+    .brand {
+        font-size: 16px;
+    }
+
+    .instructions {
+        font-size: 10px;
+    }
+}
