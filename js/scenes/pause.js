@@ -61,8 +61,8 @@ export function pauseScene() {
 
   const controls = [
     ['Arrow Keys / WASD', 'Move'],
-    ['Enter / Space / A', 'Interact with buildings'],
-    ['B', 'Throw fritelle'],
+    ['Enter / A', 'Interact with buildings'],
+    ['Space / B', 'Throw'],
     ['ESC', 'Pause menu'],
   ];
 

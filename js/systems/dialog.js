@@ -5,23 +5,25 @@
  * Uses the HTML dialog box element for better text rendering.
  */
 
-const DEFAULT_MESSAGE = 'Welcome to the Innovation Lab! Use arrow keys to move. Walk up to a building and press ENTER to open the tool.';
+export const WELCOME_MESSAGE = 'Welcome to the Innovation Lab! Arrow keys to move, ENTER to interact, SPACE to throw.';
 
 let dialogElement = null;
 
 export function initDialog() {
   dialogElement = document.getElementById('dialogBox');
-  if (dialogElement) {
-    dialogElement.textContent = DEFAULT_MESSAGE;
-  }
+  clearDialog();
 }
 
 export function showDialog(message) {
   if (dialogElement) {
     dialogElement.textContent = message;
+    dialogElement.style.opacity = '1';
   }
 }
 
 export function clearDialog() {
-  showDialog(DEFAULT_MESSAGE);
+  if (dialogElement) {
+    dialogElement.textContent = '';
+    dialogElement.style.opacity = '0';
+  }
 }

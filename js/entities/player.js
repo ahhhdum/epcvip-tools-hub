@@ -176,9 +176,8 @@ export function createPlayer(startPos) {
   onKeyDown('w', () => { player.direction = 'up'; player.move(0, -speed); });
   onKeyDown('s', () => { player.direction = 'down'; player.move(0, speed); });
 
-  // Interaction
+  // Interaction (Enter or A button only - Space is for throwing)
   onKeyPress('enter', () => player.interact());
-  onKeyPress('space', () => player.interact());
 
   // Pause menu
   onKeyPress('escape', () => go('pause'));
@@ -186,11 +185,31 @@ export function createPlayer(startPos) {
   // Register virtual A button for interaction
   setInteractCallback(() => player.interact());
 
-  // Register virtual B button for throwing fritelles
-  setThrowCallback(() => throwFritelle(player.pos, player.direction));
+  // Helper to get throw direction based on current key states (supports diagonal)
+  function getThrowDirection() {
+    let dx = 0, dy = 0;
 
-  // Keyboard B for throwing
-  onKeyPress('b', () => throwFritelle(player.pos, player.direction));
+    // Check all movement keys
+    if (isKeyDown('left') || isKeyDown('a') || virtualInput.left) dx -= 1;
+    if (isKeyDown('right') || isKeyDown('d') || virtualInput.right) dx += 1;
+    if (isKeyDown('up') || isKeyDown('w') || virtualInput.up) dy -= 1;
+    if (isKeyDown('down') || isKeyDown('s') || virtualInput.down) dy += 1;
+
+    // If moving, return normalized vec2 for diagonal support
+    if (dx !== 0 || dy !== 0) {
+      return vec2(dx, dy).unit();
+    }
+
+    // Fallback to last facing direction (string)
+    return player.direction;
+  }
+
+  // Register virtual B button for throwing fritelles
+  setThrowCallback(() => throwFritelle(player.pos, getThrowDirection()));
+
+  // Keyboard B or Space for throwing
+  onKeyPress('b', () => throwFritelle(player.pos, getThrowDirection()));
+  onKeyPress('space', () => throwFritelle(player.pos, getThrowDirection()));
 
   // Virtual D-pad input (from on-screen buttons)
   player.onUpdate(() => {

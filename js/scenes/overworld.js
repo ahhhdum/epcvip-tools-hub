@@ -8,7 +8,7 @@ import { GAME_CONFIG, COLORS, TOOLS, TREES, FLOWERS } from '../config.js';
 import { createPlayer } from '../entities/player.js';
 import { createBuilding } from '../entities/building.js';
 import { createTree, createFlower, drawGround } from '../entities/decoration.js';
-import { initDialog, showDialog, clearDialog } from '../systems/dialog.js';
+import { initDialog, showDialog, clearDialog, WELCOME_MESSAGE } from '../systems/dialog.js';
 import { initFritelleSystem } from '../entities/collectible.js';
 
 export function overworldScene() {
@@ -39,16 +39,25 @@ export function overworldScene() {
   // Initialize fritelle collectibles
   initFritelleSystem(player);
 
+  // Sign position for proximity check
+  const signPos = vec2(20 * TILE, 14 * TILE);
+
   // Proximity detection for dialog hints
   onUpdate(() => {
+    // Check if near a building
     const nearbyBuilding = buildings.find(b => {
       const dist = player.pos.dist(b.pos.add(vec2(b.buildingWidth / 2, b.buildingHeight)));
       return dist < 60;
     });
 
+    // Check if near the Innovation Lab sign
+    const nearSign = player.pos.dist(signPos) < 70;
+
     if (nearbyBuilding) {
       const status = nearbyBuilding.isLive ? 'Press ENTER to open!' : 'Coming Soon!';
       showDialog(`${nearbyBuilding.toolName}: ${nearbyBuilding.toolDescription} ${status}`);
+    } else if (nearSign) {
+      showDialog(WELCOME_MESSAGE);
     } else {
       clearDialog();
     }

@@ -293,12 +293,18 @@ export function throwFritelle(playerPos, direction) {
   fritelleCount--;
   updateHUD();
 
-  const dirVec = {
-    up: vec2(0, -1),
-    down: vec2(0, 1),
-    left: vec2(-1, 0),
-    right: vec2(1, 0),
-  }[direction] || vec2(0, 1);
+  // Support both vec2 (diagonal) and string (cardinal)
+  let dirVec;
+  if (typeof direction === 'string') {
+    dirVec = {
+      up: vec2(0, -1),
+      down: vec2(0, 1),
+      left: vec2(-1, 0),
+      right: vec2(1, 0),
+    }[direction] || vec2(0, 1);
+  } else {
+    dirVec = direction; // Already a vec2
+  }
 
   // Create thrown fritelle projectile
   const thrown = add([
