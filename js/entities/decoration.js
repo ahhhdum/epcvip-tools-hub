@@ -2,6 +2,7 @@
  * Decoration Entities
  *
  * Trees, flowers, and ground drawing.
+ * Uses simple colored shapes until sprites are loaded.
  */
 
 import { GAME_CONFIG, COLORS } from '../config.js';
@@ -44,21 +45,21 @@ export function drawGround() {
 }
 
 function drawPath() {
-  const pathColor = rgb(...COLORS.path);
-  const pathDarkColor = rgb(200, 160, 80);
+  const pathColor = COLORS.path;
+  const pathDarkColor = [200, 160, 80];
 
   // Horizontal paths
   add([
     rect(18 * TILE, 2 * TILE),
     pos(TILE, 7 * TILE),
-    color(pathColor),
+    color(...pathColor),
     z(1),
   ]);
 
   add([
     rect(18 * TILE, 2 * TILE),
     pos(TILE, 14 * TILE),
-    color(pathColor),
+    color(...pathColor),
     z(1),
   ]);
 
@@ -66,7 +67,7 @@ function drawPath() {
   add([
     rect(2 * TILE, 9 * TILE),
     pos(9 * TILE, 7 * TILE),
-    color(pathColor),
+    color(...pathColor),
     z(1),
   ]);
 
@@ -77,7 +78,7 @@ function drawPath() {
         add([
           rect(4, 4),
           pos(x * TILE + 9, y * TILE + 9),
-          color(pathDarkColor),
+          color(...pathDarkColor),
           z(2),
         ]);
       }
@@ -89,49 +90,46 @@ export function createTree(tileX, tileY) {
   const x = tileX * TILE;
   const y = tileY * TILE;
 
+  // Collision box (invisible)
   const tree = add([
     rect(TILE, TILE),
     pos(x, y),
     area(),
     body({ isStatic: true }),
-    opacity(0),  // Make base rect invisible
+    opacity(0),
     z(4),
     'tree',
-    { phase: tileX * 7 + tileY * 13 },
   ]);
 
-  tree.onDraw = function() {
-    const t = time();
-    const rustle = Math.sin(t * 2 + this.phase) * 1.5;
-    const rustleScale = 1 + Math.sin(t * 1.5 + this.phase) * 0.05;
+  // Trunk
+  add([
+    rect(8, 12),
+    pos(x + 8, y + 12),
+    color(90, 61, 26),
+    z(4),
+  ]);
 
-    // Trunk
-    drawRect({
-      pos: vec2(8, 12),
-      width: 8,
-      height: 12,
-      color: rgb(90, 61, 26),
-    });
+  // Foliage (multiple circles as layered rects for simplicity)
+  add([
+    circle(12),
+    pos(x + 12, y + 10),
+    color(26, 90, 26),
+    z(5),
+  ]);
 
-    // Foliage layers
-    drawCircle({
-      pos: vec2(12 + rustle * 0.5, 10),
-      radius: 12 * rustleScale,
-      color: rgb(26, 90, 26),
-    });
+  add([
+    circle(8),
+    pos(x + 10, y + 7),
+    color(45, 122, 45),
+    z(6),
+  ]);
 
-    drawCircle({
-      pos: vec2(10 + rustle, 7),
-      radius: 8 * rustleScale,
-      color: rgb(45, 122, 45),
-    });
-
-    drawCircle({
-      pos: vec2(14 + rustle * 0.7, 6),
-      radius: 6 * rustleScale,
-      color: rgb(61, 154, 61),
-    });
-  };
+  add([
+    circle(6),
+    pos(x + 14, y + 6),
+    color(61, 154, 61),
+    z(7),
+  ]);
 
   return tree;
 }
@@ -148,41 +146,28 @@ export function createFlower(tileX, tileY) {
   const x = tileX * TILE + 8 + Math.random() * 8;
   const y = tileY * TILE + 8 + Math.random() * 8;
   const colorIdx = Math.floor(Math.random() * flowerColors.length);
-  const phase = Math.random() * Math.PI * 2;
 
-  const flower = add([
-    rect(1, 1),
-    pos(x, y),
+  // Stem
+  add([
+    rect(2, 6),
+    pos(x - 1, y),
+    color(45, 90, 29),
     z(2),
-    { phase, flowerColor: flowerColors[colorIdx] },
   ]);
 
-  flower.onDraw = function() {
-    const t = time();
-    const sway = Math.sin(t * 1.25 + this.phase) * 2;
+  // Flower head
+  add([
+    circle(4),
+    pos(x, y),
+    color(...flowerColors[colorIdx]),
+    z(3),
+  ]);
 
-    // Stem
-    drawLine({
-      p1: vec2(0, 6),
-      p2: vec2(sway, 0),
-      width: 2,
-      color: rgb(45, 90, 29),
-    });
-
-    // Flower head
-    drawCircle({
-      pos: vec2(sway, 0),
-      radius: 4,
-      color: rgb(...this.flowerColor),
-    });
-
-    // Center
-    drawCircle({
-      pos: vec2(sway, 0),
-      radius: 2,
-      color: rgb(255, 241, 118),
-    });
-  };
-
-  return flower;
+  // Center
+  add([
+    circle(2),
+    pos(x, y),
+    color(255, 241, 118),
+    z(4),
+  ]);
 }

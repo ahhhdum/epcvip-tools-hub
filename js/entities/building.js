@@ -2,6 +2,7 @@
  * Building Entity
  *
  * Represents a tool building that can be interacted with.
+ * Uses simple colored rectangles until sprites are loaded.
  */
 
 import { GAME_CONFIG, COLORS } from '../config.js';
@@ -12,13 +13,15 @@ export function createBuilding(tool) {
   const bHeight = 5 * TILE;
   const x = tool.position.x * TILE;
   const y = tool.position.y * TILE;
+  const isActive = tool.live;
 
+  // Main building container (invisible, just for collision/interaction)
   const building = add([
     rect(bWidth, bHeight),
     pos(x, y),
     area(),
     body({ isStatic: true }),
-    opacity(0),  // Make base rect invisible, we draw everything in onDraw
+    color(42, 42, 42),
     z(3),
     'building',
     'interactable',
@@ -52,145 +55,117 @@ export function createBuilding(tool) {
     },
   ]);
 
-  // Custom draw for building
-  building.onDraw = function() {
-    const isActive = this.isLive;
-    const c = this.toolColor;
+  // Roof
+  add([
+    rect(bWidth + 8, TILE * 0.8),
+    pos(x - 4, y),
+    color(isActive ? 240 : 80, isActive ? 192 : 80, isActive ? 0 : 80),
+    z(4),
+  ]);
 
-    // Building shadow
-    drawRect({
-      pos: vec2(4, 4),
-      width: bWidth,
-      height: bHeight,
-      color: rgb(0, 0, 0),
-      opacity: 0.3,
-    });
+  // Roof highlight
+  add([
+    rect(bWidth + 8, 4),
+    pos(x - 4, y),
+    color(isActive ? 255 : 104, isActive ? 221 : 104, isActive ? 68 : 104),
+    z(5),
+  ]);
 
-    // Main building body
-    drawRect({
-      pos: vec2(0, 0),
-      width: bWidth,
-      height: bHeight,
-      color: isActive ? rgb(42, 42, 42) : rgb(64, 64, 64),
-    });
+  // LIVE/SOON badge
+  const badgeColor = isActive ? [0, 204, 0] : [102, 102, 0];
+  add([
+    rect(28, 12),
+    pos(x + 2, y + 3),
+    color(...badgeColor),
+    z(6),
+  ]);
 
-    // Roof
-    const roofHeight = TILE * 0.8;
-    drawRect({
-      pos: vec2(-4, 0),
-      width: bWidth + 8,
-      height: roofHeight,
-      color: isActive ? rgb(...COLORS.gold) : rgb(80, 80, 80),
-    });
+  add([
+    text(isActive ? 'LIVE' : 'SOON', { size: 8 }),
+    pos(x + 16, y + 9),
+    anchor('center'),
+    color(isActive ? 0 : 51, isActive ? 51 : 51, 0),
+    z(7),
+  ]);
 
-    // Roof highlight
-    drawRect({
-      pos: vec2(-4, 0),
-      width: bWidth + 8,
-      height: 4,
-      color: isActive ? rgb(255, 221, 68) : rgb(104, 104, 104),
-    });
+  // Windows
+  const windowY = y + TILE * 0.8 + 8;
+  const windowSize = TILE * 0.8;
+  const windowColor = isActive ? COLORS.gold : [80, 80, 80];
 
-    // LIVE/SOON badge
-    const badgeText = isActive ? 'LIVE' : 'SOON';
-    const badgeColor = isActive ? rgb(0, 204, 0) : rgb(102, 102, 0);
-    drawRect({
-      pos: vec2(2, 3),
-      width: 28,
-      height: 12,
-      color: badgeColor,
-    });
-    drawText({
-      text: badgeText,
-      pos: vec2(16, 9),
-      size: 8,
-      anchor: 'center',
-      color: isActive ? rgb(0, 51, 0) : rgb(51, 51, 0),
-    });
+  // Left window frame
+  add([
+    rect(windowSize, windowSize),
+    pos(x + 8, windowY),
+    color(...windowColor),
+    z(4),
+  ]);
+  // Left window inner
+  add([
+    rect(windowSize - 6, windowSize - 6),
+    pos(x + 11, windowY + 3),
+    color(10, 10, 10),
+    z(5),
+  ]);
 
-    // Windows
-    const windowY = roofHeight + 8;
-    const windowSize = TILE * 0.8;
-    const windowColor = isActive ? rgb(...COLORS.gold) : rgb(80, 80, 80);
+  // Right window frame
+  add([
+    rect(windowSize, windowSize),
+    pos(x + bWidth - 8 - windowSize, windowY),
+    color(...windowColor),
+    z(4),
+  ]);
+  // Right window inner
+  add([
+    rect(windowSize - 6, windowSize - 6),
+    pos(x + bWidth - 8 - windowSize + 3, windowY + 3),
+    color(10, 10, 10),
+    z(5),
+  ]);
 
-    // Left window
-    drawRect({
-      pos: vec2(8, windowY),
-      width: windowSize,
-      height: windowSize,
-      color: windowColor,
-    });
-    drawRect({
-      pos: vec2(11, windowY + 3),
-      width: windowSize - 6,
-      height: windowSize - 6,
-      color: rgb(10, 10, 10),
-    });
+  // Sign board
+  const signY = windowY + windowSize + 10;
+  const signWidth = bWidth - 20;
+  const signHeight = TILE * 0.7;
+  add([
+    rect(signWidth, signHeight),
+    pos(x + 10, signY),
+    color(26, 26, 26),
+    outline(2, rgb(...windowColor)),
+    z(4),
+  ]);
 
-    // Right window
-    drawRect({
-      pos: vec2(bWidth - 8 - windowSize, windowY),
-      width: windowSize,
-      height: windowSize,
-      color: windowColor,
-    });
-    drawRect({
-      pos: vec2(bWidth - 8 - windowSize + 3, windowY + 3),
-      width: windowSize - 6,
-      height: windowSize - 6,
-      color: rgb(10, 10, 10),
-    });
+  // Sign text
+  add([
+    text(tool.name, { size: 9 }),
+    pos(x + bWidth / 2, signY + signHeight / 2),
+    anchor('center'),
+    color(...windowColor),
+    z(5),
+  ]);
 
-    // Sign
-    const signY = windowY + windowSize + 10;
-    const signWidth = bWidth - 20;
-    const signHeight = TILE * 0.7;
-    drawRect({
-      pos: vec2(10, signY),
-      width: signWidth,
-      height: signHeight,
-      color: rgb(26, 26, 26),
-      outline: { color: windowColor, width: 2 },
-    });
-    drawText({
-      text: this.toolName,
-      pos: vec2(bWidth / 2, signY + signHeight - 5),
-      size: 10,
-      anchor: 'center',
-      color: windowColor,
-    });
+  // Door frame
+  const doorWidth = TILE * 1.1;
+  const doorHeight = TILE * 1.4;
+  const doorX = x + (bWidth - doorWidth) / 2;
+  const doorY = y + bHeight - doorHeight;
 
-    // Door
-    const doorWidth = TILE * 1.1;
-    const doorHeight = TILE * 1.4;
-    const doorX = (bWidth - doorWidth) / 2;
-    const doorY = bHeight - doorHeight;
+  add([
+    rect(doorWidth + 6, doorHeight + 3),
+    pos(doorX - 3, doorY - 3),
+    color(...windowColor),
+    z(4),
+  ]);
 
-    // Door frame
-    drawRect({
-      pos: vec2(doorX - 3, doorY - 3),
-      width: doorWidth + 6,
-      height: doorHeight + 3,
-      color: windowColor,
-    });
+  // Door
+  add([
+    rect(doorWidth, doorHeight),
+    pos(doorX, doorY),
+    color(isActive ? 10 : 48, isActive ? 10 : 48, isActive ? 10 : 48),
+    z(5),
+  ]);
 
-    // Door
-    drawRect({
-      pos: vec2(doorX, doorY),
-      width: doorWidth,
-      height: doorHeight,
-      color: isActive ? rgb(10, 10, 10) : rgb(48, 48, 48),
-    });
-
-    // Door handle
-    drawCircle({
-      pos: vec2(doorX + doorWidth - 7, doorY + doorHeight / 2),
-      radius: 3,
-      color: windowColor,
-    });
-  };
-
-  // Click to open
+  // Click anywhere on building to open
   building.onClick(() => {
     if (building.toolUrl) {
       window.open(building.toolUrl, '_blank');
