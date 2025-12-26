@@ -7,6 +7,7 @@
 
 import { GAME_CONFIG, COLORS } from '../config.js';
 import { virtualInput, setInteractCallback } from '../systems/input.js';
+import { updateCamera } from '../systems/camera.js';
 
 export function createPlayer(startPos) {
   const TILE = GAME_CONFIG.tileSize;
@@ -201,10 +202,15 @@ export function createPlayer(startPos) {
     }
   });
 
-  // Keep player in bounds
+  // Keep player in bounds (use world dimensions, not viewport)
   player.onUpdate(() => {
-    player.pos.x = clamp(player.pos.x, TILE, width() - TILE);
-    player.pos.y = clamp(player.pos.y, TILE * 2, height() - TILE);
+    const worldW = GAME_CONFIG.worldWidth;
+    const worldH = GAME_CONFIG.worldHeight;
+    player.pos.x = clamp(player.pos.x, TILE, worldW - TILE);
+    player.pos.y = clamp(player.pos.y, TILE * 2, worldH - TILE);
+
+    // Update camera to follow player
+    updateCamera(player.pos);
   });
 
   return player;

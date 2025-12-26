@@ -4,7 +4,7 @@
  * Main game scene with buildings, player, and decorations.
  */
 
-import { GAME_CONFIG, COLORS, TOOLS, TREES } from '../config.js';
+import { GAME_CONFIG, COLORS, TOOLS, TREES, FLOWERS } from '../config.js';
 import { createPlayer } from '../entities/player.js';
 import { createBuilding } from '../entities/building.js';
 import { createTree, createFlower, drawGround } from '../entities/decoration.js';
@@ -19,22 +19,17 @@ export function overworldScene() {
   // Create decorations
   TREES.forEach(t => createTree(t.x, t.y));
 
-  // Create random flowers
-  const flowerPositions = [
-    [0, 3], [0, 5], [19, 3], [19, 5],
-    [6, 8], [12, 8], [6, 14], [12, 14],
-    [8, 15], [11, 15], [9, 16], [10, 16],
-  ];
-  flowerPositions.forEach(([x, y]) => createFlower(x, y));
+  // Create flowers from config
+  FLOWERS.forEach(f => createFlower(f.x, f.y));
 
   // Create buildings for each tool
   const buildings = TOOLS.map(tool => createBuilding(tool));
 
-  // Create welcome sign
+  // Create welcome sign (centered in the larger world)
   createWelcomeSign();
 
-  // Create player
-  const player = createPlayer({ x: 10 * TILE, y: 15 * TILE });
+  // Create player (start in center-ish area of world)
+  const player = createPlayer({ x: 20 * TILE, y: 15 * TILE });
 
   // Initialize dialog system
   initDialog();
@@ -62,10 +57,10 @@ export function overworldScene() {
 function createWelcomeSign() {
   const TILE = GAME_CONFIG.tileSize;
 
-  // Sign post
+  // Sign post (centered in world)
   add([
     rect(6, 24),
-    pos(9 * TILE + 9, 16 * TILE),
+    pos(19 * TILE + 9, 14 * TILE),
     color(...COLORS.gold),
     z(5),
   ]);
@@ -73,7 +68,7 @@ function createWelcomeSign() {
   // Sign board
   add([
     rect(4 * TILE, TILE * 1.2),
-    pos(8 * TILE, 15 * TILE + 12),
+    pos(18 * TILE, 13 * TILE + 12),
     color(...COLORS.dark),
     outline(3, rgb(...COLORS.gold)),
     z(6),
@@ -82,7 +77,7 @@ function createWelcomeSign() {
   // Sign text
   add([
     text('INNOVATION LAB', { size: 11 }),
-    pos(10 * TILE, 16 * TILE + 8),
+    pos(20 * TILE, 14 * TILE + 8),
     anchor('center'),
     color(...COLORS.gold),
     z(7),

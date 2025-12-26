@@ -8,19 +8,20 @@
 import { GAME_CONFIG, COLORS } from '../config.js';
 
 const TILE = GAME_CONFIG.tileSize;
-const MAP_W = Math.floor(GAME_CONFIG.width / TILE);
-const MAP_H = Math.floor(GAME_CONFIG.height / TILE);
+// Use world dimensions for map size (not viewport)
+const MAP_W = Math.floor(GAME_CONFIG.worldWidth / TILE);
+const MAP_H = Math.floor(GAME_CONFIG.worldHeight / TILE);
 
 export function drawGround() {
-  // Base grass layer
+  // Base grass layer covering entire world
   add([
-    rect(width(), height()),
+    rect(GAME_CONFIG.worldWidth, GAME_CONFIG.worldHeight),
     pos(0, 0),
     color(...COLORS.grass),
     z(0),
   ]);
 
-  // Grass texture pattern
+  // Grass texture pattern (for entire world)
   for (let x = 0; x < MAP_W; x++) {
     for (let y = 0; y < MAP_H; y++) {
       if ((x + y) % 2 === 0) {
@@ -48,32 +49,62 @@ function drawPath() {
   const pathColor = COLORS.path;
   const pathDarkColor = [200, 160, 80];
 
-  // Horizontal paths
+  // Main horizontal path at y=10 (spans most of the width)
   add([
-    rect(18 * TILE, 2 * TILE),
-    pos(TILE, 7 * TILE),
+    rect((MAP_W - 4) * TILE, 2 * TILE),
+    pos(2 * TILE, 10 * TILE),
+    color(...pathColor),
+    z(1),
+  ]);
+
+  // Second horizontal path at y=24 (spans most of the width)
+  add([
+    rect((MAP_W - 4) * TILE, 2 * TILE),
+    pos(2 * TILE, 24 * TILE),
+    color(...pathColor),
+    z(1),
+  ]);
+
+  // Vertical path connecting the two horizontal paths
+  add([
+    rect(2 * TILE, 16 * TILE),
+    pos(19 * TILE, 10 * TILE),
+    color(...pathColor),
+    z(1),
+  ]);
+
+  // Additional vertical paths
+  add([
+    rect(2 * TILE, 16 * TILE),
+    pos(10 * TILE, 10 * TILE),
     color(...pathColor),
     z(1),
   ]);
 
   add([
-    rect(18 * TILE, 2 * TILE),
-    pos(TILE, 14 * TILE),
+    rect(2 * TILE, 16 * TILE),
+    pos(28 * TILE, 10 * TILE),
     color(...pathColor),
     z(1),
   ]);
 
-  // Vertical center path
-  add([
-    rect(2 * TILE, 9 * TILE),
-    pos(9 * TILE, 7 * TILE),
-    color(...pathColor),
-    z(1),
-  ]);
+  // Path texture for horizontal paths
+  for (let x = 2; x < MAP_W - 2; x++) {
+    for (const y of [10, 11, 24, 25]) {
+      if ((x + y) % 3 === 0) {
+        add([
+          rect(4, 4),
+          pos(x * TILE + 9, y * TILE + 9),
+          color(...pathDarkColor),
+          z(2),
+        ]);
+      }
+    }
+  }
 
-  // Path texture
-  for (let x = 1; x < 19; x++) {
-    for (const y of [7, 8, 14, 15]) {
+  // Path texture for vertical paths
+  for (const x of [10, 11, 19, 20, 28, 29]) {
+    for (let y = 10; y < 26; y++) {
       if ((x + y) % 3 === 0) {
         add([
           rect(4, 4),
