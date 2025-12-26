@@ -18,6 +18,7 @@ export function createBuilding(tool) {
     pos(x, y),
     area(),
     body({ isStatic: true }),
+    opacity(0),  // Make base rect invisible, we draw everything in onDraw
     z(3),
     'building',
     'interactable',

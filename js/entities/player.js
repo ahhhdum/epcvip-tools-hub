@@ -16,6 +16,7 @@ export function createPlayer(startPos) {
     area(),
     body(),
     anchor('center'),
+    opacity(0),  // Make base rect invisible, we draw in onDraw
     z(10),
     'player',
     {

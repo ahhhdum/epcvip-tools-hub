@@ -94,6 +94,7 @@ export function createTree(tileX, tileY) {
     pos(x, y),
     area(),
     body({ isStatic: true }),
+    opacity(0),  // Make base rect invisible
     z(4),
     'tree',
     { phase: tileX * 7 + tileY * 13 },
