@@ -269,6 +269,7 @@ export function throwFritelle(playerPos, direction) {
     pos(playerPos.x, playerPos.y),
     move(dirVec, 200),
     area(),
+    opacity(1),
     lifespan(1.5, { fade: 0.3 }),
     z(15),
     'thrown-fritelle',
