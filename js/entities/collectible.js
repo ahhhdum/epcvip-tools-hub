@@ -141,7 +141,7 @@ export function spawnFritelles(count = 8) {
  */
 export function initFritelleSystem(player) {
   // Load the fritelle sprite
-  loadSprite('fritelle', 'assets/sprites/fritelle.png');
+  loadSprite('fritelle', 'assets/sprites/fritelle-v2.png');
 
   // Create HUD (fixed position, doesn't scroll with camera)
   hudIcon = add([
