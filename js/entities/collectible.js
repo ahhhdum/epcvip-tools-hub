@@ -117,8 +117,8 @@ export function createFritelle() {
 
   const spawnPos = getRandomSpawnPosition();
 
-  // 2% chance for golden fritelle (worth 15x)
-  const isGolden = Math.random() < 0.02;
+  // 4% chance for golden fritelle (worth 15x)
+  const isGolden = Math.random() < 0.04;
 
   const fritelle = add([
     sprite('fritelle'),
@@ -218,7 +218,7 @@ export function initFritelleSystem(player) {
     updateHUD();
 
     // Play sound (different for golden)
-    playSound(f.isGolden ? 'powerup' : 'pickup', { volume: 0.5 });
+    playSound(f.isGolden ? 'powerup' : 'pickup', { volume: 0.35 });
 
     // Sparkle effect (bigger for golden)
     const sparkleCount = f.isGolden ? 15 : 5;
