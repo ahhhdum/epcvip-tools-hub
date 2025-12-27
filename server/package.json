@@ -6,7 +6,7 @@
   "scripts": {
     "start": "ts-node src/index.ts",
     "build": "tsc && npm run copy-static",
-    "copy-static": "cp -r ../index.html ../index-simple.html ../style.css ../js ../assets ./public/",
+    "copy-static": "mkdir -p public && cp -r ../index.html ../index-simple.html ../style.css ../js ../assets ./public/",
     "serve": "node dist/index.js"
   },
   "dependencies": {
