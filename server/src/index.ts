@@ -13,8 +13,8 @@ import path from 'path';
 const app = express();
 const port = Number(process.env.PORT) || 2567;
 
-// Serve static files from parent directory (game client)
-const staticPath = path.join(__dirname, '../../');
+// Serve static files from public directory (copied during build)
+const staticPath = path.join(__dirname, '../public');
 app.use(express.static(staticPath));
 
 // Health check
