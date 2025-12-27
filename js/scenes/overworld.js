@@ -10,6 +10,7 @@ import { createBuilding } from '../entities/building.js';
 import { createTree, createFlower, drawGround } from '../entities/decoration.js';
 import { initDialog, showDialog, clearDialog, WELCOME_MESSAGE } from '../systems/dialog.js';
 import { initFritelleSystem } from '../entities/collectible.js';
+import { connectToServer, isMultiplayerConnected, getPlayerCount } from '../systems/multiplayer.js';
 
 export function overworldScene() {
   const TILE = GAME_CONFIG.tileSize;
@@ -35,6 +36,14 @@ export function overworldScene() {
   // Initialize dialog system
   initDialog();
   clearDialog();
+
+  // Try to connect to multiplayer server (non-blocking)
+  connectToServer('Player').then((connected) => {
+    if (connected) {
+      showDialog('Connected to multiplayer! Other players will appear soon.');
+      wait(3, clearDialog);
+    }
+  });
 
   // Initialize fritelle collectibles
   initFritelleSystem(player);

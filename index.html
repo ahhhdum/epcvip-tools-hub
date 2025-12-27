@@ -41,6 +41,13 @@
         <a href="index-simple.html">Switch to simple view</a>
     </div>
 
+    <!-- Configure multiplayer server -->
+    <script>
+        // Auto-detect: use same origin (works for both local and production)
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        window.MULTIPLAYER_SERVER = `${protocol}//${window.location.host}`;
+    </script>
+
     <script type="module" src="js/main.js"></script>
 </body>
 </html>

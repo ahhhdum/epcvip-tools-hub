@@ -9,6 +9,7 @@ import { GAME_CONFIG, COLORS } from '../config.js';
 import { virtualInput, setInteractCallback, setThrowCallback } from '../systems/input.js';
 import { updateCamera } from '../systems/camera.js';
 import { throwFritelle } from './collectible.js';
+import { sendPosition, isMultiplayerConnected } from '../systems/multiplayer.js';
 
 export function createPlayer(startPos) {
   const TILE = GAME_CONFIG.tileSize;
@@ -240,6 +241,15 @@ export function createPlayer(startPos) {
 
     // Update camera to follow player
     updateCamera(player.pos);
+  });
+
+  // Multiplayer: Send position updates (throttled to 20 times/sec)
+  let lastNetworkUpdate = 0;
+  player.onUpdate(() => {
+    if (isMultiplayerConnected() && time() - lastNetworkUpdate > 0.05) {
+      sendPosition(player.pos.x, player.pos.y, player.direction);
+      lastNetworkUpdate = time();
+    }
   });
 
   return player;

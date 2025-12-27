@@ -7,6 +7,7 @@
 
 import { GAME_CONFIG, TOOLS, TREES } from '../config.js';
 import { playSound } from '../systems/audio.js';
+import { sendCollect, sendThrow, sendHit, getLocalPlayerId, useServerFritelles, isMultiplayerConnected } from '../systems/multiplayer.js';
 
 // Track collected fritelles (persists across scene transitions)
 let fritelleCount = 0;
@@ -208,11 +209,29 @@ export function initFritelleSystem(player) {
     'hud-shadow',
   ]);
 
-  // Spawn initial fritelles
-  const fritelles = spawnFritelles(8);
+  // Spawn initial fritelles (only in single-player mode)
+  // In multiplayer, server spawns them via state sync
+  if (!useServerFritelles()) {
+    spawnFritelles(8);
+  }
 
   // Handle collection
   player.onCollide('fritelle', (f) => {
+    // In multiplayer, notify server and let it handle the state
+    if (isMultiplayerConnected() && f.networkId) {
+      sendCollect(f.networkId);
+      // Server will remove from state, which triggers client-side destruction
+      // But we still play effects locally for responsiveness
+    } else {
+      // Single-player: handle locally
+      destroy(f);
+
+      // Respawn a new one after a delay (single-player only)
+      wait(rand(3, 8), () => {
+        createFritelle();
+      });
+    }
+
     // Increment counter (golden = 15, regular = 1)
     fritelleCount += f.value || 1;
     updateHUD();
@@ -236,14 +255,6 @@ export function initFritelleSystem(player) {
         move(rand(0, 360), rand(20, 60)),
       ]);
     }
-
-    // Remove the fritelle (halo auto-destroys via its onUpdate)
-    destroy(f);
-
-    // Respawn a new one after a delay
-    wait(rand(3, 8), () => {
-      createFritelle();
-    });
   });
 
   // Magnet effect - at 15+ fritelles, nearby ones drift toward player
@@ -313,6 +324,11 @@ export function throwFritelle(playerPos, direction) {
     dirVec = direction; // Already a vec2
   }
 
+  // Notify server in multiplayer mode
+  if (isMultiplayerConnected()) {
+    sendThrow(playerPos.x, playerPos.y, dirVec.x, dirVec.y);
+  }
+
   // Create thrown fritelle projectile
   const thrown = add([
     sprite('fritelle'),
@@ -346,6 +362,14 @@ export function throwFritelle(playerPos, direction) {
   });
 
   thrown.onCollide('tree', () => {
+    createSplat(thrown.pos);
+    destroy(thrown);
+  });
+
+  // Hit other players in multiplayer
+  thrown.onCollide('other-player-hitbox', (target) => {
+    if (target.playerId === getLocalPlayerId()) return;
+    sendHit(target.playerId);
     createSplat(thrown.pos);
     destroy(thrown);
   });

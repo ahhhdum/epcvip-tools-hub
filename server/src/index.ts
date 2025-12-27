@@ -1,0 +1,253 @@
+/**
+ * EPCVIP Tools Hub - Multiplayer Server
+ *
+ * Simple WebSocket server with JSON messages.
+ * No framework dependencies - just ws + express.
+ */
+
+import { WebSocketServer, WebSocket } from 'ws';
+import { createServer } from 'http';
+import express from 'express';
+import path from 'path';
+
+const app = express();
+const port = Number(process.env.PORT) || 2567;
+
+// Serve static files from parent directory (game client)
+const staticPath = path.join(__dirname, '../../');
+app.use(express.static(staticPath));
+
+// Health check
+app.get("/health", (req, res) => {
+  res.json({ status: "ok", players: players.size });
+});
+
+const server = createServer(app);
+const wss = new WebSocketServer({ server });
+
+// Game constants
+const WORLD_WIDTH = 960;
+const WORLD_HEIGHT = 864;
+const TILE_SIZE = 24;
+const GOLDEN_CHANCE = 0.04;
+
+// Game state
+interface Player {
+  id: string;
+  name: string;
+  x: number;
+  y: number;
+  direction: string;
+  colorIndex: number;
+  fritelleCount: number;
+}
+
+interface Fritelle {
+  id: string;
+  x: number;
+  y: number;
+  isGolden: boolean;
+}
+
+const players = new Map<string, Player>();
+const fritelles = new Map<string, Fritelle>();
+const sockets = new Map<string, WebSocket>();
+
+let playerCounter = 0;
+let fritelleCounter = 0;
+
+// Generate unique ID
+function generateId(): string {
+  return `p${++playerCounter}_${Date.now().toString(36)}`;
+}
+
+// Broadcast to all connected clients
+function broadcast(msg: object, excludeId?: string) {
+  const data = JSON.stringify(msg);
+  sockets.forEach((ws, id) => {
+    if (id !== excludeId && ws.readyState === WebSocket.OPEN) {
+      ws.send(data);
+    }
+  });
+}
+
+// Send to specific client
+function send(playerId: string, msg: object) {
+  const ws = sockets.get(playerId);
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(msg));
+  }
+}
+
+// Spawn initial fritelles
+function spawnInitialFritelles() {
+  for (let i = 0; i < 8; i++) {
+    spawnFritelle();
+  }
+}
+
+// Spawn a single fritelle
+function spawnFritelle(): Fritelle {
+  const id = `f${++fritelleCounter}`;
+  const margin = TILE_SIZE * 2;
+
+  const fritelle: Fritelle = {
+    id,
+    x: margin + Math.random() * (WORLD_WIDTH - margin * 2),
+    y: margin + Math.random() * (WORLD_HEIGHT - margin * 2),
+    isGolden: Math.random() < GOLDEN_CHANCE,
+  };
+
+  fritelles.set(id, fritelle);
+  return fritelle;
+}
+
+// Handle new connection
+wss.on('connection', (ws) => {
+  const playerId = generateId();
+
+  // Create player
+  const player: Player = {
+    id: playerId,
+    name: `Player ${players.size + 1}`,
+    x: 400 + Math.random() * 100,
+    y: 400 + Math.random() * 100,
+    direction: 'down',
+    colorIndex: players.size % 4,
+    fritelleCount: 0,
+  };
+
+  players.set(playerId, player);
+  sockets.set(playerId, ws);
+
+  console.log(`${playerId} connected (${players.size} players)`);
+
+  // Send init message with current state
+  send(playerId, {
+    type: 'init',
+    playerId,
+    player,
+    players: Array.from(players.values()).filter(p => p.id !== playerId),
+    fritelles: Array.from(fritelles.values()),
+  });
+
+  // Broadcast new player to others
+  broadcast({ type: 'playerJoined', player }, playerId);
+
+  // Handle messages
+  ws.on('message', (data) => {
+    try {
+      const msg = JSON.parse(data.toString());
+
+      switch (msg.type) {
+        case 'move': {
+          const p = players.get(playerId);
+          if (p) {
+            p.x = msg.x;
+            p.y = msg.y;
+            p.direction = msg.direction || p.direction;
+            broadcast({ type: 'playerMoved', playerId, x: msg.x, y: msg.y, direction: p.direction }, playerId);
+          }
+          break;
+        }
+
+        case 'collect': {
+          const fritelle = fritelles.get(msg.fritelleId);
+          if (fritelle) {
+            const p = players.get(playerId);
+            if (p) {
+              p.fritelleCount += fritelle.isGolden ? 15 : 1;
+            }
+
+            fritelles.delete(msg.fritelleId);
+
+            // Broadcast collection
+            broadcast({
+              type: 'fritelleCollected',
+              playerId,
+              fritelleId: msg.fritelleId,
+              isGolden: fritelle.isGolden,
+              x: fritelle.x,
+              y: fritelle.y,
+            });
+
+            // Respawn after delay
+            setTimeout(() => {
+              const newFritelle = spawnFritelle();
+              broadcast({ type: 'fritelleSpawned', fritelle: newFritelle });
+            }, 3000 + Math.random() * 5000);
+          }
+          break;
+        }
+
+        case 'throw': {
+          const p = players.get(playerId);
+          if (p && p.fritelleCount > 0) {
+            p.fritelleCount--;
+            broadcast({
+              type: 'fritelleThrown',
+              playerId,
+              x: msg.x,
+              y: msg.y,
+              dx: msg.dx,
+              dy: msg.dy,
+            });
+          }
+          break;
+        }
+
+        case 'hit': {
+          const target = players.get(msg.targetId);
+          if (target && target.fritelleCount > 0) {
+            target.fritelleCount--;
+            broadcast({
+              type: 'playerHit',
+              targetId: msg.targetId,
+              throwerId: playerId,
+            });
+          }
+          break;
+        }
+
+        case 'setName': {
+          const p = players.get(playerId);
+          if (p) {
+            p.name = msg.name;
+            broadcast({ type: 'playerRenamed', playerId, name: msg.name });
+          }
+          break;
+        }
+      }
+    } catch (e) {
+      console.error('Message parse error:', e);
+    }
+  });
+
+  // Handle disconnect
+  ws.on('close', () => {
+    console.log(`${playerId} disconnected`);
+    players.delete(playerId);
+    sockets.delete(playerId);
+    broadcast({ type: 'playerLeft', playerId });
+  });
+
+  ws.on('error', (err) => {
+    console.error(`Socket error for ${playerId}:`, err);
+  });
+});
+
+// Initialize game
+spawnInitialFritelles();
+
+// Start server
+server.listen(port, '0.0.0.0', () => {
+  console.log(`
+╔════════════════════════════════════════════════════════╗
+║  EPCVIP Tools Hub - Multiplayer Server                 ║
+╠════════════════════════════════════════════════════════╣
+║  WebSocket:  ws://0.0.0.0:${port}                        ║
+║  Health:     http://0.0.0.0:${port}/health               ║
+║  Protocol:   Native WebSocket + JSON                   ║
+╚════════════════════════════════════════════════════════╝
+  `);
+});
