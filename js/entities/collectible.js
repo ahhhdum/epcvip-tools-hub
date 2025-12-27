@@ -6,6 +6,7 @@
  */
 
 import { GAME_CONFIG, TOOLS, TREES } from '../config.js';
+import { playSound } from '../systems/audio.js';
 
 // Track collected fritelles (persists across scene transitions)
 let fritelleCount = 0;
@@ -216,6 +217,9 @@ export function initFritelleSystem(player) {
     fritelleCount += f.value || 1;
     updateHUD();
 
+    // Play sound (different for golden)
+    playSound(f.isGolden ? 'powerup' : 'pickup', { volume: 0.5 });
+
     // Sparkle effect (bigger for golden)
     const sparkleCount = f.isGolden ? 15 : 5;
     const sparkleColor = f.isGolden ? [255, 200, 50] : [255, 220, 100];
@@ -292,6 +296,9 @@ export function throwFritelle(playerPos, direction) {
 
   fritelleCount--;
   updateHUD();
+
+  // Play throw sound
+  playSound('throw', { volume: 0.3 });
 
   // Support both vec2 (diagonal) and string (cardinal)
   let dirVec;

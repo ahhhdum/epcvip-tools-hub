@@ -6,8 +6,11 @@
  */
 
 import { GAME_CONFIG, COLORS } from '../config.js';
+import { loadSounds } from '../systems/audio.js';
 
 export function loadingScene() {
+  // Load sound effects
+  loadSounds();
   // Background
   add([
     rect(width(), height()),
