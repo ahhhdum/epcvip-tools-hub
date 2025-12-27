@@ -1,0 +1,11 @@
+{
+  "name": "epcvip-tools-hub-client",
+  "version": "1.0.0",
+  "description": "EPCVIP Tools Hub - Game Client",
+  "scripts": {
+    "start": "serve -s . -l $PORT"
+  },
+  "dependencies": {
+    "serve": "^14.2.0"
+  }
+}
