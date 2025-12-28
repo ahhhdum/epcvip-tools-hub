@@ -2,28 +2,93 @@
  * EPCVIP Tools Hub - Multiplayer Server
  *
  * Simple WebSocket server with JSON messages.
- * No framework dependencies - just ws + express.
+ * Serves as gateway/proxy for all tools under single domain.
  */
 
 import { WebSocketServer, WebSocket } from 'ws';
-import { createServer } from 'http';
+import { createServer, IncomingMessage } from 'http';
+import { Socket } from 'net';
 import express from 'express';
 import path from 'path';
+import { createProxyMiddleware } from 'http-proxy-middleware';
 
 const app = express();
 const port = Number(process.env.PORT) || 2567;
+
+// Proxy targets - use Railway internal networking when available
+const PING_TREE_TARGET = process.env.PING_TREE_URL || 'http://ping-tree-compare.railway.internal:8000';
+const ATHENA_TARGET = process.env.ATHENA_URL || 'http://athena-usage-monitor.railway.internal:8501';
+
+// Proxy configuration for ping-tree (FastAPI)
+const pingTreeProxy = createProxyMiddleware({
+  target: PING_TREE_TARGET,
+  changeOrigin: true,
+  pathRewrite: { '^/ping-tree': '' },
+  on: {
+    error: (err, req, res) => {
+      console.error('Ping Tree proxy error:', (err as Error).message);
+      if (res && 'status' in res) {
+        (res as express.Response).status(502).json({ error: 'Ping Tree service unavailable' });
+      }
+    },
+  },
+});
+
+// Proxy configuration for athena (Streamlit) - needs WebSocket support
+const athenaProxy = createProxyMiddleware({
+  target: ATHENA_TARGET,
+  changeOrigin: true,
+  pathRewrite: { '^/athena': '' },
+  ws: true,
+  on: {
+    error: (err, req, res) => {
+      console.error('Athena proxy error:', (err as Error).message);
+      if (res && 'status' in res) {
+        (res as express.Response).status(502).json({ error: 'Athena service unavailable' });
+      }
+    },
+  },
+});
+
+// Mount proxies BEFORE static files (order matters!)
+app.use('/ping-tree', pingTreeProxy);
+app.use('/athena', athenaProxy);
 
 // Serve static files from public directory (copied during build)
 const staticPath = path.join(__dirname, '../public');
 app.use(express.static(staticPath));
 
-// Health check
+// Health check - enhanced with proxy status
 app.get("/health", (req, res) => {
-  res.json({ status: "ok", players: players.size });
+  res.json({
+    status: "ok",
+    players: players.size,
+    proxies: {
+      pingTree: PING_TREE_TARGET,
+      athena: ATHENA_TARGET,
+    },
+  });
 });
 
 const server = createServer(app);
-const wss = new WebSocketServer({ server });
+
+// WebSocket server for game - noServer mode for manual upgrade handling
+const wss = new WebSocketServer({ noServer: true });
+
+// Handle WebSocket upgrades manually to route between game and proxied services
+server.on('upgrade', (req, socket, head) => {
+  const url = req.url || '';
+
+  if (url.startsWith('/athena')) {
+    // Streamlit WebSocket - proxy to athena service
+    athenaProxy.upgrade(req, socket as Socket, head);
+  } else {
+    // Game WebSocket - handle locally
+    wss.handleUpgrade(req, socket as Socket, head, (ws) => {
+      wss.emit('connection', ws, req);
+    });
+  }
+});
 
 // Game constants
 const WORLD_WIDTH = 960;

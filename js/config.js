@@ -38,7 +38,7 @@ export const TOOLS = [
     id: 'ping-tree',
     name: 'Ping Tree Compare',
     description: 'Compare ping tree configurations to identify campaign differences.',
-    url: 'https://ping-tree-compare-production.up.railway.app',
+    url: '/ping-tree/',  // Proxied through tools-hub gateway
     position: { x: 3, y: 3 },
     color: [72, 168, 104],
     live: true,
@@ -47,7 +47,7 @@ export const TOOLS = [
     id: 'athena',
     name: 'Athena Monitor',
     description: 'Monitor AWS Athena query usage, costs, and performance.',
-    url: 'https://athena-usage-monitor-production.up.railway.app',
+    url: '/athena/',  // Proxied through tools-hub gateway
     position: { x: 17, y: 3 },
     color: [88, 120, 168],
     live: true,
