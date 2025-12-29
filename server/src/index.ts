@@ -17,7 +17,7 @@ const port = Number(process.env.PORT) || 2567;
 
 // Proxy targets - use public URLs (move to same Railway project for internal networking)
 const PING_TREE_TARGET = process.env.PING_TREE_URL || 'https://ping-tree-compare-production.up.railway.app';
-const ATHENA_TARGET = process.env.ATHENA_URL || 'https://athena-usage-monitor-production.up.railway.app';
+const ATHENA_TARGET = process.env.ATHENA_URL || 'https://epcvip-athena-usage-monitor.up.railway.app';
 
 // Proxy configuration for ping-tree (FastAPI)
 const pingTreeProxy = createProxyMiddleware({
