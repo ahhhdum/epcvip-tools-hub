@@ -2,7 +2,7 @@
  * Player Entity
  *
  * Handles player movement, collision, and interaction.
- * Uses simple colored rectangles until sprites are loaded.
+ * Uses Farmer_Bob sprite sheet with proper directional animations.
  */
 
 import { GAME_CONFIG, COLORS } from '../config.js';
@@ -15,19 +15,20 @@ export function createPlayer(startPos) {
   const TILE = GAME_CONFIG.tileSize;
   const speed = GAME_CONFIG.playerSpeed;
 
-  // Player container (for collision)
+  // Create player with sprite (64x64 frames, scaled to 96px = 4x tile size)
   const player = add([
-    rect(TILE - 8, TILE - 4),
+    sprite('player', { anim: 'idle-down' }),
     pos(startPos.x, startPos.y),
-    area(),
+    area({ shape: new Rect(vec2(-5, -2), 10, 14) }), // Adjusted: larger box, higher position
     body(),
     anchor('center'),
-    opacity(0),
+    scale(1.5), // 64 * 1.5 = 96px (4x tile size)
     z(10),
     'player',
     {
       direction: 'down',
       isMoving: false,
+      currentAnim: 'idle-down',
 
       startMoving(dir) {
         this.direction = dir;
@@ -49,117 +50,50 @@ export function createPlayer(startPos) {
           nearby.interact();
         }
       },
+
+      // Update animation based on direction and movement
+      updateAnimation() {
+        const dir = this.direction;
+        const moving = this.isMoving;
+
+        // Determine animation name
+        let animName;
+        if (dir === 'left') {
+          // No left sprites - use right + flipX
+          animName = moving ? 'walk-right' : 'idle-right';
+          player.flipX = true;
+        } else {
+          animName = moving ? `walk-${dir}` : `idle-${dir}`;
+          player.flipX = false;
+        }
+
+        // Only change animation if different (prevents restart)
+        if (this.currentAnim !== animName) {
+          this.currentAnim = animName;
+          player.play(animName);
+        }
+      },
     },
   ]);
 
-  // Visual parts (children follow parent)
-  // Shadow (flat oval approximation using rect)
-  const shadow = add([
-    rect(18, 6),
-    pos(0, 0),
-    color(0, 0, 0),
-    opacity(0.3),
-    z(9),
-    anchor('center'),
-    'player-visual',
-  ]);
+  // Update animation when moving or direction changes
+  let wasMoving = false;
+  let lastDir = 'down';
 
-  // Body (gold jacket)
-  const body_part = add([
-    rect(12, 12),
-    pos(0, 0),
-    color(...COLORS.gold),
-    z(10),
-    'player-visual',
-  ]);
-
-  // Body stripe
-  const stripe = add([
-    rect(4, 8),
-    pos(0, 0),
-    color(10, 10, 10),
-    z(11),
-    'player-visual',
-  ]);
-
-  // Head
-  const head = add([
-    rect(16, 10),
-    pos(0, 0),
-    color(248, 216, 120),
-    z(10),
-    'player-visual',
-  ]);
-
-  // Hair
-  const hair = add([
-    rect(16, 4),
-    pos(0, 0),
-    color(42, 42, 42),
-    z(11),
-    'player-visual',
-  ]);
-
-  // Cap
-  const cap = add([
-    rect(20, 5),
-    pos(0, 0),
-    color(10, 10, 10),
-    z(12),
-    'player-visual',
-  ]);
-
-  const capStripe = add([
-    rect(8, 3),
-    pos(0, 0),
-    color(...COLORS.gold),
-    z(13),
-    'player-visual',
-  ]);
-
-  // Legs
-  const legL = add([
-    rect(5, 6),
-    pos(0, 0),
-    color(26, 26, 26),
-    z(9),
-    'player-visual',
-  ]);
-
-  const legR = add([
-    rect(5, 6),
-    pos(0, 0),
-    color(26, 26, 26),
-    z(9),
-    'player-visual',
-  ]);
-
-  // Update visual positions (with directional flip for left/right)
   player.onUpdate(() => {
-    const px = player.pos.x;
-    const py = player.pos.y;
-    const facingLeft = player.direction === 'left';
+    // Check if any movement input is active
+    const isMovingNow =
+      isKeyDown('left') || isKeyDown('right') || isKeyDown('up') || isKeyDown('down') ||
+      isKeyDown('a') || isKeyDown('d') || isKeyDown('w') || isKeyDown('s') ||
+      virtualInput.left || virtualInput.right || virtualInput.up || virtualInput.down;
 
-    // Shadow stays centered
-    shadow.pos = vec2(px, py + 10);
+    player.isMoving = isMovingNow;
 
-    // Symmetrical parts - no flip needed
-    body_part.pos = vec2(px - 6, py - 3);
-    head.pos = vec2(px - 8, py - 12);
-    hair.pos = vec2(px - 8, py - 12);
-    cap.pos = vec2(px - 10, py - 14);
-
-    // Asymmetric parts - flip based on direction (stripe=4px wide, capStripe=8px wide)
-    stripe.pos = vec2(facingLeft ? px - 5 : px + 1, py - 1);
-    capStripe.pos = vec2(facingLeft ? px - 8 : px, py - 12);
-
-    // Legs - swap positions when facing left
-    if (facingLeft) {
-      legL.pos = vec2(px + 1, py + 6);
-      legR.pos = vec2(px - 6, py + 6);
-    } else {
-      legL.pos = vec2(px - 6, py + 6);
-      legR.pos = vec2(px + 1, py + 6);
+    // Update animation when state changes
+    if (player.isMoving !== wasMoving || player.direction !== lastDir) {
+      player.updateAnimation();
+      wasMoving = player.isMoving;
+      lastDir = player.direction;
     }
   });
 

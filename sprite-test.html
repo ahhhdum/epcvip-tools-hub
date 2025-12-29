@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sprite Animation Tool - Farmer Bob</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      background: #1a1a2e;
+      color: #fff;
+      font-family: monospace;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 { color: #f0c000; margin-bottom: 5px; }
+    h2 { color: #f0c000; margin: 0 0 10px 0; font-size: 14px; }
+    .info { color: #888; margin-bottom: 15px; font-size: 12px; }
+
+    /* Main layout */
+    .container {
+      display: flex;
+      gap: 20px;
+    }
+    .left-panel {
+      flex: 1;
+      max-width: 550px;
+    }
+    .right-panel {
+      width: 280px;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+    }
+
+    /* Frame grid */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(6, 74px);
+      gap: 6px;
+    }
+    .row-label {
+      grid-column: 1 / -1;
+      background: #2a2a4e;
+      padding: 6px 10px;
+      margin-top: 12px;
+      border-left: 3px solid #f0c000;
+      font-size: 11px;
+    }
+    .row-label:first-child { margin-top: 0; }
+    .frame {
+      background: #2a2a3e;
+      border: 2px solid #3a3a5e;
+      cursor: pointer;
+      text-align: center;
+      padding: 3px;
+      transition: all 0.1s;
+    }
+    .frame:hover {
+      border-color: #f0c000;
+      transform: scale(1.02);
+    }
+    .frame.in-sequence {
+      border-color: #0f0;
+      background: #1a3a1e;
+    }
+    .frame-img {
+      width: 64px;
+      height: 64px;
+      background-image: url('assets/sprites/Farmer_Bob.png');
+      background-repeat: no-repeat;
+      image-rendering: pixelated;
+      margin: 0 auto;
+    }
+    .frame-num {
+      font-size: 10px;
+      color: #aaa;
+      margin-top: 2px;
+    }
+
+    /* Preview panel */
+    .preview-panel {
+      background: #2a2a4e;
+      border: 2px solid #f0c000;
+      padding: 15px;
+      margin-bottom: 15px;
+    }
+    .preview-box {
+      width: 192px;
+      height: 192px;
+      background: #1a1a2e;
+      margin: 0 auto 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #444;
+    }
+    .preview-sprite {
+      width: 128px;
+      height: 128px;
+      background-image: url('assets/sprites/Farmer_Bob.png');
+      background-repeat: no-repeat;
+      image-rendering: pixelated;
+      background-size: 768px 1664px; /* 2x scale */
+    }
+    .preview-sprite.flip-x {
+      transform: scaleX(-1);
+    }
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .control-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .btn {
+      background: #f0c000;
+      color: #000;
+      border: none;
+      padding: 8px 16px;
+      cursor: pointer;
+      font-family: monospace;
+      font-weight: bold;
+      font-size: 12px;
+    }
+    .btn:hover { background: #ffd000; }
+    .btn:disabled { background: #666; color: #999; cursor: not-allowed; }
+    .btn-small {
+      padding: 4px 8px;
+      font-size: 11px;
+    }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid #f0c000;
+      color: #f0c000;
+    }
+    .btn-outline:hover { background: #f0c00020; }
+    .btn-danger {
+      background: #c00;
+      color: #fff;
+    }
+    .btn-danger:hover { background: #f00; }
+    input[type="range"] {
+      flex: 1;
+    }
+    label {
+      font-size: 12px;
+      color: #ccc;
+    }
+    input[type="checkbox"] {
+      margin-right: 5px;
+    }
+
+    /* Sequence strip */
+    .sequence-panel {
+      background: #2a2a4e;
+      border: 2px solid #3a3a5e;
+      padding: 10px;
+      margin-bottom: 15px;
+    }
+    .sequence-strip {
+      display: flex;
+      gap: 5px;
+      overflow-x: auto;
+      padding: 5px 0;
+      min-height: 60px;
+      align-items: center;
+    }
+    .sequence-strip:empty::after {
+      content: 'Click frames to build sequence...';
+      color: #666;
+      font-size: 12px;
+    }
+    .seq-frame {
+      position: relative;
+      flex-shrink: 0;
+      background: #1a1a2e;
+      border: 2px solid #0f0;
+      padding: 2px;
+    }
+    .seq-frame.active {
+      border-color: #f0c000;
+      box-shadow: 0 0 10px #f0c00080;
+    }
+    .seq-frame-img {
+      width: 48px;
+      height: 48px;
+      background-image: url('assets/sprites/Farmer_Bob.png');
+      background-repeat: no-repeat;
+      image-rendering: pixelated;
+      background-size: 576px 1248px; /* 1.5x scale */
+    }
+    .seq-frame-num {
+      font-size: 9px;
+      color: #0f0;
+      text-align: center;
+    }
+    .seq-frame-remove {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      width: 16px;
+      height: 16px;
+      background: #c00;
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 10px;
+      line-height: 14px;
+    }
+    .seq-frame-remove:hover { background: #f00; }
+    .sequence-info {
+      font-size: 11px;
+      color: #888;
+      margin-top: 8px;
+    }
+
+    /* Presets */
+    .presets-panel {
+      background: #2a2a4e;
+      border: 2px solid #3a3a5e;
+      padding: 10px;
+      margin-bottom: 15px;
+    }
+    .preset-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
+    /* Export */
+    .export-panel {
+      background: #2a2a4e;
+      border: 2px solid #3a3a5e;
+      padding: 10px;
+    }
+    .export-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+      align-items: center;
+    }
+    .export-row:last-child { margin-bottom: 0; }
+    .export-label {
+      font-size: 11px;
+      color: #888;
+      width: 50px;
+    }
+    .export-value {
+      flex: 1;
+      background: #1a1a2e;
+      padding: 6px 8px;
+      font-size: 11px;
+      color: #0f0;
+      border: 1px solid #333;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+  <h1>Sprite Animation Tool</h1>
+  <p class="info">Farmer_Bob.png | 384×832 | 6×13 grid | 64×64 frames | Click frames to build animation</p>
+
+  <div class="container">
+    <!-- Left: Frame Grid -->
+    <div class="left-panel">
+      <div class="grid" id="grid"></div>
+    </div>
+
+    <!-- Right: Controls -->
+    <div class="right-panel">
+      <!-- Preview -->
+      <div class="preview-panel">
+        <h2>PREVIEW</h2>
+        <div class="preview-box">
+          <div class="preview-sprite" id="preview-sprite"></div>
+        </div>
+        <div class="controls">
+          <div class="control-row">
+            <button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button>
+            <button class="btn btn-outline btn-small" onclick="stepFrame(-1)">◀</button>
+            <button class="btn btn-outline btn-small" onclick="stepFrame(1)">▶</button>
+          </div>
+          <div class="control-row">
+            <label>Speed:</label>
+            <input type="range" id="speed-slider" min="1" max="30" value="10" oninput="updateSpeed()">
+            <span id="speed-val">10</span> FPS
+          </div>
+          <div class="control-row">
+            <label><input type="checkbox" id="loop-check" checked> Loop</label>
+            <label><input type="checkbox" id="flip-check" onchange="updateFlip()"> FlipX</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sequence -->
+      <div class="sequence-panel">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <h2 style="margin: 0;">SEQUENCE</h2>
+          <button class="btn btn-danger btn-small" onclick="clearSequence()">Clear</button>
+        </div>
+        <div class="sequence-strip" id="sequence-strip"></div>
+        <div class="sequence-info" id="sequence-info">No frames selected</div>
+      </div>
+
+      <!-- Presets -->
+      <div class="presets-panel">
+        <h2>PRESETS (load row)</h2>
+        <div class="preset-buttons" id="preset-buttons"></div>
+      </div>
+
+      <!-- Export -->
+      <div class="export-panel">
+        <h2>EXPORT</h2>
+        <div class="export-row">
+          <span class="export-label">KaPlay:</span>
+          <div class="export-value" id="export-kaplay">-</div>
+          <button class="btn btn-small" onclick="copyExport('kaplay')">Copy</button>
+        </div>
+        <div class="export-row">
+          <span class="export-label">Array:</span>
+          <div class="export-value" id="export-array">-</div>
+          <button class="btn btn-small" onclick="copyExport('array')">Copy</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const COLS = 6;
+    const ROWS = 13;
+    const FRAME_SIZE = 64;
+
+    const rowLabels = [
+      'Row 0: ??? (face visible)',
+      'Row 1: UP (back visible) ✓',
+      'Row 2: ???',
+      'Row 3: ???',
+      'Row 4: ???',
+      'Row 5: UP walk ✓',
+      'Row 6: ??? (4 frames)',
+      'Row 7: Tools',
+      'Row 8: Tools',
+      'Row 9: Tools',
+      'Row 10: Tools',
+      'Row 11: Tools',
+      'Row 12: Tools',
+    ];
+
+    // State
+    let sequence = [];
+    let isPlaying = false;
+    let currentIndex = 0;
+    let fps = 10;
+    let animInterval = null;
+
+    // Build frame grid
+    const grid = document.getElementById('grid');
+    for (let row = 0; row < ROWS; row++) {
+      const label = document.createElement('div');
+      label.className = 'row-label';
+      label.textContent = rowLabels[row];
+      grid.appendChild(label);
+
+      for (let col = 0; col < COLS; col++) {
+        const frameNum = row * COLS + col;
+        const frame = document.createElement('div');
+        frame.className = 'frame';
+        frame.dataset.frame = frameNum;
+
+        const img = document.createElement('div');
+        img.className = 'frame-img';
+        img.style.backgroundPosition = `-${col * FRAME_SIZE}px -${row * FRAME_SIZE}px`;
+
+        const num = document.createElement('div');
+        num.className = 'frame-num';
+        num.textContent = `#${frameNum}`;
+
+        frame.appendChild(img);
+        frame.appendChild(num);
+        frame.onclick = () => addToSequence(frameNum);
+        grid.appendChild(frame);
+      }
+    }
+
+    // Build preset buttons
+    const presetContainer = document.getElementById('preset-buttons');
+    for (let r = 0; r <= 12; r++) {
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-outline btn-small';
+      btn.textContent = `Row ${r}`;
+      btn.onclick = () => loadPreset(r);
+      presetContainer.appendChild(btn);
+    }
+
+    // Sequence functions
+    function addToSequence(frameNum) {
+      sequence.push(frameNum);
+      updateSequenceUI();
+      updateExport();
+      highlightFramesInGrid();
+      if (sequence.length === 1) {
+        showFrame(frameNum);
+      }
+    }
+
+    function removeFromSequence(index) {
+      sequence.splice(index, 1);
+      if (currentIndex >= sequence.length) currentIndex = Math.max(0, sequence.length - 1);
+      updateSequenceUI();
+      updateExport();
+      highlightFramesInGrid();
+    }
+
+    function clearSequence() {
+      stopPlay();
+      sequence = [];
+      currentIndex = 0;
+      updateSequenceUI();
+      updateExport();
+      highlightFramesInGrid();
+    }
+
+    function loadPreset(rowNum) {
+      stopPlay();
+      const start = rowNum * COLS;
+      const count = (rowNum === 6) ? 4 : 6; // Row 6 only has 4 frames
+      sequence = [];
+      for (let i = 0; i < count; i++) {
+        sequence.push(start + i);
+      }
+      currentIndex = 0;
+      updateSequenceUI();
+      updateExport();
+      highlightFramesInGrid();
+      showFrame(sequence[0]);
+    }
+
+    function highlightFramesInGrid() {
+      document.querySelectorAll('.frame').forEach(f => f.classList.remove('in-sequence'));
+      sequence.forEach(frameNum => {
+        const el = document.querySelector(`.frame[data-frame="${frameNum}"]`);
+        if (el) el.classList.add('in-sequence');
+      });
+    }
+
+    function updateSequenceUI() {
+      const strip = document.getElementById('sequence-strip');
+      strip.innerHTML = '';
+
+      sequence.forEach((frameNum, idx) => {
+        const row = Math.floor(frameNum / COLS);
+        const col = frameNum % COLS;
+
+        const container = document.createElement('div');
+        container.className = 'seq-frame' + (idx === currentIndex ? ' active' : '');
+        container.onclick = () => { currentIndex = idx; showFrame(frameNum); updateSequenceUI(); };
+
+        const img = document.createElement('div');
+        img.className = 'seq-frame-img';
+        img.style.backgroundPosition = `-${col * 48 * 1.5}px -${row * 48 * 1.5}px`;
+
+        const num = document.createElement('div');
+        num.className = 'seq-frame-num';
+        num.textContent = `#${frameNum}`;
+
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'seq-frame-remove';
+        removeBtn.textContent = '×';
+        removeBtn.onclick = (e) => { e.stopPropagation(); removeFromSequence(idx); };
+
+        container.appendChild(img);
+        container.appendChild(num);
+        container.appendChild(removeBtn);
+        strip.appendChild(container);
+      });
+
+      const info = document.getElementById('sequence-info');
+      if (sequence.length === 0) {
+        info.textContent = 'No frames selected';
+      } else {
+        info.textContent = `${sequence.length} frames: ${sequence.join(', ')}`;
+      }
+    }
+
+    // Preview functions
+    function showFrame(frameNum) {
+      const row = Math.floor(frameNum / COLS);
+      const col = frameNum % COLS;
+      const sprite = document.getElementById('preview-sprite');
+      sprite.style.backgroundPosition = `-${col * 128}px -${row * 128}px`;
+    }
+
+    function updateFlip() {
+      const sprite = document.getElementById('preview-sprite');
+      const flip = document.getElementById('flip-check').checked;
+      sprite.classList.toggle('flip-x', flip);
+    }
+
+    function updateSpeed() {
+      fps = parseInt(document.getElementById('speed-slider').value);
+      document.getElementById('speed-val').textContent = fps;
+      if (isPlaying) {
+        stopPlay();
+        startPlay();
+      }
+    }
+
+    // Animation playback
+    function togglePlay() {
+      if (isPlaying) {
+        stopPlay();
+      } else {
+        startPlay();
+      }
+    }
+
+    function startPlay() {
+      if (sequence.length === 0) return;
+      isPlaying = true;
+      document.getElementById('play-btn').textContent = '⏸ Pause';
+      animInterval = setInterval(() => {
+        showFrame(sequence[currentIndex]);
+        updateSequenceUI();
+        currentIndex++;
+        if (currentIndex >= sequence.length) {
+          if (document.getElementById('loop-check').checked) {
+            currentIndex = 0;
+          } else {
+            stopPlay();
+            currentIndex = sequence.length - 1;
+          }
+        }
+      }, 1000 / fps);
+    }
+
+    function stopPlay() {
+      isPlaying = false;
+      document.getElementById('play-btn').textContent = '▶ Play';
+      if (animInterval) {
+        clearInterval(animInterval);
+        animInterval = null;
+      }
+    }
+
+    function stepFrame(dir) {
+      if (sequence.length === 0) return;
+      stopPlay();
+      currentIndex = (currentIndex + dir + sequence.length) % sequence.length;
+      showFrame(sequence[currentIndex]);
+      updateSequenceUI();
+    }
+
+    // Export functions
+    function updateExport() {
+      const kaplayEl = document.getElementById('export-kaplay');
+      const arrayEl = document.getElementById('export-array');
+
+      if (sequence.length === 0) {
+        kaplayEl.textContent = '-';
+        arrayEl.textContent = '-';
+        return;
+      }
+
+      // Check if contiguous
+      const isContiguous = sequence.every((v, i) => i === 0 || v === sequence[i-1] + 1);
+      const loopChecked = document.getElementById('loop-check').checked;
+
+      if (isContiguous && sequence.length > 1) {
+        kaplayEl.textContent = `{ from: ${sequence[0]}, to: ${sequence[sequence.length-1]}, loop: ${loopChecked}, speed: ${fps} }`;
+      } else {
+        kaplayEl.textContent = `(non-contiguous - use array)`;
+      }
+
+      arrayEl.textContent = `[${sequence.join(', ')}]`;
+    }
+
+    function copyExport(type) {
+      let text;
+      if (type === 'kaplay') {
+        text = document.getElementById('export-kaplay').textContent;
+      } else {
+        text = document.getElementById('export-array').textContent;
+      }
+      if (text && text !== '-') {
+        navigator.clipboard.writeText(text);
+        alert('Copied: ' + text);
+      }
+    }
+
+    // Initial state
+    updateExport();
+  </script>
+</body>
+</html>
