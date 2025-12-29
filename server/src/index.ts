@@ -15,9 +15,9 @@ import { createProxyMiddleware } from 'http-proxy-middleware';
 const app = express();
 const port = Number(process.env.PORT) || 2567;
 
-// Proxy targets - use Railway internal networking when available
-const PING_TREE_TARGET = process.env.PING_TREE_URL || 'http://ping-tree-compare.railway.internal:8000';
-const ATHENA_TARGET = process.env.ATHENA_URL || 'http://athena-usage-monitor.railway.internal:8501';
+// Proxy targets - use public URLs (move to same Railway project for internal networking)
+const PING_TREE_TARGET = process.env.PING_TREE_URL || 'https://ping-tree-compare-production.up.railway.app';
+const ATHENA_TARGET = process.env.ATHENA_URL || 'https://athena-usage-monitor-production.up.railway.app';
 
 // Proxy configuration for ping-tree (FastAPI)
 const pingTreeProxy = createProxyMiddleware({
