@@ -35,10 +35,12 @@ const pingTreeProxy = createProxyMiddleware({
 });
 
 // Proxy configuration for athena (Streamlit) - needs WebSocket support
+// Note: Streamlit with baseUrlPath expects /athena prefix, but Express strips it
+// So we need to ADD /athena back via pathRewrite
 const athenaProxy = createProxyMiddleware({
   target: ATHENA_TARGET,
   changeOrigin: true,
-  pathRewrite: { '^/athena': '' },
+  pathRewrite: { '^/': '/athena/' },  // Restore /athena prefix that Express stripped
   ws: true,
   on: {
     error: (err, req, res) => {
