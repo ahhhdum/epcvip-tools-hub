@@ -21,6 +21,12 @@
 - Display above player character
 - Persist in localStorage
 
+### Directional Character Sprites
+- Character faces left/right based on movement direction
+- Idle, walking, throwing animations per direction
+- Simple flip or separate sprite sheets
+- Apply to both local and remote players
+
 ---
 
 ## Priority 2: Major Features
@@ -43,6 +49,40 @@ A collaborative/competitive Wordle experience for the team.
 - Server-side word selection (same for all players)
 - WebSocket messages: `wordleGuess`, `wordleProgress`, `wordleComplete`
 - Daily word rotation (optional)
+
+### Character Customization
+Let players personalize their character appearance.
+
+**Options:**
+- Color palette selection (skin, outfit, accessories)
+- Choose on first join or from pause menu
+- Could evolve into a "store" with unlockables
+
+**Implementation Approaches:**
+1. **localStorage only** - Simple, no backend, resets if cleared
+2. **Server-persisted** - Requires identity (see SSO below)
+3. **Hybrid** - localStorage + optional sync when logged in
+
+**Visual:**
+- Color tinting or palette swaps (simplest)
+- Separate sprite sheets per color (more work, better control)
+- Accessory layers (hats, items) drawn on top
+
+---
+
+## Consideration: Persistence & SSO
+
+**The Problem:**
+Many features benefit from persistence (customization, stats, achievements), but requiring per-game login is friction. SSO across all tools hub apps would be ideal.
+
+**Options:**
+1. **No persistence** - localStorage only, resets on clear
+2. **Game-only login** - Simple auth just for this game
+3. **Tools Hub SSO** - Single sign-on across all tools (ideal but more work)
+4. **EPCVIP SSO integration** - If company has existing SSO
+
+**Recommendation:**
+Start with localStorage for name/colors. Add SSO later when there's enough value to justify it. Keep the data model ready for server sync.
 
 ---
 
