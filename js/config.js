@@ -56,7 +56,7 @@ export const TOOLS = [
     id: 'validator',
     name: 'Datalake Validator',
     description: 'Validate SQL queries against the datalake schema.',
-    url: 'https://streamlit-validator-production.up.railway.app',
+    url: '/validator/',  // Proxied through tools-hub gateway
     position: { x: 31, y: 3 },
     color: [240, 192, 0],
     live: true,
@@ -81,20 +81,42 @@ export const TOOLS = [
   },
 ];
 
-// Future: NPC definitions
-export const NPCS = [
-  // {
-  //   id: 'guide',
-  //   name: 'Lab Guide',
-  //   sprite: 'npc-guide',
-  //   position: { x: 10, y: 10 },
-  //   dialog: [
-  //     'Welcome to the Innovation Lab!',
-  //     'Walk up to a building and press ENTER to open a tool.',
-  //     'New tools are added regularly. Check back often!'
-  //   ]
-  // }
+// Playable characters (all use same animation layout for first 6 rows)
+export const CHARACTERS = [
+  { id: 'Farmer_Bob', name: 'Farmer Bob', role: 'Farmer', cols: 6, rows: 13 },
+  { id: 'Farmer_Buba', name: 'Farmer Buba', role: 'Farmer', cols: 6, rows: 13 },
+  { id: 'Chef_Chloe', name: 'Chef Chloe', role: 'Chef', cols: 6, rows: 7 },
+  { id: 'Bartender_Bruno', name: 'Bruno', role: 'Bartender', cols: 6, rows: 7 },
+  { id: 'Bartender_Katy', name: 'Katy', role: 'Bartender', cols: 6, rows: 7 },
+  { id: 'Lumberjack_Jack', name: 'Jack', role: 'Lumberjack', cols: 6, rows: 10 },
+  { id: 'Miner_Mike', name: 'Miner Mike', role: 'Miner', cols: 6, rows: 10 },
+  { id: 'Fisherman_Fin', name: 'Fin', role: 'Fisherman', cols: 9, rows: 13 },
 ];
+
+// Get selected character from localStorage (or default)
+export function getSelectedCharacter() {
+  const saved = localStorage.getItem('selectedCharacter');
+  if (saved) {
+    try {
+      const data = JSON.parse(saved);
+      const char = CHARACTERS.find(c => c.id === data.id);
+      if (char) return char;
+    } catch (e) {}
+  }
+  return CHARACTERS[0]; // Default to Farmer Bob
+}
+
+// Save selected character to localStorage
+export function setSelectedCharacter(char) {
+  localStorage.setItem('selectedCharacter', JSON.stringify({
+    id: char.id,
+    name: char.name,
+    role: char.role,
+  }));
+}
+
+// Future: NPC definitions
+export const NPCS = [];
 
 // Decoration positions (trees) - expanded for larger map
 export const TREES = [

@@ -18,6 +18,7 @@ const port = Number(process.env.PORT) || 2567;
 // Proxy targets - use public URLs (move to same Railway project for internal networking)
 const PING_TREE_TARGET = process.env.PING_TREE_URL || 'https://ping-tree-compare-production.up.railway.app';
 const ATHENA_TARGET = process.env.ATHENA_URL || 'https://epcvip-athena-usage-monitor.up.railway.app';
+const VALIDATOR_TARGET = process.env.VALIDATOR_URL || 'https://streamlit-validator-production.up.railway.app';
 
 // Proxy configuration for ping-tree (FastAPI)
 const pingTreeProxy = createProxyMiddleware({
@@ -35,12 +36,10 @@ const pingTreeProxy = createProxyMiddleware({
 });
 
 // Proxy configuration for athena (Streamlit) - needs WebSocket support
-// Note: Streamlit with baseUrlPath expects /athena prefix, but Express strips it
-// So we need to ADD /athena back via pathRewrite
 const athenaProxy = createProxyMiddleware({
   target: ATHENA_TARGET,
   changeOrigin: true,
-  pathRewrite: { '^/': '/athena/' },  // Restore /athena prefix that Express stripped
+  pathRewrite: { '^/athena': '' },  // Strip /athena prefix, target serves at root
   ws: true,
   on: {
     error: (err, req, res) => {
@@ -52,9 +51,26 @@ const athenaProxy = createProxyMiddleware({
   },
 });
 
+// Proxy configuration for validator (Streamlit)
+const validatorProxy = createProxyMiddleware({
+  target: VALIDATOR_TARGET,
+  changeOrigin: true,
+  pathRewrite: { '^/validator': '' },
+  ws: true,
+  on: {
+    error: (err, req, res) => {
+      console.error('Validator proxy error:', (err as Error).message);
+      if (res && 'status' in res) {
+        (res as express.Response).status(502).json({ error: 'Validator service unavailable' });
+      }
+    },
+  },
+});
+
 // Mount proxies BEFORE static files (order matters!)
 app.use('/ping-tree', pingTreeProxy);
 app.use('/athena', athenaProxy);
+app.use('/validator', validatorProxy);
 
 // Serve static files from public directory (copied during build)
 const staticPath = path.join(__dirname, '../public');
@@ -68,6 +84,7 @@ app.get("/health", (req, res) => {
     proxies: {
       pingTree: PING_TREE_TARGET,
       athena: ATHENA_TARGET,
+      validator: VALIDATOR_TARGET,
     },
   });
 });

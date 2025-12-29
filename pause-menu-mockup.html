@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pause Menu - UI Mockup</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Courier New', monospace;
+      background: #2d5a27;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Game viewport simulation */
+    .game-viewport {
+      width: 480px;
+      height: 400px;
+      position: relative;
+      background: #2d5a27;
+      border: 4px solid #1a1a1a;
+      overflow: hidden;
+    }
+
+    /* Pause overlay */
+    .pause-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Gold border */
+    .pause-border {
+      position: absolute;
+      inset: 15px;
+      border: 3px solid #f4d03f;
+      pointer-events: none;
+    }
+
+    /* Header */
+    .pause-header {
+      text-align: center;
+      padding: 20px 0 10px;
+      position: relative;
+    }
+
+    .pause-title {
+      color: #f4d03f;
+      font-size: 24px;
+      font-weight: bold;
+      letter-spacing: 4px;
+    }
+
+    .title-decoration {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+      margin-top: 5px;
+    }
+
+    .title-line {
+      width: 60px;
+      height: 2px;
+      background: #f4d03f;
+    }
+
+    /* Main content area */
+    .pause-content {
+      flex: 1;
+      display: flex;
+      padding: 10px 25px;
+      gap: 20px;
+      overflow: hidden;
+    }
+
+    /* Left column - Controls */
+    .left-column {
+      flex: 1;
+    }
+
+    .section-title {
+      color: #f4d03f;
+      font-size: 13px;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+
+    .controls-list {
+      font-size: 10px;
+      line-height: 1.8;
+    }
+
+    .control-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .control-key {
+      color: #fff;
+      min-width: 100px;
+    }
+
+    .control-action {
+      color: #aaa;
+    }
+
+    /* Right column - Character */
+    .right-column {
+      width: 160px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Character selector */
+    .character-section {
+      background: rgba(255,255,255,0.05);
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+
+    .current-char {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .char-preview {
+      width: 48px;
+      height: 48px;
+      image-rendering: pixelated;
+      background-repeat: no-repeat;
+      border: 2px solid #f4d03f;
+      border-radius: 4px;
+    }
+
+    .char-info {
+      flex: 1;
+    }
+
+    .char-name {
+      color: #fff;
+      font-size: 11px;
+      font-weight: bold;
+    }
+
+    .char-role {
+      color: #888;
+      font-size: 9px;
+    }
+
+    .change-btn {
+      width: 100%;
+      padding: 6px;
+      background: transparent;
+      border: 2px solid #f4d03f;
+      color: #f4d03f;
+      font-size: 10px;
+      font-family: inherit;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+
+    .change-btn:hover {
+      background: #f4d03f;
+      color: #1a1a1a;
+    }
+
+    /* Quick Links */
+    .links-section {
+      flex: 1;
+    }
+
+    .link-item {
+      display: flex;
+      gap: 8px;
+      font-size: 10px;
+      margin-bottom: 4px;
+    }
+
+    .link-num {
+      color: #f4d03f;
+    }
+
+    .link-name {
+      color: #fff;
+    }
+
+    /* Footer buttons */
+    .pause-footer {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      padding: 15px;
+    }
+
+    .footer-btn {
+      padding: 8px 20px;
+      font-family: inherit;
+      font-size: 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .resume-btn {
+      background: #f4d03f;
+      color: #1a1a1a;
+      border: none;
+      font-weight: bold;
+    }
+
+    .resume-btn:hover {
+      background: #f7dc6f;
+    }
+
+    .sound-btn {
+      background: transparent;
+      border: 2px solid #f4d03f;
+      color: #f4d03f;
+    }
+
+    .sound-btn:hover {
+      background: rgba(244, 208, 63, 0.1);
+    }
+
+    /* Character Selection Modal */
+    .char-modal {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.95);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .char-modal.active {
+      display: flex;
+    }
+
+    .modal-title {
+      color: #f4d03f;
+      font-size: 18px;
+      margin-bottom: 20px;
+      letter-spacing: 2px;
+    }
+
+    .char-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .char-option {
+      width: 80px;
+      padding: 8px;
+      background: rgba(255,255,255,0.05);
+      border: 2px solid transparent;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+
+    .char-option:hover {
+      background: rgba(255,255,255,0.1);
+      border-color: rgba(244, 208, 63, 0.5);
+    }
+
+    .char-option.selected {
+      background: rgba(244, 208, 63, 0.15);
+      border-color: #f4d03f;
+    }
+
+    .char-option-preview {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 5px;
+      image-rendering: pixelated;
+      background-repeat: no-repeat;
+    }
+
+    .char-option-name {
+      color: #fff;
+      font-size: 8px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .modal-buttons {
+      display: flex;
+      gap: 15px;
+    }
+
+    .modal-btn {
+      padding: 10px 25px;
+      font-family: inherit;
+      font-size: 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .confirm-btn {
+      background: #f4d03f;
+      color: #1a1a1a;
+      border: none;
+      font-weight: bold;
+    }
+
+    .cancel-btn {
+      background: transparent;
+      border: 2px solid #888;
+      color: #888;
+    }
+
+    .cancel-btn:hover {
+      border-color: #fff;
+      color: #fff;
+    }
+
+    /* Instructions panel */
+    .instructions {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background: rgba(0,0,0,0.8);
+      padding: 15px;
+      border-radius: 8px;
+      font-family: system-ui, sans-serif;
+      font-size: 12px;
+      color: #fff;
+      max-width: 250px;
+    }
+
+    .instructions h3 {
+      color: #f4d03f;
+      margin-bottom: 10px;
+    }
+
+    .instructions p {
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+
+    .instructions code {
+      background: rgba(255,255,255,0.1);
+      padding: 2px 5px;
+      border-radius: 3px;
+    }
+
+    /* State indicator */
+    .state-indicator {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: rgba(0,0,0,0.8);
+      padding: 10px 15px;
+      border-radius: 8px;
+      font-family: system-ui, sans-serif;
+      font-size: 12px;
+      color: #f4d03f;
+    }
+  </style>
+</head>
+<body>
+  <div class="instructions">
+    <h3>Pause Menu Mockup</h3>
+    <p>This shows the updated pause menu with character selection.</p>
+    <p><strong>Flow:</strong></p>
+    <p>1. Pause menu shows current character</p>
+    <p>2. Click <code>Change</code> to open selection</p>
+    <p>3. Pick character, click <code>Confirm</code></p>
+    <p>4. Returns to pause menu with new character</p>
+  </div>
+
+  <div class="state-indicator">
+    State: <span id="stateLabel">Pause Menu</span>
+  </div>
+
+  <div class="game-viewport">
+    <!-- Main Pause Menu -->
+    <div class="pause-overlay" id="pauseMenu">
+      <div class="pause-border"></div>
+
+      <div class="pause-header">
+        <div class="pause-title">PAUSED</div>
+        <div class="title-decoration">
+          <div class="title-line"></div>
+          <div class="title-line"></div>
+        </div>
+      </div>
+
+      <div class="pause-content">
+        <div class="left-column">
+          <div class="section-title">Controls</div>
+          <div class="controls-list">
+            <div class="control-row">
+              <span class="control-key">Arrow Keys / WASD</span>
+              <span class="control-action">- Move</span>
+            </div>
+            <div class="control-row">
+              <span class="control-key">Enter / A</span>
+              <span class="control-action">- Interact</span>
+            </div>
+            <div class="control-row">
+              <span class="control-key">Space / B</span>
+              <span class="control-action">- Throw</span>
+            </div>
+            <div class="control-row">
+              <span class="control-key">M</span>
+              <span class="control-action">- Toggle sound</span>
+            </div>
+            <div class="control-row">
+              <span class="control-key">ESC</span>
+              <span class="control-action">- Resume</span>
+            </div>
+          </div>
+
+          <div style="margin-top: 15px;">
+            <div class="section-title">Quick Links (press #)</div>
+            <div class="link-item"><span class="link-num">1.</span><span class="link-name">Ping Tree Compare</span></div>
+            <div class="link-item"><span class="link-num">2.</span><span class="link-name">Athena Monitor</span></div>
+          </div>
+        </div>
+
+        <div class="right-column">
+          <div class="section-title">Character</div>
+          <div class="character-section">
+            <div class="current-char">
+              <div class="char-preview" id="currentCharPreview"></div>
+              <div class="char-info">
+                <div class="char-name" id="currentCharName">Farmer Bob</div>
+                <div class="char-role" id="currentCharRole">Farmer</div>
+              </div>
+            </div>
+            <button class="change-btn" id="changeBtn">Change</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="pause-footer">
+        <button class="footer-btn resume-btn">RESUME</button>
+        <button class="footer-btn sound-btn">Sound: ON</button>
+      </div>
+    </div>
+
+    <!-- Character Selection Modal -->
+    <div class="char-modal" id="charModal">
+      <div class="modal-title">SELECT CHARACTER</div>
+
+      <div class="char-grid" id="charGrid"></div>
+
+      <div class="modal-buttons">
+        <button class="modal-btn cancel-btn" id="cancelBtn">Cancel</button>
+        <button class="modal-btn confirm-btn" id="confirmBtn">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const characters = [
+      { id: 'Farmer_Bob', name: 'Farmer Bob', role: 'Farmer', cols: 6 },
+      { id: 'Farmer_Buba', name: 'Farmer Buba', role: 'Farmer', cols: 6 },
+      { id: 'Chef_Chloe', name: 'Chef Chloe', role: 'Chef', cols: 6 },
+      { id: 'Bartender_Bruno', name: 'Bruno', role: 'Bartender', cols: 6 },
+      { id: 'Bartender_Katy', name: 'Katy', role: 'Bartender', cols: 6 },
+      { id: 'Lumberjack_Jack', name: 'Jack', role: 'Lumberjack', cols: 6 },
+      { id: 'Miner_Mike', name: 'Miner Mike', role: 'Miner', cols: 6 },
+      { id: 'Fisherman_Fin', name: 'Fin', role: 'Fisherman', cols: 9 },
+    ];
+
+    let currentChar = characters[0];
+    let selectedChar = characters[0];
+    let animFrame = 0;
+
+    // Load saved character
+    const saved = localStorage.getItem('selectedCharacter');
+    if (saved) {
+      const data = JSON.parse(saved);
+      const found = characters.find(c => c.id === data.id);
+      if (found) {
+        currentChar = found;
+        selectedChar = found;
+      }
+    }
+
+    // Initialize
+    function init() {
+      renderCharGrid();
+      updateCurrentChar();
+      startAnimation();
+
+      document.getElementById('changeBtn').addEventListener('click', openModal);
+      document.getElementById('cancelBtn').addEventListener('click', closeModal);
+      document.getElementById('confirmBtn').addEventListener('click', confirmSelection);
+    }
+
+    function renderCharGrid() {
+      const grid = document.getElementById('charGrid');
+      grid.innerHTML = characters.map(char => `
+        <div class="char-option ${char.id === selectedChar.id ? 'selected' : ''}" data-id="${char.id}">
+          <div class="char-option-preview" style="
+            background-image: url(assets/sprites/${char.id}.png);
+            background-size: ${char.cols * 48}px auto;
+          "></div>
+          <div class="char-option-name">${char.name}</div>
+        </div>
+      `).join('');
+
+      grid.querySelectorAll('.char-option').forEach(el => {
+        el.addEventListener('click', () => {
+          const char = characters.find(c => c.id === el.dataset.id);
+          selectedChar = char;
+          grid.querySelectorAll('.char-option').forEach(e => e.classList.remove('selected'));
+          el.classList.add('selected');
+        });
+      });
+    }
+
+    function updateCurrentChar() {
+      const preview = document.getElementById('currentCharPreview');
+      preview.style.backgroundImage = `url(assets/sprites/${currentChar.id}.png)`;
+      preview.style.backgroundSize = `${currentChar.cols * 48}px auto`;
+
+      document.getElementById('currentCharName').textContent = currentChar.name;
+      document.getElementById('currentCharRole').textContent = currentChar.role;
+    }
+
+    function openModal() {
+      selectedChar = currentChar;
+      renderCharGrid();
+      document.getElementById('charModal').classList.add('active');
+      document.getElementById('stateLabel').textContent = 'Character Select';
+    }
+
+    function closeModal() {
+      document.getElementById('charModal').classList.remove('active');
+      document.getElementById('stateLabel').textContent = 'Pause Menu';
+    }
+
+    function confirmSelection() {
+      currentChar = selectedChar;
+      localStorage.setItem('selectedCharacter', JSON.stringify({
+        id: currentChar.id,
+        name: currentChar.name,
+        role: currentChar.role,
+      }));
+      updateCurrentChar();
+      closeModal();
+    }
+
+    function startAnimation() {
+      setInterval(() => {
+        animFrame = (animFrame + 1) % 6;
+
+        // Animate current char preview
+        const preview = document.getElementById('currentCharPreview');
+        preview.style.backgroundPosition = `-${animFrame * 48}px 0`;
+
+        // Animate grid options
+        document.querySelectorAll('.char-option-preview').forEach(el => {
+          el.style.backgroundPosition = `-${animFrame * 48}px 0`;
+        });
+      }, 150);
+    }
+
+    init();
+  </script>
+</body>
+</html>

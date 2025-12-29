@@ -5,27 +5,30 @@
  * then transitions to overworld.
  */
 
-import { GAME_CONFIG, COLORS } from '../config.js';
+import { GAME_CONFIG, COLORS, CHARACTERS } from '../config.js';
 import { loadSounds } from '../systems/audio.js';
+
+// Standard animation config (same for all characters - first 6 rows)
+const ANIM_CONFIG = {
+  'idle-down':  { from: 0, to: 5, loop: true, speed: 6 },
+  'idle-right': { from: 6, to: 11, loop: true, speed: 6 },
+  'idle-up':    { from: 12, to: 17, loop: true, speed: 6 },
+  'walk-down':  { from: 18, to: 23, loop: true, speed: 10 },
+  'walk-right': { from: 24, to: 29, loop: true, speed: 10 },
+  'walk-up':    { from: 30, to: 35, loop: true, speed: 10 },
+};
 
 export function loadingScene() {
   // Load sound effects
   loadSounds();
 
-  // Load sprite sheet (384x832, 6 cols x 13 rows = 78 frames of 64x64)
-  // Frame mappings confirmed via sprite-test.html
-  loadSprite('player', 'assets/sprites/Farmer_Bob.png', {
-    sliceX: 6,
-    sliceY: 13,
-    anims: {
-      'idle-down':  { from: 0, to: 5, loop: true, speed: 6 },
-      'idle-right': { from: 6, to: 11, loop: true, speed: 6 },
-      'idle-up':    { from: 12, to: 17, loop: true, speed: 6 },
-      'walk-down':  { from: 18, to: 23, loop: true, speed: 10 },
-      'walk-right': { from: 24, to: 29, loop: true, speed: 10 },
-      'walk-up':    { from: 30, to: 35, loop: true, speed: 10 },
-      'hit':        { from: 36, to: 41, loop: false, speed: 12 },
-    },
+  // Load all character sprites
+  CHARACTERS.forEach(char => {
+    loadSprite(char.id, `assets/sprites/${char.id}.png`, {
+      sliceX: char.cols,
+      sliceY: char.rows,
+      anims: ANIM_CONFIG,
+    });
   });
   // Background
   add([

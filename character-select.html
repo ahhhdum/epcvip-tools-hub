@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Character Selection - Mockup</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #fff;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    h1 {
+      text-align: center;
+      color: #f4d03f;
+      margin-bottom: 10px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #888;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    /* Character Grid */
+    .character-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+
+    .character-card {
+      background: rgba(255,255,255,0.05);
+      border: 3px solid transparent;
+      border-radius: 12px;
+      padding: 15px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+
+    .character-card:hover {
+      background: rgba(255,255,255,0.1);
+      border-color: rgba(244, 208, 63, 0.5);
+      transform: translateY(-2px);
+    }
+
+    .character-card.selected {
+      background: rgba(244, 208, 63, 0.15);
+      border-color: #f4d03f;
+      box-shadow: 0 0 20px rgba(244, 208, 63, 0.3);
+    }
+
+    .character-preview {
+      width: 96px;
+      height: 96px;
+      margin: 0 auto 10px;
+      image-rendering: pixelated;
+      background-repeat: no-repeat;
+    }
+
+    .character-name {
+      font-weight: 600;
+      color: #fff;
+      font-size: 13px;
+    }
+
+    .character-role {
+      font-size: 11px;
+      color: #888;
+      margin-top: 3px;
+    }
+
+    /* Selected Character Panel */
+    .selected-panel {
+      background: rgba(255,255,255,0.05);
+      border-radius: 16px;
+      padding: 25px;
+      display: flex;
+      gap: 30px;
+      align-items: center;
+    }
+
+    .big-preview {
+      width: 192px;
+      height: 192px;
+      image-rendering: pixelated;
+      background-repeat: no-repeat;
+      flex-shrink: 0;
+      border: 3px solid #f4d03f;
+      border-radius: 12px;
+      background-color: rgba(0,0,0,0.3);
+    }
+
+    .selected-info {
+      flex: 1;
+    }
+
+    .selected-info h2 {
+      color: #f4d03f;
+      margin-bottom: 5px;
+    }
+
+    .selected-info .role {
+      color: #888;
+      margin-bottom: 20px;
+    }
+
+    .animation-controls {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .anim-btn {
+      padding: 8px 16px;
+      border: 2px solid #444;
+      background: rgba(0,0,0,0.3);
+      color: #fff;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.2s;
+    }
+
+    .anim-btn:hover {
+      border-color: #f4d03f;
+      background: rgba(244, 208, 63, 0.1);
+    }
+
+    .anim-btn.active {
+      border-color: #f4d03f;
+      background: #f4d03f;
+      color: #1a1a2e;
+    }
+
+    .save-btn {
+      padding: 12px 30px;
+      background: #f4d03f;
+      color: #1a1a2e;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .save-btn:hover {
+      background: #f7dc6f;
+      transform: scale(1.02);
+    }
+
+    .saved-indicator {
+      display: inline-block;
+      margin-left: 15px;
+      color: #2ecc71;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .saved-indicator.show {
+      opacity: 1;
+    }
+
+    /* In-Game UI Mockup */
+    .ingame-mockup {
+      margin-top: 30px;
+      background: rgba(0,0,0,0.4);
+      border-radius: 16px;
+      padding: 20px;
+    }
+
+    .ingame-mockup h3 {
+      color: #f4d03f;
+      margin-bottom: 15px;
+      font-size: 14px;
+    }
+
+    .mockup-frame {
+      background: #2d5a27;
+      border-radius: 8px;
+      padding: 20px;
+      position: relative;
+      max-width: 480px;
+      aspect-ratio: 4/3;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .mockup-dialog {
+      background: rgba(0,0,0,0.85);
+      border: 3px solid #f4d03f;
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+      max-width: 350px;
+    }
+
+    .mockup-dialog h4 {
+      color: #f4d03f;
+      margin-bottom: 15px;
+    }
+
+    .mockup-chars {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 15px;
+    }
+
+    .mockup-char {
+      width: 48px;
+      height: 48px;
+      image-rendering: pixelated;
+      background-repeat: no-repeat;
+      border: 2px solid #444;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .mockup-char:hover,
+    .mockup-char.selected {
+      border-color: #f4d03f;
+      transform: scale(1.1);
+    }
+
+    .mockup-confirm {
+      padding: 8px 20px;
+      background: #f4d03f;
+      color: #1a1a2e;
+      border: none;
+      border-radius: 4px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* Sprite sheet info */
+    .sprite-info {
+      margin-top: 20px;
+      padding: 15px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 8px;
+      font-size: 12px;
+      color: #888;
+    }
+
+    .sprite-info code {
+      background: rgba(255,255,255,0.1);
+      padding: 2px 6px;
+      border-radius: 3px;
+      color: #f4d03f;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Choose Your Character</h1>
+    <p class="subtitle">Click a character to select, then preview animations below</p>
+
+    <div class="character-grid" id="charGrid"></div>
+
+    <div class="selected-panel">
+      <div class="big-preview" id="bigPreview"></div>
+      <div class="selected-info">
+        <h2 id="selectedName">Select a character</h2>
+        <p class="role" id="selectedRole">Click on a character above</p>
+
+        <div class="animation-controls">
+          <button class="anim-btn active" data-anim="idle-down">Idle Down</button>
+          <button class="anim-btn" data-anim="idle-right">Idle Right</button>
+          <button class="anim-btn" data-anim="idle-up">Idle Up</button>
+          <button class="anim-btn" data-anim="walk-down">Walk Down</button>
+          <button class="anim-btn" data-anim="walk-right">Walk Right</button>
+          <button class="anim-btn" data-anim="walk-up">Walk Up</button>
+        </div>
+
+        <button class="save-btn" id="saveBtn">Save Selection</button>
+        <span class="saved-indicator" id="savedIndicator">Saved!</span>
+
+        <div class="sprite-info">
+          <strong>Sprite Info:</strong>
+          <span id="spriteInfo">-</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ingame-mockup">
+      <h3>In-Game UI Mockup (how it might appear in pause menu)</h3>
+      <div class="mockup-frame">
+        <div class="mockup-dialog">
+          <h4>Select Character</h4>
+          <div class="mockup-chars" id="mockupChars"></div>
+          <button class="mockup-confirm">Confirm</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Character data
+    const characters = [
+      { id: 'Farmer_Bob', name: 'Farmer Bob', role: 'Farmer', cols: 6, rows: 13 },
+      { id: 'Farmer_Buba', name: 'Farmer Buba', role: 'Farmer', cols: 6, rows: 13 },
+      { id: 'Chef_Chloe', name: 'Chef Chloe', role: 'Chef', cols: 6, rows: 7 },
+      { id: 'Bartender_Bruno', name: 'Bartender Bruno', role: 'Bartender', cols: 6, rows: 7 },
+      { id: 'Bartender_Katy', name: 'Bartender Katy', role: 'Bartender', cols: 6, rows: 7 },
+      { id: 'Lumberjack_Jack', name: 'Lumberjack Jack', role: 'Lumberjack', cols: 6, rows: 10 },
+      { id: 'Miner_Mike', name: 'Miner Mike', role: 'Miner', cols: 6, rows: 10 },
+      { id: 'Fisherman_Fin', name: 'Fisherman Fin', role: 'Fisherman', cols: 9, rows: 13 },
+    ];
+
+    // Animation mappings (row index for each animation)
+    const animations = {
+      'idle-down': 0,
+      'idle-right': 1,
+      'idle-up': 2,
+      'walk-down': 3,
+      'walk-right': 4,
+      'walk-up': 5,
+    };
+
+    const FRAME_SIZE = 64;
+    const FRAMES_PER_ANIM = 6;
+
+    let selectedChar = characters[0];
+    let currentAnim = 'idle-down';
+    let animFrame = 0;
+    let animInterval = null;
+
+    // Initialize
+    function init() {
+      renderCharacterGrid();
+      renderMockupChars();
+      loadSavedSelection();
+      setupAnimationControls();
+      startAnimation();
+    }
+
+    // Render character selection grid
+    function renderCharacterGrid() {
+      const grid = document.getElementById('charGrid');
+      grid.innerHTML = characters.map(char => `
+        <div class="character-card" data-id="${char.id}">
+          <div class="character-preview" id="preview-${char.id}"></div>
+          <div class="character-name">${char.name}</div>
+          <div class="character-role">${char.role}</div>
+        </div>
+      `).join('');
+
+      // Set up click handlers and idle animations
+      characters.forEach(char => {
+        const card = grid.querySelector(`[data-id="${char.id}"]`);
+        const preview = document.getElementById(`preview-${char.id}`);
+
+        // Set sprite background
+        preview.style.backgroundImage = `url(assets/sprites/${char.id}.png)`;
+        preview.style.backgroundSize = `${char.cols * 96}px auto`;
+
+        // Click to select
+        card.addEventListener('click', () => selectCharacter(char));
+      });
+
+      // Animate all previews
+      setInterval(() => {
+        animFrame = (animFrame + 1) % FRAMES_PER_ANIM;
+        characters.forEach(char => {
+          const preview = document.getElementById(`preview-${char.id}`);
+          const row = animations['idle-down'];
+          preview.style.backgroundPosition = `-${animFrame * 96}px -${row * 96}px`;
+        });
+      }, 150);
+    }
+
+    // Render mockup mini characters
+    function renderMockupChars() {
+      const container = document.getElementById('mockupChars');
+      container.innerHTML = characters.map(char => `
+        <div class="mockup-char" data-id="${char.id}" style="
+          background-image: url(assets/sprites/${char.id}.png);
+          background-size: ${char.cols * 48}px auto;
+          background-position: 0 0;
+        "></div>
+      `).join('');
+
+      container.querySelectorAll('.mockup-char').forEach(el => {
+        el.addEventListener('click', () => {
+          container.querySelectorAll('.mockup-char').forEach(e => e.classList.remove('selected'));
+          el.classList.add('selected');
+        });
+      });
+    }
+
+    // Select character
+    function selectCharacter(char) {
+      selectedChar = char;
+
+      // Update UI
+      document.querySelectorAll('.character-card').forEach(card => {
+        card.classList.toggle('selected', card.dataset.id === char.id);
+      });
+
+      document.getElementById('selectedName').textContent = char.name;
+      document.getElementById('selectedRole').textContent = char.role;
+      document.getElementById('spriteInfo').innerHTML =
+        `<code>${char.id}.png</code> - ${char.cols} cols x ${char.rows} rows (${char.cols * char.rows} frames)`;
+
+      // Update big preview
+      const bigPreview = document.getElementById('bigPreview');
+      bigPreview.style.backgroundImage = `url(assets/sprites/${char.id}.png)`;
+      bigPreview.style.backgroundSize = `${char.cols * 192}px auto`;
+
+      // Hide saved indicator
+      document.getElementById('savedIndicator').classList.remove('show');
+
+      updateBigPreview();
+    }
+
+    // Setup animation control buttons
+    function setupAnimationControls() {
+      document.querySelectorAll('.anim-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          currentAnim = btn.dataset.anim;
+          document.querySelectorAll('.anim-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+        });
+      });
+
+      // Save button
+      document.getElementById('saveBtn').addEventListener('click', saveSelection);
+    }
+
+    // Update big preview animation
+    function updateBigPreview() {
+      const bigPreview = document.getElementById('bigPreview');
+      const row = animations[currentAnim];
+      const frame = animFrame % FRAMES_PER_ANIM;
+      bigPreview.style.backgroundPosition = `-${frame * 192}px -${row * 192}px`;
+    }
+
+    // Start animation loop
+    function startAnimation() {
+      let bigAnimFrame = 0;
+      setInterval(() => {
+        bigAnimFrame = (bigAnimFrame + 1) % FRAMES_PER_ANIM;
+        const bigPreview = document.getElementById('bigPreview');
+        const row = animations[currentAnim];
+        bigPreview.style.backgroundPosition = `-${bigAnimFrame * 192}px -${row * 192}px`;
+      }, 120);
+    }
+
+    // Save selection to localStorage
+    function saveSelection() {
+      localStorage.setItem('selectedCharacter', JSON.stringify({
+        id: selectedChar.id,
+        name: selectedChar.name,
+        role: selectedChar.role,
+      }));
+
+      document.getElementById('savedIndicator').classList.add('show');
+      setTimeout(() => {
+        document.getElementById('savedIndicator').classList.remove('show');
+      }, 2000);
+    }
+
+    // Load saved selection
+    function loadSavedSelection() {
+      const saved = localStorage.getItem('selectedCharacter');
+      if (saved) {
+        const data = JSON.parse(saved);
+        const char = characters.find(c => c.id === data.id);
+        if (char) {
+          selectCharacter(char);
+          return;
+        }
+      }
+      selectCharacter(characters[0]);
+    }
+
+    init();
+  </script>
+</body>
+</html>

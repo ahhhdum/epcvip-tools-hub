@@ -5,7 +5,7 @@
  * Uses Farmer_Bob sprite sheet with proper directional animations.
  */
 
-import { GAME_CONFIG, COLORS } from '../config.js';
+import { GAME_CONFIG, COLORS, getSelectedCharacter } from '../config.js';
 import { virtualInput, setInteractCallback, setThrowCallback } from '../systems/input.js';
 import { updateCamera } from '../systems/camera.js';
 import { throwFritelle } from './collectible.js';
@@ -14,10 +14,11 @@ import { sendPosition, isMultiplayerConnected } from '../systems/multiplayer.js'
 export function createPlayer(startPos) {
   const TILE = GAME_CONFIG.tileSize;
   const speed = GAME_CONFIG.playerSpeed;
+  const selectedChar = getSelectedCharacter();
 
   // Create player with sprite (64x64 frames, scaled to 96px = 4x tile size)
   const player = add([
-    sprite('player', { anim: 'idle-down' }),
+    sprite(selectedChar.id, { anim: 'idle-down' }),
     pos(startPos.x, startPos.y),
     area({ shape: new Rect(vec2(-5, -2), 10, 14) }), // Adjusted: larger box, higher position
     body(),
