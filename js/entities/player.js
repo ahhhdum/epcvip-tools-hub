@@ -15,14 +15,13 @@ export function createPlayer(startPos) {
   const TILE = GAME_CONFIG.tileSize;
   const speed = GAME_CONFIG.playerSpeed;
 
-  // Player with sprite (64x64 frames, scaled to fit better in 24px tile world)
+  // Player with sprite (64x64 frames)
   const player = add([
     sprite('player', { anim: 'idle-down' }),
     pos(startPos.x, startPos.y),
-    area({ shape: new Rect(vec2(20, 40), 24, 20) }), // Collision box at feet
+    area({ shape: new Rect(vec2(16, 40), 32, 24) }), // Collision box at feet
     body(),
     anchor('center'),
-    scale(0.5), // Scale down 64px sprite to ~32px to fit better
     z(10),
     'player',
     {
@@ -72,6 +71,9 @@ export function createPlayer(startPos) {
       if (player.curAnim() !== animName) {
         player.play(animName);
       }
+
+      // Flip sprite horizontally for right-facing (sprite only has left-facing walk)
+      player.flipX = (player.direction === 'right');
 
       player.lastDirection = player.direction;
       wasMoving = isCurrentlyMoving;
