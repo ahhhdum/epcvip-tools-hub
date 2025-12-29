@@ -8,6 +8,7 @@
 - [x] Multiplayer - native WebSocket server
 - [x] Player-to-player hit detection
 - [x] Railway deployment
+- [x] Directional character sprites (Farmer_Bob, 8-direction walk/idle)
 
 **Live at:** https://epcvip-tools-hub-production.up.railway.app
 
@@ -20,12 +21,6 @@
 - Send `setName` message to server (handler already exists)
 - Display above player character
 - Persist in localStorage
-
-### Directional Character Sprites
-- Character faces left/right based on movement direction
-- Idle, walking, throwing animations per direction
-- Simple flip or separate sprite sheets
-- Apply to both local and remote players
 
 ---
 
