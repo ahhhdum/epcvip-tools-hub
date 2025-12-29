@@ -149,9 +149,9 @@ export function createPlayer(startPos) {
     hair.pos = vec2(px - 8, py - 12);
     cap.pos = vec2(px - 10, py - 14);
 
-    // Asymmetric parts - flip based on direction
-    stripe.pos = vec2(facingLeft ? px - 2 : px + 2 - 4, py - 1);
-    capStripe.pos = vec2(facingLeft ? px - 4 : px + 4 - 8, py - 12);
+    // Asymmetric parts - flip based on direction (stripe=4px wide, capStripe=8px wide)
+    stripe.pos = vec2(facingLeft ? px - 5 : px + 1, py - 1);
+    capStripe.pos = vec2(facingLeft ? px - 8 : px, py - 12);
 
     // Legs - swap positions when facing left
     if (facingLeft) {
