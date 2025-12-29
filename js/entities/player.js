@@ -2,7 +2,7 @@
  * Player Entity
  *
  * Handles player movement, collision, and interaction.
- * Uses simple colored rectangles until sprites are loaded.
+ * Now uses sprite sheet for rendering with walk animations.
  */
 
 import { GAME_CONFIG, COLORS } from '../config.js';
@@ -15,19 +15,20 @@ export function createPlayer(startPos) {
   const TILE = GAME_CONFIG.tileSize;
   const speed = GAME_CONFIG.playerSpeed;
 
-  // Player container (for collision)
+  // Player with sprite (64x64 frames, scaled to fit better in 24px tile world)
   const player = add([
-    rect(TILE - 8, TILE - 4),
+    sprite('player', { anim: 'idle-down' }),
     pos(startPos.x, startPos.y),
-    area(),
+    area({ shape: new Rect(vec2(20, 40), 24, 20) }), // Collision box at feet
     body(),
     anchor('center'),
-    opacity(0),
+    scale(0.5), // Scale down 64px sprite to ~32px to fit better
     z(10),
     'player',
     {
       direction: 'down',
       isMoving: false,
+      lastDirection: 'down',
 
       startMoving(dir) {
         this.direction = dir;
@@ -52,114 +53,28 @@ export function createPlayer(startPos) {
     },
   ]);
 
-  // Visual parts (children follow parent)
-  // Shadow (flat oval approximation using rect)
-  const shadow = add([
-    rect(18, 6),
-    pos(0, 0),
-    color(0, 0, 0),
-    opacity(0.3),
-    z(9),
-    anchor('center'),
-    'player-visual',
-  ]);
+  // Track movement state for animation
+  let wasMoving = false;
 
-  // Body (gold jacket)
-  const body_part = add([
-    rect(12, 12),
-    pos(0, 0),
-    color(...COLORS.gold),
-    z(10),
-    'player-visual',
-  ]);
-
-  // Body stripe
-  const stripe = add([
-    rect(4, 8),
-    pos(0, 0),
-    color(10, 10, 10),
-    z(11),
-    'player-visual',
-  ]);
-
-  // Head
-  const head = add([
-    rect(16, 10),
-    pos(0, 0),
-    color(248, 216, 120),
-    z(10),
-    'player-visual',
-  ]);
-
-  // Hair
-  const hair = add([
-    rect(16, 4),
-    pos(0, 0),
-    color(42, 42, 42),
-    z(11),
-    'player-visual',
-  ]);
-
-  // Cap
-  const cap = add([
-    rect(20, 5),
-    pos(0, 0),
-    color(10, 10, 10),
-    z(12),
-    'player-visual',
-  ]);
-
-  const capStripe = add([
-    rect(8, 3),
-    pos(0, 0),
-    color(...COLORS.gold),
-    z(13),
-    'player-visual',
-  ]);
-
-  // Legs
-  const legL = add([
-    rect(5, 6),
-    pos(0, 0),
-    color(26, 26, 26),
-    z(9),
-    'player-visual',
-  ]);
-
-  const legR = add([
-    rect(5, 6),
-    pos(0, 0),
-    color(26, 26, 26),
-    z(9),
-    'player-visual',
-  ]);
-
-  // Update visual positions (with directional flip for left/right)
+  // Update animation based on direction and movement
   player.onUpdate(() => {
-    const px = player.pos.x;
-    const py = player.pos.y;
-    const facingLeft = player.direction === 'left';
+    const isCurrentlyMoving =
+      isKeyDown('left') || isKeyDown('right') || isKeyDown('up') || isKeyDown('down') ||
+      isKeyDown('a') || isKeyDown('d') || isKeyDown('w') || isKeyDown('s') ||
+      virtualInput.left || virtualInput.right || virtualInput.up || virtualInput.down;
 
-    // Shadow stays centered
-    shadow.pos = vec2(px, py + 10);
+    // Only change animation when state changes
+    if (isCurrentlyMoving !== wasMoving || player.direction !== player.lastDirection) {
+      const animName = isCurrentlyMoving
+        ? `walk-${player.direction}`
+        : `idle-${player.direction}`;
 
-    // Symmetrical parts - no flip needed
-    body_part.pos = vec2(px - 6, py - 3);
-    head.pos = vec2(px - 8, py - 12);
-    hair.pos = vec2(px - 8, py - 12);
-    cap.pos = vec2(px - 10, py - 14);
+      if (player.curAnim() !== animName) {
+        player.play(animName);
+      }
 
-    // Asymmetric parts - flip based on direction (stripe=4px wide, capStripe=8px wide)
-    stripe.pos = vec2(facingLeft ? px - 5 : px + 1, py - 1);
-    capStripe.pos = vec2(facingLeft ? px - 8 : px, py - 12);
-
-    // Legs - swap positions when facing left
-    if (facingLeft) {
-      legL.pos = vec2(px + 1, py + 6);
-      legR.pos = vec2(px - 6, py + 6);
-    } else {
-      legL.pos = vec2(px - 6, py + 6);
-      legR.pos = vec2(px + 1, py + 6);
+      player.lastDirection = player.direction;
+      wasMoving = isCurrentlyMoving;
     }
   });
 

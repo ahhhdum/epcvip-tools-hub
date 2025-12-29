@@ -11,6 +11,22 @@ import { loadSounds } from '../systems/audio.js';
 export function loadingScene() {
   // Load sound effects
   loadSounds();
+
+  // Load player sprite sheet (384x832, 6 cols x 13 rows, 64x64 per frame)
+  loadSprite('player', 'assets/sprites/Farmer_Bob.png', {
+    sliceX: 6,
+    sliceY: 13,
+    anims: {
+      'idle-down': { from: 0, to: 5, loop: true, speed: 6 },
+      'idle-up': { from: 6, to: 11, loop: true, speed: 6 },
+      'idle-left': { from: 12, to: 17, loop: true, speed: 6 },
+      'idle-right': { from: 18, to: 23, loop: true, speed: 6 },
+      'walk-down': { from: 24, to: 29, loop: true, speed: 10 },
+      'walk-up': { from: 30, to: 35, loop: true, speed: 10 },
+      'walk-left': { from: 36, to: 41, loop: true, speed: 10 },
+      'walk-right': { from: 42, to: 47, loop: true, speed: 10 },
+    },
+  });
   // Background
   add([
     rect(width(), height()),
