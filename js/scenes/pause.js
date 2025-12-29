@@ -65,6 +65,7 @@ export function pauseScene() {
     ['Enter / A', 'Interact'],
     ['Space / B', 'Throw'],
     ['M', 'Toggle sound'],
+    ['T', 'Sprite Test (dev)'],
     ['ESC', 'Resume'],
   ];
 
@@ -164,6 +165,9 @@ export function pauseScene() {
   // Resume handlers
   onKeyPress('escape', () => go('overworld'));
   resumeBtn.onClick(() => go('overworld'));
+
+  // Sprite test (dev mode)
+  onKeyPress('t', () => go('sprite-test'));
 
   // Number keys for quick links
   liveTools.forEach((tool, i) => {

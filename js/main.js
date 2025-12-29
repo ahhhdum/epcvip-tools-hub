@@ -9,6 +9,7 @@ import { GAME_CONFIG, COLORS } from './config.js';
 import { loadingScene } from './scenes/loading.js';
 import { overworldScene } from './scenes/overworld.js';
 import { pauseScene } from './scenes/pause.js';
+import { spriteTestScene } from './scenes/sprite-test.js';
 import { initInput } from './systems/input.js';
 
 // Initialize KaPlay
@@ -27,6 +28,7 @@ const k = kaplay({
 scene('loading', loadingScene);
 scene('overworld', overworldScene);
 scene('pause', pauseScene);
+scene('sprite-test', spriteTestScene);
 
 // Initialize virtual button inputs (D-pad, A, B)
 initInput();

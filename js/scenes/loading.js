@@ -11,6 +11,12 @@ import { loadSounds } from '../systems/audio.js';
 export function loadingScene() {
   // Load sound effects
   loadSounds();
+
+  // Load sprite sheet for testing (384x832, 6 cols x 13 rows = 78 frames of 64x64)
+  loadSprite('player', 'assets/sprites/Farmer_Bob.png', {
+    sliceX: 6,
+    sliceY: 13,
+  });
   // Background
   add([
     rect(width(), height()),
