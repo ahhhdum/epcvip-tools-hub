@@ -6,9 +6,9 @@
  */
 
 export const GAME_CONFIG = {
-  // Viewport dimensions (visible area)
-  width: 480,
-  height: 432,
+  // Viewport dimensions (visible area) - matches world size, no scrolling
+  width: 960,
+  height: 864,
   tileSize: 24,
 
   // World dimensions (scrollable area)
