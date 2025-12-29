@@ -15,13 +15,14 @@ export function createPlayer(startPos) {
   const TILE = GAME_CONFIG.tileSize;
   const speed = GAME_CONFIG.playerSpeed;
 
-  // Player with sprite (64x64 frames)
+  // Player with sprite (64x64 frames, scaled up for visibility)
   const player = add([
     sprite('player', { anim: 'idle-down' }),
     pos(startPos.x, startPos.y),
     area({ shape: new Rect(vec2(16, 40), 32, 24) }), // Collision box at feet
     body(),
     anchor('center'),
+    scale(2), // Scale up - 64px * 2 = 128px character
     z(10),
     'player',
     {
