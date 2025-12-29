@@ -134,20 +134,33 @@ export function createPlayer(startPos) {
     'player-visual',
   ]);
 
-  // Update visual positions
+  // Update visual positions (with directional flip for left/right)
   player.onUpdate(() => {
     const px = player.pos.x;
     const py = player.pos.y;
+    const facingLeft = player.direction === 'left';
 
+    // Shadow stays centered
     shadow.pos = vec2(px, py + 10);
+
+    // Symmetrical parts - no flip needed
     body_part.pos = vec2(px - 6, py - 3);
-    stripe.pos = vec2(px - 2, py - 1);
     head.pos = vec2(px - 8, py - 12);
     hair.pos = vec2(px - 8, py - 12);
     cap.pos = vec2(px - 10, py - 14);
-    capStripe.pos = vec2(px - 4, py - 12);
-    legL.pos = vec2(px - 6, py + 6);
-    legR.pos = vec2(px + 1, py + 6);
+
+    // Asymmetric parts - flip based on direction
+    stripe.pos = vec2(facingLeft ? px - 2 : px + 2 - 4, py - 1);
+    capStripe.pos = vec2(facingLeft ? px - 4 : px + 4 - 8, py - 12);
+
+    // Legs - swap positions when facing left
+    if (facingLeft) {
+      legL.pos = vec2(px + 1, py + 6);
+      legR.pos = vec2(px - 6, py + 6);
+    } else {
+      legL.pos = vec2(px - 6, py + 6);
+      legR.pos = vec2(px + 1, py + 6);
+    }
   });
 
   // Keyboard controls
