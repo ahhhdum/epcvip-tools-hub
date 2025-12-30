@@ -432,6 +432,19 @@ export function pauseScene() {
     }
   });
 
+  // Enter also resumes (common expectation)
+  onKeyPress('enter', () => {
+    if (isSelectingCharacter) {
+      // Confirm selection
+      const char = CHARACTERS[selectedCharIndex];
+      setSelectedCharacter(char);
+      hideCharacterSelect();
+      updateMainPreview(char);
+    } else {
+      go('overworld');
+    }
+  });
+
   resumeBtn.onClick(() => {
     if (!isSelectingCharacter) go('overworld');
   });

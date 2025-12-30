@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Building & Sign Mockup</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #1a1a2e;
+      color: #fff;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    h1 {
+      text-align: center;
+      color: #f4d03f;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #888;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* Controls panel */
+    .controls {
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+
+    .control-group {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .control-group label {
+      display: block;
+      color: #f4d03f;
+      font-size: 12px;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    select, input[type="range"], input[type="color"] {
+      width: 100%;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #444;
+      background: #2a2a3e;
+      color: #fff;
+      font-size: 14px;
+    }
+
+    input[type="range"] {
+      padding: 0;
+      height: 8px;
+    }
+
+    .range-value {
+      color: #888;
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    /* Preview area - simulated game view */
+    .preview-area {
+      background: #58a028; /* grass color */
+      border-radius: 12px;
+      padding: 40px;
+      min-height: 400px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      gap: 60px;
+      flex-wrap: wrap;
+      position: relative;
+    }
+
+    /* Building container */
+    .building-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+
+    /* Sign styles */
+    .sign {
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-weight: 600;
+      text-align: center;
+      margin-bottom: 8px;
+      white-space: nowrap;
+      image-rendering: pixelated;
+    }
+
+    .sign-style-1 {
+      background: rgba(0,0,0,0.8);
+      color: #fff;
+      border: 2px solid #f4d03f;
+    }
+
+    .sign-style-2 {
+      background: #f4d03f;
+      color: #1a1a1a;
+      border: none;
+      box-shadow: 2px 2px 0 rgba(0,0,0,0.3);
+    }
+
+    .sign-style-3 {
+      background: #8b4513;
+      color: #fff;
+      border: 3px solid #5d3a1a;
+      border-radius: 2px;
+      text-shadow: 1px 1px 0 #000;
+    }
+
+    .sign-style-4 {
+      background: linear-gradient(180deg, #4a4a4a 0%, #2a2a2a 100%);
+      color: #fff;
+      border: 2px solid #666;
+      text-shadow: 0 0 4px #f4d03f;
+    }
+
+    .sign-style-5 {
+      background: transparent;
+      color: #fff;
+      text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
+      font-size: 1.2em;
+    }
+
+    /* Building sprite */
+    .building-sprite {
+      image-rendering: pixelated;
+      display: block;
+    }
+
+    /* Status indicator */
+    .status-bar {
+      position: absolute;
+      top: -30px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 600;
+    }
+
+    .status-live {
+      background: #2ecc71;
+      color: #fff;
+    }
+
+    .status-offline {
+      background: #666;
+      color: #ccc;
+    }
+
+    /* Building selector */
+    .building-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .building-option {
+      background: rgba(255,255,255,0.05);
+      border: 2px solid transparent;
+      border-radius: 8px;
+      padding: 8px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+    }
+
+    .building-option:hover {
+      background: rgba(255,255,255,0.1);
+      border-color: rgba(244, 208, 63, 0.5);
+    }
+
+    .building-option.selected {
+      border-color: #f4d03f;
+      background: rgba(244, 208, 63, 0.1);
+    }
+
+    .building-option img {
+      max-width: 60px;
+      max-height: 60px;
+      image-rendering: pixelated;
+    }
+
+    .building-option span {
+      display: block;
+      font-size: 9px;
+      color: #888;
+      margin-top: 4px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Sign style selector */
+    .sign-styles {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .sign-style-option {
+      padding: 8px 16px;
+      border: 2px solid #444;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 12px;
+    }
+
+    .sign-style-option:hover {
+      border-color: #f4d03f;
+    }
+
+    .sign-style-option.selected {
+      border-color: #f4d03f;
+      background: rgba(244, 208, 63, 0.1);
+    }
+
+    /* Current building comparison */
+    .comparison {
+      margin-top: 20px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 12px;
+      padding: 20px;
+    }
+
+    .comparison h3 {
+      color: #f4d03f;
+      margin-bottom: 15px;
+      font-size: 14px;
+    }
+
+    .comparison-row {
+      display: flex;
+      gap: 40px;
+      justify-content: center;
+      align-items: flex-end;
+    }
+
+    .comparison-item {
+      text-align: center;
+    }
+
+    .comparison-item .label {
+      color: #888;
+      font-size: 11px;
+      margin-bottom: 10px;
+    }
+
+    /* Current procedural building */
+    .procedural-building {
+      width: 120px;
+      height: 96px;
+      background: #1a1a1a;
+      border: 2px solid #333;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .procedural-roof {
+      height: 20px;
+      background: var(--roof-color, #48a868);
+    }
+
+    .procedural-body {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+    }
+
+    .procedural-sign {
+      background: rgba(0,0,0,0.7);
+      color: #fff;
+      padding: 2px 4px;
+      font-size: 8px;
+      text-align: center;
+      border: 1px solid #444;
+    }
+
+    .procedural-door {
+      width: 20px;
+      height: 30px;
+      background: #333;
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .procedural-windows {
+      position: absolute;
+      top: 30px;
+      left: 10px;
+      right: 10px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .procedural-window {
+      width: 16px;
+      height: 16px;
+      background: #444;
+      border: 1px solid #555;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Building & Sign Mockup</h1>
+    <p class="subtitle">Experiment with building sprites and sign styles</p>
+
+    <div class="controls">
+      <div class="control-group">
+        <label>Sign Style</label>
+        <div class="sign-styles" id="signStyles">
+          <div class="sign-style-option selected" data-style="1">Dark + Gold Border</div>
+          <div class="sign-style-option" data-style="2">Gold Solid</div>
+          <div class="sign-style-option" data-style="3">Wooden</div>
+          <div class="sign-style-option" data-style="4">Metal + Glow</div>
+          <div class="sign-style-option" data-style="5">Floating Text</div>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <label>Sign Font Size</label>
+        <input type="range" id="fontSize" min="10" max="24" value="14">
+        <div class="range-value"><span id="fontSizeValue">14</span>px</div>
+      </div>
+
+      <div class="control-group">
+        <label>Building Scale</label>
+        <input type="range" id="buildingScale" min="50" max="200" value="100">
+        <div class="range-value"><span id="buildingScaleValue">100</span>%</div>
+      </div>
+    </div>
+
+    <div class="preview-area" id="previewArea">
+      <!-- Buildings will be rendered here -->
+    </div>
+
+    <div class="comparison">
+      <h3>Comparison: Current vs New</h3>
+      <div class="comparison-row">
+        <div class="comparison-item">
+          <div class="label">Current (Procedural)</div>
+          <div class="procedural-building" style="--roof-color: #48a868">
+            <div class="procedural-roof"></div>
+            <div class="procedural-body">
+              <div class="procedural-sign">Ping Tree Compare</div>
+            </div>
+            <div class="procedural-windows">
+              <div class="procedural-window"></div>
+              <div class="procedural-window"></div>
+            </div>
+            <div class="procedural-door"></div>
+          </div>
+        </div>
+        <div class="comparison-item" id="newBuildingPreview">
+          <div class="label">New (Sprite + Sign)</div>
+          <!-- Will be populated by JS -->
+        </div>
+      </div>
+    </div>
+
+    <div class="controls" style="margin-top: 20px;">
+      <div class="control-group" style="flex: 2;">
+        <label>Select Building Sprite</label>
+        <div class="building-grid" id="buildingGrid"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const buildings = [
+      { file: 'Inn_Red.png', name: 'Inn Red' },
+      { file: 'Inn_Blue.png', name: 'Inn Blue' },
+      { file: 'Inn_Black.png', name: 'Inn Black' },
+      { file: 'Blacksmith_House_Red.png', name: 'Blacksmith Red' },
+      { file: 'Blacksmith_House_Blue.png', name: 'Blacksmith Blue' },
+      { file: 'Blacksmith_House_Black.png', name: 'Blacksmith Black' },
+      { file: 'Barn_Base_Red.png', name: 'Barn Red' },
+      { file: 'Barn_Base_Blue.png', name: 'Barn Blue' },
+      { file: 'Barn_Green_Red.png', name: 'Barn Green' },
+      { file: 'GreenHouse_Green.png', name: 'Greenhouse Green' },
+      { file: 'GreenHouse_Metal.png', name: 'Greenhouse Metal' },
+      { file: 'GreenHouse_Wood.png', name: 'Greenhouse Wood' },
+      { file: 'Windmill.png', name: 'Windmill' },
+      { file: 'House_1_Stone_Base_Red.png', name: 'House Stone 1' },
+      { file: 'House_2_Stone_Base_Blue.png', name: 'House Stone 2' },
+      { file: 'House_3_Stone_Base_Black.png', name: 'House Stone 3' },
+      { file: 'House_1_Limestone_Base_Red.png', name: 'House Limestone' },
+    ];
+
+    const tools = [
+      { name: 'Ping Tree Compare', live: true },
+      { name: 'Athena Monitor', live: true },
+      { name: 'Datalake Validator', live: true },
+    ];
+
+    let selectedBuilding = 'Inn_Red.png';
+    let selectedStyle = 1;
+    let fontSize = 14;
+    let buildingScale = 100;
+
+    function init() {
+      renderBuildingGrid();
+      renderPreview();
+      setupControls();
+    }
+
+    function renderBuildingGrid() {
+      const grid = document.getElementById('buildingGrid');
+      grid.innerHTML = buildings.map(b => `
+        <div class="building-option ${b.file === selectedBuilding ? 'selected' : ''}" data-file="${b.file}">
+          <img src="assets/sprites/buildings/${b.file}" alt="${b.name}">
+          <span>${b.name}</span>
+        </div>
+      `).join('');
+
+      grid.querySelectorAll('.building-option').forEach(opt => {
+        opt.addEventListener('click', () => {
+          selectedBuilding = opt.dataset.file;
+          grid.querySelectorAll('.building-option').forEach(o => o.classList.remove('selected'));
+          opt.classList.add('selected');
+          renderPreview();
+        });
+      });
+    }
+
+    function renderPreview() {
+      const area = document.getElementById('previewArea');
+      const scale = buildingScale / 100;
+
+      area.innerHTML = tools.map((tool, i) => `
+        <div class="building-container">
+          <span class="status-bar ${tool.live ? 'status-live' : 'status-offline'}">
+            ${tool.live ? 'LIVE' : 'COMING SOON'}
+          </span>
+          <div class="sign sign-style-${selectedStyle}" style="font-size: ${fontSize}px">
+            ${tool.name}
+          </div>
+          <img class="building-sprite"
+               src="assets/sprites/buildings/${selectedBuilding}"
+               style="transform: scale(${scale})"
+               alt="${tool.name}">
+        </div>
+      `).join('');
+
+      // Update comparison preview
+      const newPreview = document.getElementById('newBuildingPreview');
+      newPreview.innerHTML = `
+        <div class="building-container">
+          <div class="sign sign-style-${selectedStyle}" style="font-size: ${fontSize}px">
+            Ping Tree Compare
+          </div>
+          <img class="building-sprite"
+               src="assets/sprites/buildings/${selectedBuilding}"
+               style="transform: scale(${scale * 0.8})"
+               alt="New building">
+        </div>
+      `;
+    }
+
+    function setupControls() {
+      // Sign style selector
+      document.querySelectorAll('.sign-style-option').forEach(opt => {
+        opt.addEventListener('click', () => {
+          selectedStyle = parseInt(opt.dataset.style);
+          document.querySelectorAll('.sign-style-option').forEach(o => o.classList.remove('selected'));
+          opt.classList.add('selected');
+          renderPreview();
+        });
+      });
+
+      // Font size slider
+      const fontSlider = document.getElementById('fontSize');
+      fontSlider.addEventListener('input', () => {
+        fontSize = parseInt(fontSlider.value);
+        document.getElementById('fontSizeValue').textContent = fontSize;
+        renderPreview();
+      });
+
+      // Building scale slider
+      const scaleSlider = document.getElementById('buildingScale');
+      scaleSlider.addEventListener('input', () => {
+        buildingScale = parseInt(scaleSlider.value);
+        document.getElementById('buildingScaleValue').textContent = buildingScale;
+        renderPreview();
+      });
+    }
+
+    init();
+  </script>
+</body>
+</html>

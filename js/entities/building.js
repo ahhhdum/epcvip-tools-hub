@@ -26,7 +26,6 @@ export function createBuilding(tool) {
   const signPadding = 8;
   const signHeight = 28;
   const signTextSize = 16;
-  const badgeTextSize = 9;
   const signY = y - signHeight - signPadding;
 
   // Wooden sign background (clickable)
@@ -62,27 +61,6 @@ export function createBuilding(tool) {
     anchor('center'),
     color(255, 255, 255),
     z(7),
-  ]);
-
-  // LIVE/SOON badge (on the sign)
-  const badgeW = 32;
-  const badgeH = 14;
-  const badgeX = x + bWidth - badgeW - 5;
-  const badgeY = signY + (signHeight - badgeH) / 2;
-  add([
-    rect(badgeW, badgeH),
-    pos(badgeX, badgeY),
-    color(isActive ? 46 : 80, isActive ? 139 : 80, isActive ? 87 : 80),
-    outline(1, rgb(isActive ? 34 : 60, isActive ? 100 : 60, isActive ? 60 : 60)),
-    z(8),
-  ]);
-
-  add([
-    text(isActive ? 'LIVE' : 'SOON', { size: badgeTextSize }),
-    pos(badgeX + badgeW / 2, badgeY + badgeH / 2),
-    anchor('center'),
-    color(255, 255, 255),
-    z(9),
   ]);
 
   // Building sprite (or fallback to colored rectangle)

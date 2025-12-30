@@ -40,15 +40,15 @@ const COLLISION_SHAPES = {
   // house-1: 96x128 - triangle roof fits well, use compound shape
   house1: [
     { type: 'polygon', points: [[0.5, 0], [0.05, 0.35], [0.95, 0.35]] },  // Roof triangle (inset 5%)
-    { type: 'rect', x: 0.10, y: 0.35, w: 0.80, h: 0.60 },                 // Body (inset 10%)
+    { type: 'rect', x: 0.10, y: 0.35, w: 0.80, h: 0.50 },                 // Body (inset 10%, shorter)
   ],
   // house-2: 144x128 - triangle doesn't fit, use simple inset rect
   house2: [
-    { type: 'rect', x: 0.08, y: 0.25, w: 0.84, h: 0.70 },
+    { type: 'rect', x: 0.08, y: 0.25, w: 0.84, h: 0.55 },
   ],
   // house-3: 144x128 - same as house-2
   house3: [
-    { type: 'rect', x: 0.08, y: 0.25, w: 0.84, h: 0.70 },
+    { type: 'rect', x: 0.08, y: 0.25, w: 0.84, h: 0.55 },
   ],
 };
 
