@@ -116,13 +116,17 @@ const TILE_SIZE = 24;
 const GOLDEN_CHANCE = 0.04;
 
 // Game state
+interface PlayerAppearance {
+  characterId: string;
+}
+
 interface Player {
   id: string;
   name: string;
   x: number;
   y: number;
   direction: string;
-  colorIndex: number;
+  appearance: PlayerAppearance;
   fritelleCount: number;
 }
 
@@ -190,14 +194,14 @@ function spawnFritelle(): Fritelle {
 wss.on('connection', (ws) => {
   const playerId = generateId();
 
-  // Create player
+  // Create player with default appearance
   const player: Player = {
     id: playerId,
     name: `Player ${players.size + 1}`,
     x: 400 + Math.random() * 100,
     y: 400 + Math.random() * 100,
     direction: 'down',
-    colorIndex: players.size % 4,
+    appearance: { characterId: 'Farmer_Bob' },  // Default character
     fritelleCount: 0,
   };
 
@@ -298,6 +302,15 @@ wss.on('connection', (ws) => {
           if (p) {
             p.name = msg.name;
             broadcast({ type: 'playerRenamed', playerId, name: msg.name });
+          }
+          break;
+        }
+
+        case 'setAppearance': {
+          const p = players.get(playerId);
+          if (p) {
+            p.appearance = { ...p.appearance, ...msg.appearance };
+            broadcast({ type: 'playerAppearanceChanged', playerId, appearance: p.appearance });
           }
           break;
         }

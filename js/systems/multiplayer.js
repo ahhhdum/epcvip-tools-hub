@@ -5,7 +5,7 @@
  * Falls back gracefully to single-player if server unavailable.
  */
 
-import { COLORS } from '../config.js';
+import { COLORS, getSelectedCharacter } from '../config.js';
 import { playSound } from './audio.js';
 
 // Connection state
@@ -89,6 +89,13 @@ function handleMessage(msg, initResolve) {
       connected = true;
       console.log('Connected as', msg.player.name, '- id:', localPlayerId);
 
+      // Send our character selection to server
+      const selectedChar = getSelectedCharacter();
+      socket.send(JSON.stringify({
+        type: 'setAppearance',
+        appearance: { characterId: selectedChar.id }
+      }));
+
       // Spawn existing players
       msg.players.forEach(p => spawnOtherPlayer(p));
 
@@ -133,57 +140,44 @@ function handleMessage(msg, initResolve) {
       break;
 
     case 'playerRenamed':
-      const data = otherPlayers.get(msg.playerId);
-      if (data && data.label) {
-        data.label.text = msg.name;
+      const renamedData = otherPlayers.get(msg.playerId);
+      if (renamedData && renamedData.label) {
+        renamedData.label.text = msg.name;
+      }
+      break;
+
+    case 'playerAppearanceChanged':
+      const appearanceData = otherPlayers.get(msg.playerId);
+      if (appearanceData && appearanceData.sprite) {
+        appearanceData.appearance = msg.appearance;
+        // Update sprite to new character
+        const charId = msg.appearance.characterId || 'Farmer_Bob';
+        const animName = `idle-${appearanceData.direction || 'down'}`;
+        appearanceData.sprite.use(sprite(charId, { anim: animName }));
       }
       break;
   }
 }
 
 /**
- * Spawn another player
+ * Spawn another player with their character sprite
  */
 function spawnOtherPlayer(playerData) {
   if (playerData.id === localPlayerId) return;
   if (otherPlayers.has(playerData.id)) return;
 
-  const colorIdx = playerData.colorIndex % PLAYER_COLORS.length;
-  const pColor = PLAYER_COLORS[colorIdx];
+  // Get character ID from appearance (fallback to Farmer_Bob)
+  const charId = playerData.appearance?.characterId || 'Farmer_Bob';
+  const direction = playerData.direction || 'down';
 
-  // Create body parts
-  const shadow = add([
-    rect(18, 6),
-    pos(playerData.x, playerData.y + 10),
-    color(0, 0, 0),
-    opacity(0.3),
-    z(9),
+  // Create character sprite (same as local player)
+  const playerSprite = add([
+    sprite(charId, { anim: `idle-${direction}` }),
+    pos(playerData.x, playerData.y),
     anchor('center'),
-    'other-player-part',
-  ]);
-
-  const body = add([
-    rect(12, 12),
-    pos(playerData.x - 6, playerData.y - 3),
-    color(...pColor),
+    scale(1.5),
     z(10),
-    'other-player-part',
-  ]);
-
-  const head = add([
-    rect(16, 10),
-    pos(playerData.x - 8, playerData.y - 12),
-    color(248, 216, 120),
-    z(10),
-    'other-player-part',
-  ]);
-
-  const cap = add([
-    rect(20, 5),
-    pos(playerData.x - 10, playerData.y - 14),
-    color(...pColor),
-    z(12),
-    'other-player-part',
+    'other-player',
   ]);
 
   // Hitbox for collision detection (invisible)
@@ -197,10 +191,10 @@ function spawnOtherPlayer(playerData) {
     { playerId: playerData.id },
   ]);
 
-  // Name label
+  // Name label above sprite
   const label = add([
     text(playerData.name, { size: 10 }),
-    pos(playerData.x, playerData.y - 28),
+    pos(playerData.x, playerData.y - 55),
     anchor('center'),
     color(255, 255, 255),
     z(15),
@@ -208,46 +202,68 @@ function spawnOtherPlayer(playerData) {
   ]);
 
   const data = {
-    parts: { shadow, body, head, cap },
+    sprite: playerSprite,
     hitbox,
     label,
     targetX: playerData.x,
     targetY: playerData.y,
+    direction: direction,
+    appearance: playerData.appearance || { characterId: 'Farmer_Bob' },
+    isMoving: false,
   };
 
   otherPlayers.set(playerData.id, data);
 
-  // Smooth interpolation
+  // Smooth interpolation for movement
   onUpdate(() => {
     const d = otherPlayers.get(playerData.id);
-    if (!d) return;
+    if (!d || !d.sprite.exists()) return;
 
-    const { parts, hitbox: hb, label: lbl, targetX, targetY } = d;
-    if (!parts.shadow.exists()) return;
+    const currentX = d.sprite.pos.x;
+    const currentY = d.sprite.pos.y;
 
-    const currentX = parts.shadow.pos.x;
-    const currentY = parts.shadow.pos.y - 10;
+    const newX = lerp(currentX, d.targetX, 0.2);
+    const newY = lerp(currentY, d.targetY, 0.2);
 
-    const newX = lerp(currentX, targetX, 0.2);
-    const newY = lerp(currentY, targetY, 0.2);
+    // Check if actually moving (for animation)
+    const moving = Math.abs(newX - d.targetX) > 0.5 || Math.abs(newY - d.targetY) > 0.5;
 
-    parts.shadow.pos = vec2(newX, newY + 10);
-    parts.body.pos = vec2(newX - 6, newY - 3);
-    parts.head.pos = vec2(newX - 8, newY - 12);
-    parts.cap.pos = vec2(newX - 10, newY - 14);
-    hb.pos = vec2(newX - 10, newY - 12);
-    lbl.pos = vec2(newX, newY - 28);
+    d.sprite.pos = vec2(newX, newY);
+    d.hitbox.pos = vec2(newX - 10, newY - 12);
+    d.label.pos = vec2(newX, newY - 55);
+
+    // Update animation if movement state changed
+    if (moving !== d.isMoving) {
+      d.isMoving = moving;
+      const animName = moving ? `walk-${d.direction}` : `idle-${d.direction}`;
+      d.sprite.play(animName);
+    }
   });
 }
 
 /**
- * Update other player position
+ * Update other player position and direction
  */
 function updateOtherPlayer(playerId, x, y, direction) {
   const data = otherPlayers.get(playerId);
   if (data) {
     data.targetX = x;
     data.targetY = y;
+
+    // Update direction and animation if changed
+    if (direction && direction !== data.direction) {
+      data.direction = direction;
+      // Handle left direction (use right sprite + flipX)
+      if (direction === 'left') {
+        data.sprite.flipX = true;
+        const animName = data.isMoving ? 'walk-right' : 'idle-right';
+        data.sprite.play(animName);
+      } else {
+        data.sprite.flipX = false;
+        const animName = data.isMoving ? `walk-${direction}` : `idle-${direction}`;
+        data.sprite.play(animName);
+      }
+    }
   }
 }
 
@@ -257,11 +273,9 @@ function updateOtherPlayer(playerId, x, y, direction) {
 function removeOtherPlayer(playerId) {
   const data = otherPlayers.get(playerId);
   if (data) {
-    Object.values(data.parts).forEach(p => {
-      if (p.exists()) destroy(p);
-    });
+    if (data.sprite?.exists()) destroy(data.sprite);
     if (data.hitbox?.exists()) destroy(data.hitbox);
-    if (data.label.exists()) destroy(data.label);
+    if (data.label?.exists()) destroy(data.label);
     otherPlayers.delete(playerId);
   }
 }
@@ -309,12 +323,13 @@ function createThrownFritelleVisual(data) {
  */
 function showHitEffect(targetId, throwerId) {
   const data = otherPlayers.get(targetId);
-  if (data && data.parts.body.exists()) {
-    const origColor = data.parts.body.color;
-    data.parts.body.color = rgb(255, 50, 50);
-    wait(0.2, () => {
-      if (data.parts.body.exists()) {
-        data.parts.body.color = origColor;
+  if (data && data.sprite?.exists()) {
+    // Flash red effect using opacity pulse
+    const origOpacity = data.sprite.opacity ?? 1;
+    data.sprite.opacity = 0.5;
+    wait(0.1, () => {
+      if (data.sprite?.exists()) {
+        data.sprite.opacity = origOpacity;
       }
     });
   }
