@@ -152,8 +152,11 @@ function handleMessage(msg, initResolve) {
         appearanceData.appearance = msg.appearance;
         // Update sprite to new character
         const charId = msg.appearance.characterId || 'Farmer_Bob';
-        const animName = `idle-${appearanceData.direction || 'down'}`;
-        appearanceData.sprite.use(sprite(charId, { anim: animName }));
+        const dir = appearanceData.direction || 'down';
+        // Handle left direction (use right sprite + flipX)
+        const animDir = dir === 'left' ? 'right' : dir;
+        appearanceData.sprite.use(sprite(charId, { anim: `idle-${animDir}` }));
+        appearanceData.sprite.flipX = dir === 'left';
       }
       break;
   }
@@ -170,15 +173,22 @@ function spawnOtherPlayer(playerData) {
   const charId = playerData.appearance?.characterId || 'Farmer_Bob';
   const direction = playerData.direction || 'down';
 
+  // Handle left direction (use right sprite + flipX)
+  const animDir = direction === 'left' ? 'right' : direction;
+  const shouldFlip = direction === 'left';
+
   // Create character sprite (same as local player)
   const playerSprite = add([
-    sprite(charId, { anim: `idle-${direction}` }),
+    sprite(charId, { anim: `idle-${animDir}` }),
     pos(playerData.x, playerData.y),
     anchor('center'),
     scale(1.5),
     z(10),
     'other-player',
   ]);
+
+  // Apply flipX for left direction
+  if (shouldFlip) playerSprite.flipX = true;
 
   // Hitbox for collision detection (invisible)
   const hitbox = add([
@@ -235,7 +245,13 @@ function spawnOtherPlayer(playerData) {
     // Update animation if movement state changed
     if (moving !== d.isMoving) {
       d.isMoving = moving;
-      const animName = moving ? `walk-${d.direction}` : `idle-${d.direction}`;
+      // Handle left direction (use right sprite + flipX)
+      let animName;
+      if (d.direction === 'left') {
+        animName = moving ? 'walk-right' : 'idle-right';
+      } else {
+        animName = moving ? `walk-${d.direction}` : `idle-${d.direction}`;
+      }
       d.sprite.play(animName);
     }
   });
