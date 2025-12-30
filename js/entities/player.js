@@ -42,13 +42,13 @@ export function createPlayer(startPos) {
       },
 
       interact() {
-        const buildings = get('building');
+        const buildings = get('interactable');
         const nearby = buildings.find(b => {
           const dist = this.pos.dist(b.pos.add(vec2(b.buildingWidth / 2, b.buildingHeight)));
           return dist < 60;
         });
 
-        if (nearby) {
+        if (nearby && nearby.interact) {
           nearby.interact();
         }
       },
