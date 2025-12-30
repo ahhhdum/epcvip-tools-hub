@@ -57,7 +57,7 @@ export const TOOLS = [
     id: 'ping-tree',
     name: 'Ping Tree Compare',
     description: 'Compare ping tree configurations to identify campaign differences.',
-    url: '/ping-tree/',  // Proxied through tools-hub gateway
+    url: 'https://ping-tree-compare-production.up.railway.app',  // Direct link (proxy has no auth issues)
     position: { x: 3, y: 3 },
     color: [72, 168, 104],
     sprite: 'building-house-1',
@@ -70,7 +70,7 @@ export const TOOLS = [
     id: 'athena',
     name: 'Athena Monitor',
     description: 'Monitor AWS Athena query usage, costs, and performance.',
-    url: '/athena/',  // Proxied through tools-hub gateway
+    url: 'https://epcvip-athena-usage-monitor.up.railway.app',  // Direct link (Streamlit auth breaks proxy)
     position: { x: 17, y: 3 },
     color: [88, 120, 168],
     sprite: 'building-house-2',
@@ -83,7 +83,7 @@ export const TOOLS = [
     id: 'validator',
     name: 'Datalake Validator',
     description: 'Validate SQL queries against the datalake schema.',
-    url: '/validator/',  // Proxied through tools-hub gateway
+    url: 'https://streamlit-validator-production.up.railway.app',  // Direct link (Streamlit auth breaks proxy)
     position: { x: 31, y: 3 },
     color: [240, 192, 0],
     sprite: 'building-house-3',
