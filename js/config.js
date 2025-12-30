@@ -7,8 +7,9 @@
 
 export const GAME_CONFIG = {
   // Viewport dimensions (visible area) - increased for 4K displays
+  // Maintains original 25:18 aspect ratio (900/648 = 1.389)
   width: 1200,
-  height: 900,
+  height: 864,
   tileSize: 24,
   uiScale: 1.8,  // Scale factor for UI elements (increased proportionally)
 
