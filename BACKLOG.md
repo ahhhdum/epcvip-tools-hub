@@ -103,6 +103,38 @@ Start with localStorage for name/colors. Add SSO later when there's enough value
 
 ## Future Ideas (Icebox)
 
+### Improved Hitbox Management
+Editor or tooling for creating pixel-perfect collision shapes.
+
+**Current state:**
+- Config-based collision shapes in `config.js` (normalized coordinates)
+- Supports rectangles and polygons
+- Triangle roofs work well for house-1 style buildings
+
+**Future improvements:**
+- Visual hitbox editor (in-game or external tool like PhysicsEditor/Tiled)
+- More complex polygon shapes for irregular buildings
+- Automatic hitbox generation from sprite alpha channel
+
+### Dynamic Depth Sorting
+Allow player to walk "behind" buildings and trees for proper 2D depth illusion.
+
+**Current behavior:**
+- Player always renders on top of buildings (z-index 10 > building z-index 4)
+- Full collision blocks player from entering building area
+
+**Desired behavior:**
+- Player can walk behind buildings (when "above" them in Y-space)
+- Player renders behind building roof when north of building
+- Player renders in front when south of building
+
+**Implementation approaches:**
+1. **Y-based z-index** - Update player z dynamically based on Y position
+2. **Per-object sorting** - Compare player Y to each object's "foot" position
+3. **Layered collision** - Separate roof collision (passable) from base collision (blocking)
+
+**Complexity:** Medium-High. Requires frame-by-frame z-index updates and careful handling of overlapping objects.
+
 ### Scotty NPC
 - Fast-moving character that zips around the map
 - Hard to catch, rewards bonus points

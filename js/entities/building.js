@@ -2,28 +2,148 @@
  * Building Entity
  *
  * Represents a tool building that can be interacted with.
- * Uses simple colored rectangles until sprites are loaded.
+ * Uses sprite-based buildings with wooden signs.
+ *
+ * NOTE: World objects do NOT use uiScale - only UI overlays scale with viewport.
  */
 
 import { GAME_CONFIG, COLORS } from '../config.js';
 
 export function createBuilding(tool) {
   const TILE = GAME_CONFIG.tileSize;
-  const bWidth = 5 * TILE;
-  const bHeight = 5 * TILE;
   const x = tool.position.x * TILE;
   const y = tool.position.y * TILE;
   const isActive = tool.live;
 
-  // Main building container (invisible, just for collision/interaction)
+  // Building dimensions - use actual sprite size from config, scaled 20%
+  const spriteScale = 1.2;
+  const baseWidth = tool.spriteWidth || 144;   // Fallback for tools without dimensions
+  const baseHeight = tool.spriteHeight || 128;
+  const bWidth = baseWidth * spriteScale;
+  const bHeight = baseHeight * spriteScale;
+
+  // Sign styling (wooden style) - fixed sizes, not scaled
+  const signPadding = 8;
+  const signHeight = 28;
+  const signTextSize = 16;
+  const badgeTextSize = 9;
+  const signY = y - signHeight - signPadding;
+
+  // Wooden sign background (clickable)
+  const signBg = add([
+    rect(bWidth - 20, signHeight),
+    pos(x + 10, signY),
+    color(139, 69, 19),  // Wood brown #8b4513
+    outline(3, rgb(93, 58, 26)),  // Darker wood border
+    area(),  // Makes sign clickable
+    z(5),
+    'building-sign',
+  ]);
+
+  // Click sign to open tool
+  signBg.onClick(() => {
+    if (tool.url) {
+      window.open(tool.url, '_blank');
+    }
+  });
+
+  // Sign text (white with shadow effect)
+  add([
+    text(tool.name, { size: signTextSize }),
+    pos(x + bWidth / 2 + 1, signY + signHeight / 2 + 1),
+    anchor('center'),
+    color(0, 0, 0),  // Shadow
+    z(6),
+  ]);
+
+  add([
+    text(tool.name, { size: signTextSize }),
+    pos(x + bWidth / 2, signY + signHeight / 2),
+    anchor('center'),
+    color(255, 255, 255),
+    z(7),
+  ]);
+
+  // LIVE/SOON badge (on the sign)
+  const badgeW = 32;
+  const badgeH = 14;
+  const badgeX = x + bWidth - badgeW - 5;
+  const badgeY = signY + (signHeight - badgeH) / 2;
+  add([
+    rect(badgeW, badgeH),
+    pos(badgeX, badgeY),
+    color(isActive ? 46 : 80, isActive ? 139 : 80, isActive ? 87 : 80),
+    outline(1, rgb(isActive ? 34 : 60, isActive ? 100 : 60, isActive ? 60 : 60)),
+    z(8),
+  ]);
+
+  add([
+    text(isActive ? 'LIVE' : 'SOON', { size: badgeTextSize }),
+    pos(badgeX + badgeW / 2, badgeY + badgeH / 2),
+    anchor('center'),
+    color(255, 255, 255),
+    z(9),
+  ]);
+
+  // Building sprite (or fallback to colored rectangle)
+  if (tool.sprite) {
+    add([
+      sprite(tool.sprite),
+      pos(x, y),
+      scale(spriteScale),
+      z(4),
+    ]);
+  } else {
+    // Fallback procedural building for tools without sprites
+    add([
+      rect(bWidth, bHeight),
+      pos(x, y),
+      color(isActive ? 60 : 40, isActive ? 60 : 40, isActive ? 60 : 40),
+      outline(2, rgb(isActive ? 100 : 60, isActive ? 100 : 60, isActive ? 100 : 60)),
+      z(4),
+    ]);
+  }
+
+  // Create compound collision shapes from config
+  // Shapes use normalized coordinates (0-1), scaled to actual building size
+  const shapes = tool.collisionShapes || [
+    { type: 'rect', x: 0, y: 0, w: 1, h: 1 }  // Fallback: full rect
+  ];
+
+  shapes.forEach((shape, index) => {
+    if (shape.type === 'rect') {
+      add([
+        rect(shape.w * bWidth, shape.h * bHeight),
+        pos(x + shape.x * bWidth, y + shape.y * bHeight),
+        area(),
+        body({ isStatic: true }),
+        opacity(0),
+        z(3),
+        'building',
+      ]);
+    } else if (shape.type === 'polygon') {
+      // Convert normalized points to actual coordinates
+      const points = shape.points.map(([px, py]) =>
+        vec2(px * bWidth, py * bHeight)
+      );
+      add([
+        polygon(points),
+        pos(x, y),
+        area(),
+        body({ isStatic: true }),
+        opacity(0),
+        z(3),
+        'building',
+      ]);
+    }
+  });
+
+  // Main building entity for interaction (invisible, no collision)
   const building = add([
     rect(bWidth, bHeight),
     pos(x, y),
-    area(),
-    body({ isStatic: true }),
-    color(42, 42, 42),
-    z(3),
-    'building',
+    opacity(0),
+    z(2),
     'interactable',
     {
       toolId: tool.id,
@@ -55,121 +175,13 @@ export function createBuilding(tool) {
     },
   ]);
 
-  // Roof
-  add([
-    rect(bWidth + 8, TILE * 0.8),
-    pos(x - 4, y),
-    color(isActive ? 240 : 80, isActive ? 192 : 80, isActive ? 0 : 80),
-    z(4),
-  ]);
+  // Hover effect on sign - highlight on mouseover
+  signBg.onHover(() => {
+    signBg.color = rgb(170, 90, 30);  // Lighter wood
+  });
 
-  // Roof highlight
-  add([
-    rect(bWidth + 8, 4),
-    pos(x - 4, y),
-    color(isActive ? 255 : 104, isActive ? 221 : 104, isActive ? 68 : 104),
-    z(5),
-  ]);
-
-  // LIVE/SOON badge
-  const badgeColor = isActive ? [0, 204, 0] : [102, 102, 0];
-  add([
-    rect(28, 12),
-    pos(x + 2, y + 3),
-    color(...badgeColor),
-    z(6),
-  ]);
-
-  add([
-    text(isActive ? 'LIVE' : 'SOON', { size: 8 }),
-    pos(x + 16, y + 9),
-    anchor('center'),
-    color(isActive ? 0 : 51, isActive ? 51 : 51, 0),
-    z(7),
-  ]);
-
-  // Windows
-  const windowY = y + TILE * 0.8 + 8;
-  const windowSize = TILE * 0.8;
-  const windowColor = isActive ? COLORS.gold : [80, 80, 80];
-
-  // Left window frame
-  add([
-    rect(windowSize, windowSize),
-    pos(x + 8, windowY),
-    color(...windowColor),
-    z(4),
-  ]);
-  // Left window inner
-  add([
-    rect(windowSize - 6, windowSize - 6),
-    pos(x + 11, windowY + 3),
-    color(10, 10, 10),
-    z(5),
-  ]);
-
-  // Right window frame
-  add([
-    rect(windowSize, windowSize),
-    pos(x + bWidth - 8 - windowSize, windowY),
-    color(...windowColor),
-    z(4),
-  ]);
-  // Right window inner
-  add([
-    rect(windowSize - 6, windowSize - 6),
-    pos(x + bWidth - 8 - windowSize + 3, windowY + 3),
-    color(10, 10, 10),
-    z(5),
-  ]);
-
-  // Sign board
-  const signY = windowY + windowSize + 10;
-  const signWidth = bWidth - 20;
-  const signHeight = TILE * 0.7;
-  add([
-    rect(signWidth, signHeight),
-    pos(x + 10, signY),
-    color(26, 26, 26),
-    outline(2, rgb(...windowColor)),
-    z(4),
-  ]);
-
-  // Sign text
-  add([
-    text(tool.name, { size: 9 }),
-    pos(x + bWidth / 2, signY + signHeight / 2),
-    anchor('center'),
-    color(...windowColor),
-    z(5),
-  ]);
-
-  // Door frame
-  const doorWidth = TILE * 1.1;
-  const doorHeight = TILE * 1.4;
-  const doorX = x + (bWidth - doorWidth) / 2;
-  const doorY = y + bHeight - doorHeight;
-
-  add([
-    rect(doorWidth + 6, doorHeight + 3),
-    pos(doorX - 3, doorY - 3),
-    color(...windowColor),
-    z(4),
-  ]);
-
-  // Door
-  add([
-    rect(doorWidth, doorHeight),
-    pos(doorX, doorY),
-    color(isActive ? 10 : 48, isActive ? 10 : 48, isActive ? 10 : 48),
-    z(5),
-  ]);
-
-  // Click anywhere on building to open
-  building.onClick(() => {
-    if (building.toolUrl) {
-      window.open(building.toolUrl, '_blank');
-    }
+  signBg.onHoverEnd(() => {
+    signBg.color = rgb(139, 69, 19);  // Original wood
   });
 
   return building;

@@ -7,9 +7,10 @@
 
 export const GAME_CONFIG = {
   // Viewport dimensions (visible area)
-  width: 480,
-  height: 432,
+  width: 900,
+  height: 648,
   tileSize: 24,
+  uiScale: 1.5,  // Scale factor for UI elements
 
   // World dimensions (scrollable area)
   worldWidth: 960,   // 40 tiles wide
@@ -33,6 +34,24 @@ export const COLORS = {
   white: [255, 255, 255],
 };
 
+// Collision shape presets for reuse across buildings
+// Coordinates are normalized (0-1), scaled to actual sprite dimensions at runtime
+const COLLISION_SHAPES = {
+  // house-1: 96x128 - triangle roof fits well, use compound shape
+  house1: [
+    { type: 'polygon', points: [[0.5, 0], [0.05, 0.35], [0.95, 0.35]] },  // Roof triangle (inset 5%)
+    { type: 'rect', x: 0.10, y: 0.35, w: 0.80, h: 0.60 },                 // Body (inset 10%)
+  ],
+  // house-2: 144x128 - triangle doesn't fit, use simple inset rect
+  house2: [
+    { type: 'rect', x: 0.08, y: 0.25, w: 0.84, h: 0.70 },
+  ],
+  // house-3: 144x128 - same as house-2
+  house3: [
+    { type: 'rect', x: 0.08, y: 0.25, w: 0.84, h: 0.70 },
+  ],
+};
+
 export const TOOLS = [
   {
     id: 'ping-tree',
@@ -41,6 +60,10 @@ export const TOOLS = [
     url: '/ping-tree/',  // Proxied through tools-hub gateway
     position: { x: 3, y: 3 },
     color: [72, 168, 104],
+    sprite: 'building-house-1',
+    spriteWidth: 96,   // Actual sprite dimensions
+    spriteHeight: 128,
+    collisionShapes: COLLISION_SHAPES.house1,
     live: true,
   },
   {
@@ -50,6 +73,10 @@ export const TOOLS = [
     url: '/athena/',  // Proxied through tools-hub gateway
     position: { x: 17, y: 3 },
     color: [88, 120, 168],
+    sprite: 'building-house-2',
+    spriteWidth: 144,
+    spriteHeight: 128,
+    collisionShapes: COLLISION_SHAPES.house2,
     live: true,
   },
   {
@@ -59,6 +86,10 @@ export const TOOLS = [
     url: '/validator/',  // Proxied through tools-hub gateway
     position: { x: 31, y: 3 },
     color: [240, 192, 0],
+    sprite: 'building-house-3',
+    spriteWidth: 144,
+    spriteHeight: 128,
+    collisionShapes: COLLISION_SHAPES.house3,
     live: true,
   },
   {
@@ -68,6 +99,10 @@ export const TOOLS = [
     url: null,
     position: { x: 7, y: 17 },
     color: [128, 128, 128],
+    sprite: 'building-house-1',  // Placeholder
+    spriteWidth: 96,
+    spriteHeight: 128,
+    collisionShapes: COLLISION_SHAPES.house1,
     live: false,
   },
   {
@@ -77,6 +112,10 @@ export const TOOLS = [
     url: null,
     position: { x: 25, y: 17 },
     color: [128, 128, 128],
+    sprite: 'building-house-2',  // Placeholder
+    spriteWidth: 144,
+    spriteHeight: 128,
+    collisionShapes: COLLISION_SHAPES.house2,
     live: false,
   },
 ];

@@ -8,7 +8,7 @@ import { GAME_CONFIG, COLORS, TOOLS, TREES, FLOWERS } from '../config.js';
 import { createPlayer } from '../entities/player.js';
 import { createBuilding } from '../entities/building.js';
 import { createTree, createFlower, drawGround } from '../entities/decoration.js';
-import { initDialog, showDialog, clearDialog, WELCOME_MESSAGE } from '../systems/dialog.js';
+import { initDialog, showDialog, clearDialog } from '../systems/dialog.js';
 import { initFritelleSystem } from '../entities/collectible.js';
 import { connectToServer, isMultiplayerConnected, getPlayerCount } from '../systems/multiplayer.js';
 
@@ -26,9 +26,6 @@ export function overworldScene() {
 
   // Create buildings for each tool
   const buildings = TOOLS.map(tool => createBuilding(tool));
-
-  // Create welcome sign (centered in the larger world)
-  createWelcomeSign();
 
   // Create player (start in center-ish area of world)
   const player = createPlayer({ x: 20 * TILE, y: 15 * TILE });
@@ -48,9 +45,6 @@ export function overworldScene() {
   // Initialize fritelle collectibles
   initFritelleSystem(player);
 
-  // Sign position for proximity check
-  const signPos = vec2(20 * TILE, 14 * TILE);
-
   // Proximity detection for dialog hints
   onUpdate(() => {
     // Check if near a building
@@ -59,14 +53,9 @@ export function overworldScene() {
       return dist < 60;
     });
 
-    // Check if near the Innovation Lab sign
-    const nearSign = player.pos.dist(signPos) < 70;
-
     if (nearbyBuilding) {
       const status = nearbyBuilding.isLive ? 'Press ENTER to open!' : 'Coming Soon!';
       showDialog(`${nearbyBuilding.toolName}: ${nearbyBuilding.toolDescription} ${status}`);
-    } else if (nearSign) {
-      showDialog(WELCOME_MESSAGE);
     } else {
       clearDialog();
     }
@@ -74,36 +63,6 @@ export function overworldScene() {
 
   // Mobile controls
   setupMobileControls(player);
-}
-
-function createWelcomeSign() {
-  const TILE = GAME_CONFIG.tileSize;
-
-  // Sign post (centered in world)
-  add([
-    rect(6, 24),
-    pos(19 * TILE + 9, 14 * TILE),
-    color(...COLORS.gold),
-    z(5),
-  ]);
-
-  // Sign board
-  add([
-    rect(4 * TILE, TILE * 1.2),
-    pos(18 * TILE, 13 * TILE + 12),
-    color(...COLORS.dark),
-    outline(3, rgb(...COLORS.gold)),
-    z(6),
-  ]);
-
-  // Sign text
-  add([
-    text('INNOVATION LAB', { size: 11 }),
-    pos(20 * TILE, 14 * TILE + 8),
-    anchor('center'),
-    color(...COLORS.gold),
-    z(7),
-  ]);
 }
 
 function setupMobileControls(player) {

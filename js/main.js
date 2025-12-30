@@ -20,7 +20,7 @@ const k = kaplay({
   crisp: true,
   pixelDensity: 1,
   background: COLORS.grass,
-  debug: false,
+  debug: true,  // Press F1 to toggle hitbox visualization
   global: true, // Makes kaplay functions global
 });
 

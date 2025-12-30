@@ -7,6 +7,7 @@
 
 import { GAME_CONFIG, COLORS, CHARACTERS } from '../config.js';
 import { loadSounds } from '../systems/audio.js';
+import { getLoadingLayout } from '../systems/ui-layout.js';
 
 // Standard animation config (same for all characters - first 6 rows)
 const ANIM_CONFIG = {
@@ -30,55 +31,66 @@ export function loadingScene() {
       anims: ANIM_CONFIG,
     });
   });
-  // Background
+
+  // Load building sprites
+  loadSprite('building-house-1', 'assets/sprites/buildings/House_1_Stone_Base_Red.png');
+  loadSprite('building-house-2', 'assets/sprites/buildings/House_2_Stone_Base_Blue.png');
+  loadSprite('building-house-3', 'assets/sprites/buildings/House_3_Stone_Base_Black.png');
+
+  // Get responsive layout
+  const layout = getLoadingLayout();
+  const S = layout.scale;
+
+  // Background - full viewport
   add([
     rect(width(), height()),
     pos(0, 0),
     color(...COLORS.grass),
   ]);
 
-  // Title with decorations
+  // Title - centered using layout
   add([
-    text('INNOVATION LAB', { size: 24 }),
-    pos(width() / 2, 100),
+    text('INNOVATION LAB', { size: layout.title.size }),
+    pos(layout.title.x, layout.title.y),
     anchor('center'),
     color(...COLORS.gold),
   ]);
 
-  // Decorative stars
+  // Decorative stars - relative to title
   add([
-    text('*', { size: 20 }),
-    pos(width() / 2 - 110, 100),
+    text('*', { size: layout.starSize }),
+    pos(layout.title.x - layout.starOffset, layout.title.y),
     anchor('center'),
     color(...COLORS.gold),
   ]);
 
   add([
-    text('*', { size: 20 }),
-    pos(width() / 2 + 110, 100),
+    text('*', { size: layout.starSize }),
+    pos(layout.title.x + layout.starOffset, layout.title.y),
     anchor('center'),
     color(...COLORS.gold),
   ]);
 
-  // Progress bar background
+  // Progress bar background - centered using layout
   add([
-    rect(300, 24),
-    pos(90, 200),
+    rect(layout.bar.width, layout.bar.height),
+    pos(layout.bar.x, layout.bar.y),
     color(26, 26, 26),
-    outline(2, rgb(...COLORS.gold)),
+    outline(2 * S, rgb(...COLORS.gold)),
   ]);
 
   // Progress bar fill (starts at 0 width)
+  const barPadding = 2 * S;
   const barFill = add([
-    rect(1, 20),
-    pos(92, 202),
+    rect(1, layout.bar.height - barPadding * 2),
+    pos(layout.bar.x + barPadding, layout.bar.y + barPadding),
     color(...COLORS.gold),
   ]);
 
-  // Percentage text
+  // Percentage text - below bar
   const percentText = add([
-    text('0%', { size: 16 }),
-    pos(width() / 2, 240),
+    text('0%', { size: layout.percent.size }),
+    pos(layout.percent.x, layout.percent.y),
     anchor('center'),
     color(...COLORS.white),
   ]);
@@ -93,14 +105,15 @@ export function loadingScene() {
   ];
 
   const msgText = add([
-    text(messages[0], { size: 12 }),
-    pos(width() / 2, 290),
+    text(messages[0], { size: layout.message.size }),
+    pos(layout.message.x, layout.message.y),
     anchor('center'),
     color(...COLORS.white),
   ]);
 
   // Animated progress
   let progress = 0;
+  const fillMaxWidth = layout.bar.width - barPadding * 2;
 
   onUpdate(() => {
     progress += dt() * 50; // Takes ~2 seconds to complete
@@ -110,8 +123,8 @@ export function loadingScene() {
       return;
     }
 
-    // Update progress bar width (296 = 300 - 4 for padding)
-    barFill.width = Math.max(1, (progress / 100) * 296);
+    // Update progress bar width
+    barFill.width = Math.max(1, (progress / 100) * fillMaxWidth);
 
     // Update percentage
     percentText.text = Math.floor(progress) + '%';

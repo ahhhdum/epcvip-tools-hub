@@ -17,10 +17,11 @@ export function createPlayer(startPos) {
   const selectedChar = getSelectedCharacter();
 
   // Create player with sprite (64x64 frames, scaled to 96px = 4x tile size)
+  // NOTE: Don't use offset with anchor('center') + scale() - it breaks positioning
   const player = add([
     sprite(selectedChar.id, { anim: 'idle-down' }),
     pos(startPos.x, startPos.y),
-    area({ shape: new Rect(vec2(-5, -2), 10, 14) }), // Adjusted: larger box, higher position
+    area({ shape: new Rect(vec2(-5, -2), 10, 14) }),  // Stable: no offset needed
     body(),
     anchor('center'),
     scale(1.5), // 64 * 1.5 = 96px (4x tile size)

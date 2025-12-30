@@ -7,11 +7,15 @@
 
 import { GAME_CONFIG, COLORS, TOOLS, CHARACTERS, getSelectedCharacter, setSelectedCharacter } from '../config.js';
 import { isMuted, toggleMute } from '../systems/audio.js';
+import { getPauseLayout, getCharSelectLayout } from '../systems/ui-layout.js';
 
 export function pauseScene() {
+  // Get responsive layout
+  const layout = getPauseLayout();
+  const S = layout.scale;
+
   let isSelectingCharacter = false;
   let selectedCharIndex = CHARACTERS.findIndex(c => c.id === getSelectedCharacter().id);
-  let animFrame = 0;
 
   // Semi-transparent dark overlay
   add([
@@ -24,8 +28,8 @@ export function pauseScene() {
 
   // Decorative border
   add([
-    rect(width() - 40, height() - 40),
-    pos(20, 20),
+    rect(width() - layout.margin * 2, height() - layout.margin * 2),
+    pos(layout.margin, layout.margin),
     color(0, 0, 0),
     outline(3, rgb(...COLORS.gold)),
     fixed(),
@@ -33,8 +37,8 @@ export function pauseScene() {
 
   // Title
   add([
-    text('PAUSED', { size: 28 }),
-    pos(width() / 2, 50),
+    text('PAUSED', { size: 36 * S }),
+    pos(width() / 2, layout.title.y),
     anchor('center'),
     color(...COLORS.gold),
     fixed(),
@@ -42,15 +46,15 @@ export function pauseScene() {
 
   // Decorative lines around title
   add([
-    rect(80, 2),
-    pos(width() / 2 - 120, 50),
+    rect(100 * S, 3),
+    pos(width() / 2 - 150 * S, layout.title.y),
     anchor('center'),
     color(...COLORS.gold),
     fixed(),
   ]);
   add([
-    rect(80, 2),
-    pos(width() / 2 + 120, 50),
+    rect(100 * S, 3),
+    pos(width() / 2 + 150 * S, layout.title.y),
     anchor('center'),
     color(...COLORS.gold),
     fixed(),
@@ -58,8 +62,8 @@ export function pauseScene() {
 
   // === LEFT COLUMN: Controls ===
   add([
-    text('Controls', { size: 14 }),
-    pos(50, 85),
+    text('Controls', { size: 18 * S }),
+    pos(layout.leftCol.x + 20 * S, layout.contentStartY),
     color(...COLORS.gold),
     fixed(),
   ]);
@@ -69,19 +73,20 @@ export function pauseScene() {
     ['Enter', 'Interact'],
     ['Space', 'Throw'],
     ['M', 'Sound'],
+    ['C', 'Character'],
     ['ESC', 'Resume'],
   ];
 
   controls.forEach(([key, action], i) => {
     add([
-      text(key, { size: 9 }),
-      pos(55, 105 + i * 18),
+      text(key, { size: 12 * S }),
+      pos(layout.leftCol.x + 30 * S, layout.contentStartY + 30 * S + i * 24 * S),
       color(...COLORS.white),
       fixed(),
     ]);
     add([
-      text('- ' + action, { size: 9 }),
-      pos(155, 105 + i * 18),
+      text('- ' + action, { size: 12 * S }),
+      pos(layout.leftCol.x + 160 * S, layout.contentStartY + 30 * S + i * 24 * S),
       color(150, 150, 150),
       fixed(),
     ]);
@@ -89,54 +94,73 @@ export function pauseScene() {
 
   // Quick Links section
   add([
-    text('Links (press #)', { size: 12 }),
-    pos(50, 200),
+    text('Links (press #)', { size: 15 * S }),
+    pos(layout.leftCol.x + 20 * S, layout.linksY),
     color(...COLORS.gold),
     fixed(),
   ]);
 
   const liveTools = TOOLS.filter(t => t.live);
   liveTools.forEach((tool, i) => {
-    add([
-      text(`${i + 1}. ${tool.name}`, { size: 9 }),
-      pos(55, 220 + i * 16),
+    const linkText = add([
+      text(`${i + 1}. ${tool.name}`, { size: 12 * S }),
+      pos(layout.leftCol.x + 30 * S, layout.linksY + 25 * S + i * 22 * S),
       color(...COLORS.white),
+      area(),  // Makes text clickable
       fixed(),
+      'tool-link',
     ]);
+
+    // Click handler
+    linkText.onClick(() => {
+      if (tool.url) {
+        window.open(tool.url, '_blank');
+      }
+    });
+
+    // Hover effect
+    linkText.onHover(() => {
+      linkText.color = rgb(...COLORS.gold);
+    });
+    linkText.onHoverEnd(() => {
+      linkText.color = rgb(...COLORS.white);
+    });
   });
 
   // === RIGHT COLUMN: Character ===
   add([
-    text('Character', { size: 14 }),
-    pos(300, 85),
+    text('Character', { size: 18 * S }),
+    pos(layout.rightCol.x + 10 * S, layout.contentStartY),
     color(...COLORS.gold),
     fixed(),
   ]);
 
-  // Character preview background
+  // Character preview background - fits within right column
+  const previewBoxW = layout.rightCol.width - 20 * S;
+  const previewBoxH = 130 * S;
   add([
-    rect(140, 100),
-    pos(300, 105),
+    rect(previewBoxW, previewBoxH),
+    pos(layout.rightCol.x + 10 * S, layout.contentStartY + 30 * S),
     color(20, 20, 20),
     outline(2, rgb(...COLORS.gold)),
     fixed(),
   ]);
 
-  // Character sprite preview (animated)
+  // Character sprite preview (animated) - left side of preview box
   const currentChar = getSelectedCharacter();
   const charPreview = add([
     sprite(currentChar.id, { anim: 'idle-down' }),
-    pos(340, 135),
+    pos(layout.rightCol.x + 10 * S + previewBoxW * 0.25, layout.contentStartY + 30 * S + previewBoxH * 0.45),
     anchor('center'),
-    scale(1.2),
+    scale(Math.min(1.6 * S, previewBoxW / 90)),
     fixed(),
     'char-preview',
   ]);
 
-  // Character name
+  // Character name - right side of preview box
   const charNameText = add([
-    text(currentChar.name, { size: 11 }),
-    pos(370, 175),
+    text(currentChar.name, { size: 14 * S }),
+    pos(layout.rightCol.x + 10 * S + previewBoxW * 0.65, layout.contentStartY + 30 * S + previewBoxH * 0.4),
     anchor('center'),
     color(...COLORS.white),
     fixed(),
@@ -145,18 +169,18 @@ export function pauseScene() {
 
   // Character role
   const charRoleText = add([
-    text(currentChar.role, { size: 9 }),
-    pos(370, 190),
+    text(currentChar.role, { size: 11 * S }),
+    pos(layout.rightCol.x + 10 * S + previewBoxW * 0.65, layout.contentStartY + 30 * S + previewBoxH * 0.6),
     anchor('center'),
     color(150, 150, 150),
     fixed(),
     'char-role',
   ]);
 
-  // Change button
+  // Change button - centered below preview
   const changeBtn = add([
-    rect(80, 24),
-    pos(370, 220),
+    rect(100 * S, 32 * S),
+    pos(layout.rightCol.center, layout.contentStartY + 30 * S + previewBoxH + 20 * S),
     anchor('center'),
     color(40, 40, 40),
     outline(2, rgb(...COLORS.gold)),
@@ -166,20 +190,20 @@ export function pauseScene() {
   ]);
 
   add([
-    text('Change', { size: 10 }),
-    pos(370, 220),
+    text('Change', { size: 13 * S }),
+    pos(layout.rightCol.center, layout.contentStartY + 30 * S + previewBoxH + 20 * S),
     anchor('center'),
     color(...COLORS.gold),
     fixed(),
   ]);
 
-  // === BOTTOM BUTTONS ===
-  const btnY = height() - 55;
+  // === BOTTOM BUTTONS (below border, in black area) ===
+  const btnY = height() - 19;
 
   // Resume button
   const resumeBtn = add([
-    rect(100, 28),
-    pos(width() / 2 - 55, btnY),
+    rect(130 * S, 32 * S),
+    pos(width() / 2 - 75 * S, btnY),
     anchor('center'),
     color(...COLORS.gold),
     area(),
@@ -188,8 +212,8 @@ export function pauseScene() {
   ]);
 
   add([
-    text('RESUME', { size: 12 }),
-    pos(width() / 2 - 55, btnY),
+    text('RESUME', { size: 15 * S }),
+    pos(width() / 2 - 75 * S, btnY),
     anchor('center'),
     color(...COLORS.dark),
     fixed(),
@@ -197,8 +221,8 @@ export function pauseScene() {
 
   // Sound toggle button
   const soundBtn = add([
-    rect(80, 28),
-    pos(width() / 2 + 55, btnY),
+    rect(110 * S, 32 * S),
+    pos(width() / 2 + 75 * S, btnY),
     anchor('center'),
     color(40, 40, 40),
     outline(2, rgb(...COLORS.gold)),
@@ -208,8 +232,8 @@ export function pauseScene() {
   ]);
 
   const soundText = add([
-    text(isMuted() ? 'Sound: OFF' : 'Sound: ON', { size: 10 }),
-    pos(width() / 2 + 55, btnY),
+    text(isMuted() ? 'Sound: OFF' : 'Sound: ON', { size: 13 * S }),
+    pos(width() / 2 + 75 * S, btnY),
     anchor('center'),
     color(...COLORS.gold),
     fixed(),
@@ -221,6 +245,7 @@ export function pauseScene() {
 
   function showCharacterSelect() {
     isSelectingCharacter = true;
+    const charLayout = getCharSelectLayout();
 
     // Modal background
     modalObjects.push(add([
@@ -234,31 +259,25 @@ export function pauseScene() {
 
     // Modal title
     modalObjects.push(add([
-      text('SELECT CHARACTER', { size: 18 }),
-      pos(width() / 2, 50),
+      text('SELECT CHARACTER', { size: 24 * charLayout.scale }),
+      pos(width() / 2, 70 * charLayout.scale),
       anchor('center'),
       color(...COLORS.gold),
       fixed(),
       z(101),
     ]));
 
-    // Character grid (4x2)
-    const gridStartX = 60;
-    const gridStartY = 90;
-    const cardW = 90;
-    const cardH = 110;
-    const gap = 10;
-
+    // Character grid using calculated layout
     CHARACTERS.forEach((char, i) => {
-      const col = i % 4;
-      const row = Math.floor(i / 4);
-      const x = gridStartX + col * (cardW + gap);
-      const y = gridStartY + row * (cardH + gap);
+      const col = i % charLayout.numCols;
+      const row = Math.floor(i / charLayout.numCols);
+      const x = charLayout.gridStartX + col * (charLayout.cardW + charLayout.gap);
+      const y = charLayout.gridStartY + row * (charLayout.cardH + charLayout.gap);
 
       // Card background
       const isSelected = i === selectedCharIndex;
       const card = add([
-        rect(cardW, cardH),
+        rect(charLayout.cardW, charLayout.cardH),
         pos(x, y),
         color(isSelected ? 40 : 20, isSelected ? 35 : 20, isSelected ? 20 : 20),
         outline(2, isSelected ? rgb(...COLORS.gold) : rgb(60, 60, 60)),
@@ -270,12 +289,12 @@ export function pauseScene() {
       ]);
       modalObjects.push(card);
 
-      // Character sprite
+      // Character sprite - scaled to fit card
       const charSprite = add([
         sprite(char.id, { anim: 'idle-down' }),
-        pos(x + cardW / 2, y + 40),
+        pos(x + charLayout.cardW / 2, y + charLayout.cardH * 0.4),
         anchor('center'),
-        scale(0.9),
+        scale(charLayout.spriteScale),
         fixed(),
         z(102),
         'char-sprite',
@@ -284,8 +303,8 @@ export function pauseScene() {
 
       // Character name
       modalObjects.push(add([
-        text(char.name, { size: 8 }),
-        pos(x + cardW / 2, y + 80),
+        text(char.name, { size: charLayout.nameSize }),
+        pos(x + charLayout.cardW / 2, y + charLayout.cardH * 0.75),
         anchor('center'),
         color(...COLORS.white),
         fixed(),
@@ -294,8 +313,8 @@ export function pauseScene() {
 
       // Character role
       modalObjects.push(add([
-        text(char.role, { size: 7 }),
-        pos(x + cardW / 2, y + 93),
+        text(char.role, { size: charLayout.roleSize }),
+        pos(x + charLayout.cardW / 2, y + charLayout.cardH * 0.9),
         anchor('center'),
         color(120, 120, 120),
         fixed(),
@@ -311,8 +330,8 @@ export function pauseScene() {
 
     // Confirm button
     const confirmBtn = add([
-      rect(90, 30),
-      pos(width() / 2 - 55, height() - 50),
+      rect(115 * charLayout.scale, 40 * charLayout.scale),
+      pos(width() / 2 - 70 * charLayout.scale, charLayout.buttonY),
       anchor('center'),
       color(...COLORS.gold),
       area(),
@@ -323,8 +342,8 @@ export function pauseScene() {
     modalObjects.push(confirmBtn);
 
     modalObjects.push(add([
-      text('Confirm', { size: 11 }),
-      pos(width() / 2 - 55, height() - 50),
+      text('Confirm', { size: 14 * charLayout.scale }),
+      pos(width() / 2 - 70 * charLayout.scale, charLayout.buttonY),
       anchor('center'),
       color(...COLORS.dark),
       fixed(),
@@ -333,8 +352,8 @@ export function pauseScene() {
 
     // Cancel button
     const cancelBtn = add([
-      rect(70, 30),
-      pos(width() / 2 + 50, height() - 50),
+      rect(95 * charLayout.scale, 40 * charLayout.scale),
+      pos(width() / 2 + 70 * charLayout.scale, charLayout.buttonY),
       anchor('center'),
       color(40, 40, 40),
       outline(2, rgb(100, 100, 100)),
@@ -346,8 +365,8 @@ export function pauseScene() {
     modalObjects.push(cancelBtn);
 
     modalObjects.push(add([
-      text('Cancel', { size: 11 }),
-      pos(width() / 2 + 50, height() - 50),
+      text('Cancel', { size: 14 * charLayout.scale }),
+      pos(width() / 2 + 70 * charLayout.scale, charLayout.buttonY),
       anchor('center'),
       color(150, 150, 150),
       fixed(),

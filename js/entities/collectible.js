@@ -18,21 +18,26 @@ let hudText = null;
 
 /**
  * Check if a position overlaps with any building
+ * NOTE: Uses per-tool sprite dimensions from config
  */
 function isOnBuilding(x, y, padding = 24) {
   const TILE = GAME_CONFIG.tileSize;
-  const buildingSize = 5 * TILE; // Buildings are 5x5 tiles
+  const spriteScale = 1.2;
 
   for (const tool of TOOLS) {
     const bx = tool.position.x * TILE;
     const by = tool.position.y * TILE;
 
+    // Use actual sprite dimensions from config (with fallback)
+    const buildingWidth = (tool.spriteWidth || 144) * spriteScale;
+    const buildingHeight = (tool.spriteHeight || 128) * spriteScale;
+
     // Check if point is within building bounds (with padding)
     if (
       x >= bx - padding &&
-      x <= bx + buildingSize + padding &&
+      x <= bx + buildingWidth + padding &&
       y >= by - padding &&
-      y <= by + buildingSize + padding
+      y <= by + buildingHeight + padding
     ) {
       return true;
     }
