@@ -16,8 +16,8 @@ export function getPauseLayout() {
   const W = width();
   const H = height();
 
-  // Margins from viewport edges (scaled)
-  const margin = 30 * S;
+  // Margins from viewport edges (scaled) - tightened for better use of space
+  const margin = 25 * S;
 
   // Usable area after margins
   const usableW = W - margin * 2;
@@ -49,13 +49,13 @@ export function getPauseLayout() {
       center: W - margin - rightColWidth / 2,
     },
 
-    // Title region
+    // Title region - moved closer to top
     title: {
-      y: 75 * S,
+      y: 55 * S,
     },
 
-    // Content start Y (below title)
-    contentStartY: 120 * S,
+    // Content start Y (below title) - tightened spacing
+    contentStartY: 95 * S,
 
     // Links section Y
     linksY: 320 * S,
@@ -129,12 +129,12 @@ export function getCharSelectLayout() {
     numCols,
     numRows,
 
-    // Sprite scale within card (relative to card size)
-    spriteScale: finalCardW / 135 * 1.35,
+    // Sprite scale within card - larger for better visibility
+    spriteScale: Math.max(2.0, finalCardW / 135 * 1.8),
 
-    // Text sizes (scaled to card size)
-    nameSize: Math.round(12 * (finalCardW / 135)),
-    roleSize: Math.round(10 * (finalCardW / 135)),
+    // Text sizes - minimum sizes for readability
+    nameSize: Math.max(14, Math.round(14 * (finalCardW / 135))),
+    roleSize: Math.max(11, Math.round(11 * (finalCardW / 135))),
 
     // Button positions
     buttonY: H - 65 * S,

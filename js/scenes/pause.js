@@ -35,26 +35,26 @@ export function pauseScene() {
     fixed(),
   ]);
 
-  // Title
+  // Title - reduced size for better proportions
   add([
-    text('PAUSED', { size: 36 * S }),
+    text('PAUSED', { size: 28 * S }),
     pos(width() / 2, layout.title.y),
     anchor('center'),
     color(...COLORS.gold),
     fixed(),
   ]);
 
-  // Decorative lines around title
+  // Decorative lines around title - adjusted for smaller title
   add([
-    rect(100 * S, 3),
-    pos(width() / 2 - 150 * S, layout.title.y),
+    rect(80 * S, 2),
+    pos(width() / 2 - 120 * S, layout.title.y),
     anchor('center'),
     color(...COLORS.gold),
     fixed(),
   ]);
   add([
-    rect(100 * S, 3),
-    pos(width() / 2 + 150 * S, layout.title.y),
+    rect(80 * S, 2),
+    pos(width() / 2 + 120 * S, layout.title.y),
     anchor('center'),
     color(...COLORS.gold),
     fixed(),
@@ -186,6 +186,7 @@ export function pauseScene() {
     outline(2, rgb(...COLORS.gold)),
     area(),
     fixed(),
+    z(50),  // Ensure button is above other elements for click detection
     'change-btn',
   ]);
 
@@ -195,6 +196,7 @@ export function pauseScene() {
     anchor('center'),
     color(...COLORS.gold),
     fixed(),
+    z(51),  // Text above button background
   ]);
 
   // === BOTTOM BUTTONS (below border, in black area) ===
@@ -242,6 +244,7 @@ export function pauseScene() {
 
   // === CHARACTER SELECTION MODAL ===
   const modalObjects = [];
+  let modalKeyHandlers = [];  // Track keyboard handlers for cleanup
 
   function showCharacterSelect() {
     isSelectingCharacter = true;
@@ -384,12 +387,48 @@ export function pauseScene() {
       selectedCharIndex = CHARACTERS.findIndex(c => c.id === getSelectedCharacter().id);
       hideCharacterSelect();
     });
+
+    // Arrow key navigation for character selection
+    const numCols = charLayout.numCols;  // 4 columns
+
+    modalKeyHandlers.push(onKeyPress('left', () => {
+      if (selectedCharIndex > 0) {
+        selectedCharIndex--;
+        updateCardSelection();
+      }
+    }));
+
+    modalKeyHandlers.push(onKeyPress('right', () => {
+      if (selectedCharIndex < CHARACTERS.length - 1) {
+        selectedCharIndex++;
+        updateCardSelection();
+      }
+    }));
+
+    modalKeyHandlers.push(onKeyPress('up', () => {
+      const newIndex = selectedCharIndex - numCols;
+      if (newIndex >= 0) {
+        selectedCharIndex = newIndex;
+        updateCardSelection();
+      }
+    }));
+
+    modalKeyHandlers.push(onKeyPress('down', () => {
+      const newIndex = selectedCharIndex + numCols;
+      if (newIndex < CHARACTERS.length) {
+        selectedCharIndex = newIndex;
+        updateCardSelection();
+      }
+    }));
   }
 
   function hideCharacterSelect() {
     isSelectingCharacter = false;
     modalObjects.forEach(obj => destroy(obj));
     modalObjects.length = 0;
+    // Clean up keyboard handlers
+    modalKeyHandlers.forEach(handler => handler.cancel());
+    modalKeyHandlers = [];
   }
 
   function updateCardSelection() {
