@@ -182,7 +182,7 @@ function spawnOtherPlayer(playerData) {
     sprite(charId, { anim: `idle-${animDir}` }),
     pos(playerData.x, playerData.y),
     anchor('center'),
-    scale(1.5),
+    scale(1.8),  // Increased for larger canvas
     z(10),
     'other-player',
   ]);

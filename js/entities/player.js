@@ -24,7 +24,7 @@ export function createPlayer(startPos) {
     area({ shape: new Rect(vec2(-5, -2), 10, 14) }),  // Stable: no offset needed
     body(),
     anchor('center'),
-    scale(1.5), // 64 * 1.5 = 96px (4x tile size)
+    scale(1.8), // 64 * 1.8 = 115px - increased for larger canvas
     z(10),
     'player',
     {

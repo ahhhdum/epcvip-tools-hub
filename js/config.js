@@ -6,15 +6,15 @@
  */
 
 export const GAME_CONFIG = {
-  // Viewport dimensions (visible area)
-  width: 900,
-  height: 648,
+  // Viewport dimensions (visible area) - increased for 4K displays
+  width: 1200,
+  height: 900,
   tileSize: 24,
-  uiScale: 1.5,  // Scale factor for UI elements
+  uiScale: 1.8,  // Scale factor for UI elements (increased proportionally)
 
-  // World dimensions (scrollable area)
-  worldWidth: 960,   // 40 tiles wide
-  worldHeight: 864,  // 36 tiles tall
+  // World dimensions (scrollable area) - expanded for larger viewport
+  worldWidth: 1200,   // 50 tiles wide
+  worldHeight: 1080,  // 45 tiles tall
 
   playerSpeed: 120,
   dialogHeight: 70,

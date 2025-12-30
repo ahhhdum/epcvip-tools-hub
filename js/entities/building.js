@@ -15,8 +15,8 @@ export function createBuilding(tool) {
   const y = tool.position.y * TILE;
   const isActive = tool.live;
 
-  // Building dimensions - use actual sprite size from config, scaled 20%
-  const spriteScale = 1.2;
+  // Building dimensions - use actual sprite size from config, scaled 40%
+  const spriteScale = 1.4;  // Increased for larger canvas
   const baseWidth = tool.spriteWidth || 144;   // Fallback for tools without dimensions
   const baseHeight = tool.spriteHeight || 128;
   const bWidth = baseWidth * spriteScale;
