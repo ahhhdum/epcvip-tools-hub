@@ -3,6 +3,15 @@
   "version": "1.0.0",
   "scripts": {
     "build": "cd server && npm install && npm run build",
-    "start": "cd server && npm run serve"
+    "start": "cd server && npm run serve",
+    "lint": "eslint js/ tools/js/ --ext .js",
+    "lint:fix": "eslint js/ tools/js/ --ext .js --fix",
+    "format": "prettier --write \"js/**/*.js\" \"tools/js/**/*.js\"",
+    "format:check": "prettier --check \"js/**/*.js\" \"tools/js/**/*.js\""
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.2.0"
   }
 }
