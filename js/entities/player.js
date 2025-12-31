@@ -24,7 +24,7 @@ export function createPlayer(startPos) {
     area({ shape: new Rect(vec2(-5, -2), 10, 14) }),  // Stable: no offset needed
     body(),
     anchor('center'),
-    scale(1.8), // 64 * 1.8 = 115px - increased for larger canvas
+    scale(2.4), // 64 * 2.4 = 154px - larger for 4K visibility
     z(10),
     'player',
     {

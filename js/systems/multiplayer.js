@@ -182,7 +182,7 @@ function spawnOtherPlayer(playerData) {
     sprite(charId, { anim: `idle-${animDir}` }),
     pos(playerData.x, playerData.y),
     anchor('center'),
-    scale(1.8),  // Increased for larger canvas
+    scale(2.4),  // Larger for 4K visibility
     z(10),
     'other-player',
   ]);
@@ -190,10 +190,10 @@ function spawnOtherPlayer(playerData) {
   // Apply flipX for left direction
   if (shouldFlip) playerSprite.flipX = true;
 
-  // Hitbox for collision detection (invisible)
+  // Hitbox for collision detection (invisible) - scaled up for larger player
   const hitbox = add([
-    rect(20, 24),
-    pos(playerData.x - 10, playerData.y - 12),
+    rect(26, 32),
+    pos(playerData.x - 13, playerData.y - 16),
     area(),
     opacity(0),
     z(10),
@@ -201,10 +201,10 @@ function spawnOtherPlayer(playerData) {
     { playerId: playerData.id },
   ]);
 
-  // Name label above sprite
+  // Name label above sprite - positioned for larger player
   const label = add([
-    text(playerData.name, { size: 10 }),
-    pos(playerData.x, playerData.y - 55),
+    text(playerData.name, { size: 12 }),
+    pos(playerData.x, playerData.y - 75),
     anchor('center'),
     color(255, 255, 255),
     z(15),
@@ -239,8 +239,8 @@ function spawnOtherPlayer(playerData) {
     const moving = Math.abs(newX - d.targetX) > 0.5 || Math.abs(newY - d.targetY) > 0.5;
 
     d.sprite.pos = vec2(newX, newY);
-    d.hitbox.pos = vec2(newX - 10, newY - 12);
-    d.label.pos = vec2(newX, newY - 55);
+    d.hitbox.pos = vec2(newX - 13, newY - 16);
+    d.label.pos = vec2(newX, newY - 75);
 
     // Update animation if movement state changed
     if (moving !== d.isMoving) {

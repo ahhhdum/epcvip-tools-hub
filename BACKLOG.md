@@ -156,6 +156,168 @@ Allow player to walk "behind" buildings and trees for proper 2D depth illusion.
 
 ---
 
+---
+
+## Priority 0: Code Quality Audit
+
+### Overview
+The codebase has grown significantly. Before adding major features, conduct a comprehensive code audit to identify technical debt, improve maintainability, and establish patterns for future development.
+
+**Scope:** ~15,000 lines across 40+ files, with `map-editor.html` (3,144 lines) being the largest single file.
+
+### Audit Checklist
+
+#### 1. File Organization & Structure
+
+| Check | Status | Notes |
+|-------|--------|-------|
+| **Monolith files** - Files >500 lines that should be split | ⬜ | `map-editor.html` is 3144 lines |
+| **Duplicate code** - `server/public/js/` mirrors `js/` | ⬜ | Sync mechanism needed or consolidate |
+| **Dead code** - Unused functions, variables, imports | ⬜ | |
+| **Circular dependencies** - Modules importing each other | ⬜ | |
+| **Naming conventions** - Consistent file/function/variable naming | ⬜ | |
+| **Folder structure** - Logical grouping (entities, systems, scenes) | ⬜ | Currently good |
+
+#### 2. Function Quality
+
+| Check | Status | Notes |
+|-------|--------|-------|
+| **Long functions** - Functions >50 lines | ⬜ | Identify and refactor |
+| **Deep nesting** - >3-4 levels of indentation | ⬜ | Extract to helper functions |
+| **Single responsibility** - Functions doing multiple unrelated things | ⬜ | |
+| **God functions** - Functions that know too much | ⬜ | |
+| **Pure vs impure** - Side effects clearly documented | ⬜ | |
+
+#### 3. Parameter & API Design
+
+| Check | Status | Notes |
+|-------|--------|-------|
+| **Kitchen sink parameters** - Functions with >5 params | ⬜ | Use options objects instead |
+| **Boolean blindness** - Multiple boolean params (`fn(true, false, true)`) | ⬜ | Use named options |
+| **Inconsistent return types** - Same function returning different shapes | ⬜ | |
+| **Missing validation** - No input validation on public APIs | ⬜ | |
+| **Unclear contracts** - What does this function promise? | ⬜ | |
+
+#### 4. Error Handling
+
+| Check | Status | Notes |
+|-------|--------|-------|
+| **Silent failures** - Empty catch blocks | ⬜ | `catch (e) {}` |
+| **Blind catches** - Catching all errors without discrimination | ⬜ | `catch (e) { console.log(e) }` |
+| **Missing error boundaries** - Errors propagate unexpectedly | ⬜ | |
+| **Unhandled promises** - `.then()` without `.catch()` | ⬜ | |
+| **User-facing errors** - Are errors shown appropriately? | ⬜ | |
+
+#### 5. Code Hygiene
+
+| Check | Status | Notes |
+|-------|--------|-------|
+| **Console statements** - Debug logs left in production code | ⬜ | |
+| **TODO/FIXME** - Unresolved comments that should be tickets | ⬜ | |
+| **Commented-out code** - Dead code in comments | ⬜ | Delete or restore |
+| **Magic numbers/strings** - Hardcoded values without explanation | ⬜ | Extract to constants |
+| **Inconsistent formatting** - Mixed tabs/spaces, line lengths | ⬜ | |
+| **Copy-paste code** - Same logic duplicated | ⬜ | We added piece lookup 4 times |
+
+#### 6. State Management
+
+| Check | Status | Notes |
+|-------|--------|-------|
+| **Global state** - Excessive use of module-level variables | ⬜ | `map-editor.html` has many |
+| **State mutation** - Unclear who modifies what | ⬜ | |
+| **State synchronization** - Multiple sources of truth | ⬜ | |
+| **localStorage hygiene** - Keys documented, cleanup on uninstall | ⬜ | |
+
+#### 7. Performance
+
+| Check | Status | Notes |
+|-------|--------|-------|
+| **Memory leaks** - Event listeners not cleaned up | ⬜ | |
+| **Unnecessary re-renders** - Rendering when nothing changed | ⬜ | |
+| **Large synchronous operations** - Blocking the main thread | ⬜ | |
+| **Missing debounce/throttle** - Rapid event handlers | ⬜ | |
+| **Asset loading** - Images loaded multiple times | ⬜ | |
+
+#### 8. Security
+
+| Check | Status | Notes |
+|-------|--------|-------|
+| **XSS vulnerabilities** - innerHTML with user input | ⬜ | |
+| **Injection risks** - Dynamic code execution | ⬜ | |
+| **Hardcoded secrets** - API keys, passwords in code | ⬜ | |
+| **CORS/CSP** - Proper security headers | ⬜ | |
+
+#### 9. Documentation
+
+| Check | Status | Notes |
+|-------|--------|-------|
+| **Missing JSDoc** - Public functions without documentation | ⬜ | |
+| **Outdated comments** - Comments that don't match code | ⬜ | |
+| **README accuracy** - Does README reflect current state? | ⬜ | |
+| **Architecture docs** - High-level system documentation | ⬜ | |
+
+#### 10. Testing & Reliability
+
+| Check | Status | Notes |
+|-------|--------|-------|
+| **Test coverage** - Critical paths have tests | ⬜ | Currently no tests |
+| **Testable code** - Can functions be unit tested? | ⬜ | |
+| **Edge cases** - Boundary conditions handled | ⬜ | |
+| **Error recovery** - Graceful degradation | ⬜ | |
+
+### Known Issues to Address
+
+1. **`map-editor.html` is a monolith (3144 lines)**
+   - Extract: Tileset Builder → `tileset-builder.js`
+   - Extract: Sprite Slicer → `sprite-slicer.js`
+   - Extract: Entity management → `entity-manager.js`
+   - Extract: Tile painting → `tile-painter.js`
+   - Keep: Core state, rendering, event coordination
+
+2. **Repeated piece override lookup pattern**
+   - Added same 10-line pattern in 4 places
+   - Extract to: `getEffectivePieces(assetId)` helper
+
+3. **Duplicate `js/` and `server/public/js/`**
+   - Options: (a) Build step to copy, (b) Symlinks, (c) Single source
+   - Currently manually synced → error-prone
+
+4. **No linting or formatting**
+   - Add: ESLint + Prettier
+   - Add: Pre-commit hook
+
+### Refactoring Priorities
+
+| Priority | Item | Impact | Effort |
+|----------|------|--------|--------|
+| 1 | Extract `getEffectivePieces()` helper | High | Low |
+| 2 | Add ESLint + Prettier | High | Low |
+| 3 | Split `map-editor.html` into modules | High | Medium |
+| 4 | Consolidate `js/` duplication | Medium | Medium |
+| 5 | Add basic test infrastructure | Medium | Medium |
+| 6 | Document architecture | Medium | Low |
+
+### Audit Process
+
+1. **Run static analysis** - ESLint with strict rules
+2. **Measure complexity** - Function length, nesting depth, cyclomatic complexity
+3. **Review each file** - Use checklist above
+4. **Document findings** - Create issues or inline TODOs
+5. **Prioritize fixes** - Impact vs effort matrix
+6. **Incremental refactoring** - Fix as you touch code
+
+### Success Criteria
+
+- [ ] No function >100 lines
+- [ ] No nesting >4 levels
+- [ ] No duplicate code blocks >10 lines
+- [ ] ESLint passes with zero warnings
+- [ ] All public functions have JSDoc
+- [ ] Architecture documented in `/docs`
+- [ ] Single source of truth for `js/` files
+
+---
+
 ## Technical Reference
 
 ### Server

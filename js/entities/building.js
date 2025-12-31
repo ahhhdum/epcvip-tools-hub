@@ -65,12 +65,38 @@ export function createBuilding(tool) {
 
   // Building sprite (or fallback to colored rectangle)
   if (tool.sprite) {
-    add([
-      sprite(tool.sprite),
-      pos(x, y),
-      scale(spriteScale),
-      z(4),
-    ]);
+    // Check if this is a sprite sheet piece
+    if (tool.pieceData && tool.fullAsset) {
+      // Render specific piece using quad (normalized 0-1 coordinates)
+      const piece = tool.pieceData;
+      const fullWidth = tool.fullAsset.width;
+      const fullHeight = tool.fullAsset.height;
+
+      // Calculate quad coordinates for the piece
+      // Support both x property (variable widths) and col property (equal widths)
+      const pieceX = piece.x !== undefined ? piece.x : piece.col * piece.width;
+      const qx = pieceX / fullWidth;
+      const qy = 0;  // All pieces are in a single row
+      const qw = piece.width / fullWidth;
+      const qh = 1;  // Full height
+
+      add([
+        sprite(tool.sprite, {
+          quad: quad(qx, qy, qw, qh),
+        }),
+        pos(x, y),
+        scale(spriteScale),
+        z(4),
+      ]);
+    } else {
+      // Regular full sprite
+      add([
+        sprite(tool.sprite),
+        pos(x, y),
+        scale(spriteScale),
+        z(4),
+      ]);
+    }
   } else {
     // Fallback procedural building for tools without sprites
     add([

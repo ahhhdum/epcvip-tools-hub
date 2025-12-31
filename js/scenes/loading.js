@@ -8,6 +8,7 @@
 import { GAME_CONFIG, COLORS, CHARACTERS } from '../config.js';
 import { loadSounds } from '../systems/audio.js';
 import { getLoadingLayout } from '../systems/ui-layout.js';
+import { getAllBuildingSprites } from '../systems/entity-loader.js';
 
 // Standard animation config (same for all characters - first 6 rows)
 const ANIM_CONFIG = {
@@ -32,10 +33,19 @@ export function loadingScene() {
     });
   });
 
-  // Load building sprites
-  loadSprite('building-house-1', 'assets/sprites/buildings/House_1_Stone_Base_Red.png');
-  loadSprite('building-house-2', 'assets/sprites/buildings/House_2_Stone_Base_Blue.png');
-  loadSprite('building-house-3', 'assets/sprites/buildings/House_3_Stone_Base_Black.png');
+  // Load building sprites dynamically from asset library
+  const buildingSprites = getAllBuildingSprites();
+  for (const spriteInfo of buildingSprites) {
+    // Convert path from editor format (../assets/...) to game format (assets/...)
+    const gamePath = spriteInfo.file.replace('../', '');
+    loadSprite(spriteInfo.spriteName, gamePath);
+  }
+
+  // Load tileset for terrain (16x10 grid of 16x16 tiles)
+  loadSprite('tileset-grass', 'assets/tiles/Grass_Tiles_1.png', {
+    sliceX: 16,
+    sliceY: 10,
+  });
 
   // Get responsive layout
   const layout = getLoadingLayout();

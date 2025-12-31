@@ -1,8 +1,11 @@
 /**
  * EPCVIP Tools Hub - Configuration
  *
- * Add new tools by adding to the TOOLS array.
- * Buildings auto-generate from this config.
+ * Game configuration constants and legacy building definitions.
+ *
+ * NOTE: Buildings are now primarily defined via the map editor.
+ * Use tools/map-editor.html to place buildings, then save to maps/village.json.
+ * The game loads entities from the map, falling back to TOOLS array if empty.
  */
 
 export const GAME_CONFIG = {
@@ -35,8 +38,9 @@ export const COLORS = {
   white: [255, 255, 255],
 };
 
-// Collision shape presets for reuse across buildings
-// Coordinates are normalized (0-1), scaled to actual sprite dimensions at runtime
+// DEPRECATED: Collision shapes have been moved to tools/js/asset-library.js
+// These are kept for backward compatibility with the TOOLS array below.
+// New buildings should define collision shapes in the asset library.
 const COLLISION_SHAPES = {
   // house-1: 96x128 - triangle roof fits well, use compound shape
   house1: [
@@ -53,6 +57,10 @@ const COLLISION_SHAPES = {
   ],
 };
 
+// DEPRECATED: Buildings should now be placed using the map editor and saved to maps/village.json
+// The game will load entities from the map JSON if available, falling back to this array.
+// To migrate: Place buildings in the map editor, set their properties (name, URL), and save.
+// Once the map has entities, this array can be removed.
 export const TOOLS = [
   {
     id: 'ping-tree',

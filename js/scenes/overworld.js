@@ -11,12 +11,14 @@ import { createTree, createFlower, drawGround } from '../entities/decoration.js'
 import { initDialog, showDialog, clearDialog } from '../systems/dialog.js';
 import { initFritelleSystem } from '../entities/collectible.js';
 import { connectToServer, isMultiplayerConnected, getPlayerCount } from '../systems/multiplayer.js';
+import { loadEntities } from '../systems/entity-loader.js';
+import { loadMapData } from '../systems/tilemap.js';
 
-export function overworldScene() {
+export async function overworldScene() {
   const TILE = GAME_CONFIG.tileSize;
 
-  // Draw ground (grass + paths)
-  drawGround();
+  // Draw ground (grass + paths) - may use tilemap if enabled
+  await drawGround();
 
   // Create decorations
   TREES.forEach(t => createTree(t.x, t.y));
@@ -24,8 +26,23 @@ export function overworldScene() {
   // Create flowers from config
   FLOWERS.forEach(f => createFlower(f.x, f.y));
 
-  // Create buildings for each tool
-  const buildings = TOOLS.map(tool => createBuilding(tool));
+  // Load buildings from map JSON (primary) or fall back to TOOLS config
+  let buildings = [];
+  try {
+    const mapData = await loadMapData('maps/village.json');
+    if (mapData.entities && mapData.entities.length > 0) {
+      buildings = loadEntities(mapData);
+      console.log(`Loaded ${buildings.length} buildings from map`);
+    } else {
+      // Map has no entities yet, use legacy TOOLS array
+      console.log('Map has no entities, using TOOLS config');
+      buildings = TOOLS.map(tool => createBuilding(tool));
+    }
+  } catch (error) {
+    // Map loading failed, use legacy TOOLS array
+    console.warn('Failed to load map, using TOOLS config:', error);
+    buildings = TOOLS.map(tool => createBuilding(tool));
+  }
 
   // Create player (start in center-ish area of world)
   const player = createPlayer({ x: 20 * TILE, y: 15 * TILE });

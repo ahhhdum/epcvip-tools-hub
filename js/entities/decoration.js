@@ -2,23 +2,53 @@
  * Decoration Entities
  *
  * Trees, flowers, and ground drawing.
- * Uses simple colored shapes until sprites are loaded.
+ * Supports both procedural (simple shapes) and tilemap-based rendering.
  */
 
 import { GAME_CONFIG, COLORS } from '../config.js';
+import { renderTileMap, loadMapData } from '../systems/tilemap.js';
 
 const TILE = GAME_CONFIG.tileSize;
 // Use world dimensions for map size (not viewport)
 const MAP_W = Math.floor(GAME_CONFIG.worldWidth / TILE);
 const MAP_H = Math.floor(GAME_CONFIG.worldHeight / TILE);
 
-export function drawGround() {
+// Set to true to use tilemap-based terrain (requires tileset assets)
+// Currently disabled - tileset tiles 1-3 are hedges, not grass
+const USE_TILEMAP = false;
+
+// Store tile entities for potential cleanup
+let currentTileEntities = null;
+
+/**
+ * Draw ground - uses tilemap if available, falls back to procedural
+ */
+export async function drawGround() {
+  if (USE_TILEMAP) {
+    try {
+      const mapData = await loadMapData('maps/village.json');
+      currentTileEntities = renderTileMap(mapData);
+      console.log('Tilemap rendered successfully');
+      return;
+    } catch (error) {
+      console.warn('Tilemap failed, falling back to procedural:', error);
+    }
+  }
+
+  // Fallback: procedural ground
+  drawProceduralGround();
+}
+
+/**
+ * Draw procedural ground (original implementation)
+ */
+function drawProceduralGround() {
   // Base grass layer covering entire world
   add([
     rect(GAME_CONFIG.worldWidth, GAME_CONFIG.worldHeight),
     pos(0, 0),
     color(...COLORS.grass),
-    z(0),
+    z(-1),
   ]);
 
   // Grass texture pattern (for entire world)
@@ -29,13 +59,13 @@ export function drawGround() {
           rect(3, 3),
           pos(x * TILE + 6, y * TILE + 6),
           color(...COLORS.grassDark),
-          z(1),
+          z(0),
         ]);
         add([
           rect(3, 3),
           pos(x * TILE + 15, y * TILE + 15),
           color(...COLORS.grassDark),
-          z(1),
+          z(0),
         ]);
       }
     }
