@@ -763,6 +763,28 @@
     import { ASSET_LIBRARY, getAssetsByType, getAssetById, getAssetsByCategory, getCategoriesForType } from './js/asset-library.js';
 
     // ===================
+    // EDITOR CONFIGURATION
+    // ===================
+    // Extracted magic numbers for maintainability
+    const EDITOR_CONFIG = {
+      // UI dimensions
+      LAYER_INFO_WIDTH: 120,
+      LAYER_INFO_HEIGHT: 24,
+
+      // Opacity values for visual feedback
+      INACTIVE_LAYER_OPACITY: 0.5,
+      DRAG_PREVIEW_OPACITY: 0.7,
+      TILE_PREVIEW_OPACITY: 0.5,
+
+      // Colors
+      PLACEHOLDER_COLOR: 'rgba(100, 100, 200, 0.5)',
+      ENTITY_LABEL_BG: 'rgba(0, 0, 0, 0.7)',
+
+      // Timing
+      BUTTON_FEEDBACK_MS: 1500,
+    };
+
+    // ===================
     // STATE
     // ===================
     const TILE_SIZE = 16;
@@ -1551,7 +1573,7 @@
 
       // Mode indicator
       mapCtx.fillStyle = 'rgba(233, 69, 96, 0.2)';
-      mapCtx.fillRect(0, 0, 120, 24);
+      mapCtx.fillRect(0, 0, EDITOR_CONFIG.LAYER_INFO_WIDTH, EDITOR_CONFIG.LAYER_INFO_HEIGHT);
       mapCtx.fillStyle = '#e94560';
       mapCtx.font = '12px sans-serif';
       const modeText = currentMode === 'tiles' ? `Tiles: ${currentLayer}` : 'Entities';
@@ -1600,7 +1622,7 @@
             const sx = (tileIndex % tilesetCols) * TILE_SIZE;
             const sy = Math.floor(tileIndex / tilesetCols) * TILE_SIZE;
 
-            mapCtx.globalAlpha = 0.5;
+            mapCtx.globalAlpha = EDITOR_CONFIG.TILE_PREVIEW_OPACITY;
             mapCtx.drawImage(tilesetImage, sx, sy, TILE_SIZE, TILE_SIZE,
                              px, py, size, size);
             mapCtx.globalAlpha = 1;
@@ -1653,7 +1675,7 @@
 
       // Semi-transparent while dragging
       if (isBeingDragged) {
-        mapCtx.globalAlpha = 0.7;
+        mapCtx.globalAlpha = EDITOR_CONFIG.DRAG_PREVIEW_OPACITY;
       }
 
       if (img) {
@@ -1661,7 +1683,7 @@
         mapCtx.drawImage(img, sx, sy, sw, sh, px, py, pw, ph);
       } else {
         // Placeholder
-        mapCtx.fillStyle = 'rgba(100, 100, 200, 0.5)';
+        mapCtx.fillStyle = EDITOR_CONFIG.PLACEHOLDER_COLOR;
         mapCtx.fillRect(px, py, pw, ph);
         mapCtx.strokeStyle = '#6464c8';
         mapCtx.strokeRect(px, py, pw, ph);
@@ -1681,7 +1703,7 @@
 
       // Name label
       if (entity.properties?.name && !isBeingDragged) {
-        mapCtx.fillStyle = 'rgba(0,0,0,0.7)';
+        mapCtx.fillStyle = EDITOR_CONFIG.ENTITY_LABEL_BG;
         mapCtx.fillRect(px, py - 18, mapCtx.measureText(entity.properties.name).width + 8, 16);
         mapCtx.fillStyle = '#fff';
         mapCtx.font = '11px sans-serif';
@@ -2907,7 +2929,7 @@
         const btn = document.getElementById('copySlicerOutput');
         const original = btn.textContent;
         btn.textContent = 'Copied!';
-        setTimeout(() => btn.textContent = original, 1500);
+        setTimeout(() => btn.textContent = original, EDITOR_CONFIG.BUTTON_FEEDBACK_MS);
       }).catch(err => {
         console.error('Failed to copy:', err);
         alert('Failed to copy to clipboard');
