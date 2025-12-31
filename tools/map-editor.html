@@ -473,9 +473,57 @@
       color: #666;
       margin-top: 8px;
     }
+
+    /* Toast Notifications */
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 10000;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .toast {
+      padding: 12px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      max-width: 320px;
+      animation: toast-in 0.3s ease-out;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .toast-info {
+      background: #0f3460;
+      border-left: 4px solid #3498db;
+    }
+
+    .toast-warn {
+      background: #3d3d00;
+      border-left: 4px solid #f1c40f;
+    }
+
+    .toast-error {
+      background: #3d1010;
+      border-left: 4px solid #e94560;
+    }
+
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateX(100%); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes toast-out {
+      from { opacity: 1; transform: translateX(0); }
+      to { opacity: 0; transform: translateX(100%); }
+    }
   </style>
 </head>
 <body>
+  <!-- Toast notification container -->
+  <div id="toastContainer" class="toast-container"></div>
+
   <header>
     <h1>Map Editor - EPCVIP Tools Hub</h1>
     <div class="toolbar">
@@ -782,7 +830,27 @@
 
       // Timing
       BUTTON_FEEDBACK_MS: 1500,
+      TOAST_DURATION_MS: 4000,
     };
+
+    /**
+     * Show a toast notification to the user.
+     * @param {string} message - The message to display
+     * @param {'info'|'warn'|'error'} type - Notification type (default: 'info')
+     */
+    function showNotification(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      toast.textContent = message;
+      container.appendChild(toast);
+
+      // Auto-remove after duration
+      setTimeout(() => {
+        toast.style.animation = 'toast-out 0.3s ease-out forwards';
+        setTimeout(() => toast.remove(), 300);
+      }, EDITOR_CONFIG.TOAST_DURATION_MS);
+    }
 
     // ===================
     // STATE
@@ -831,6 +899,7 @@
       if (saved) pieceOverrides = JSON.parse(saved);
     } catch (e) {
       console.warn('Failed to load piece overrides:', e);
+      showNotification('Failed to load saved sprite pieces. Using defaults.', 'warn');
     }
 
     /**
@@ -869,6 +938,7 @@
       } catch (e) {
         console.warn('Failed to load tileset definitions:', e);
         tilesetDefinitions = {};
+        showNotification('Failed to load saved tilesets. Using defaults.', 'warn');
       }
     }
 
@@ -878,6 +948,7 @@
         localStorage.setItem('mapEditor_tilesetDefinitions', JSON.stringify(tilesetDefinitions));
       } catch (e) {
         console.warn('Failed to save tileset definitions:', e);
+        showNotification('Failed to save tileset. Check browser storage.', 'error');
       }
     }
 
@@ -906,6 +977,7 @@
           }
         } catch (e) {
           console.warn(`Could not load source tileset: ${sourceName}`, e);
+          showNotification(`Could not load tileset: ${sourceName}`, 'warn');
         }
       }
 
@@ -2581,6 +2653,7 @@
         localStorage.setItem('mapEditor_pieceOverrides', JSON.stringify(pieceOverrides));
       } catch (e) {
         console.warn('Failed to save piece overrides:', e);
+        showNotification('Failed to save sprite pieces. Check browser storage.', 'error');
       }
     }
 
