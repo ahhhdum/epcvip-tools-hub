@@ -84,7 +84,7 @@ export function connectToServer(playerName = 'Player') {
  */
 function handleMessage(msg, initResolve) {
   switch (msg.type) {
-    case 'init':
+    case 'init': {
       localPlayerId = msg.playerId;
       connected = true;
       console.log('Connected as', msg.player.name, '- id:', localPlayerId);
@@ -104,6 +104,7 @@ function handleMessage(msg, initResolve) {
 
       if (initResolve) initResolve(true);
       break;
+    }
 
     case 'playerJoined':
       console.log('Player joined:', msg.player.name);
@@ -139,14 +140,15 @@ function handleMessage(msg, initResolve) {
       showHitEffect(msg.targetId, msg.throwerId);
       break;
 
-    case 'playerRenamed':
+    case 'playerRenamed': {
       const renamedData = otherPlayers.get(msg.playerId);
       if (renamedData && renamedData.label) {
         renamedData.label.text = msg.name;
       }
       break;
+    }
 
-    case 'playerAppearanceChanged':
+    case 'playerAppearanceChanged': {
       const appearanceData = otherPlayers.get(msg.playerId);
       if (appearanceData && appearanceData.sprite) {
         appearanceData.appearance = msg.appearance;
@@ -159,6 +161,7 @@ function handleMessage(msg, initResolve) {
         appearanceData.sprite.flipX = dir === 'left';
       }
       break;
+    }
   }
 }
 

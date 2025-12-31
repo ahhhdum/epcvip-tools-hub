@@ -198,7 +198,7 @@ async function loadVirtualTileset(name) {
  * Check if a tileset name is a virtual tileset
  */
 function isVirtualTileset(name) {
-  return tilesetDefinitions.hasOwnProperty(name);
+  return Object.hasOwn(tilesetDefinitions, name);
 }
 
 /**

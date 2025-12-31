@@ -149,7 +149,9 @@ export function getSelectedCharacter() {
       const data = JSON.parse(saved);
       const char = CHARACTERS.find(c => c.id === data.id);
       if (char) return char;
-    } catch (e) {}
+    } catch {
+      // Invalid JSON in localStorage - fall through to default
+    }
   }
   return CHARACTERS[0]; // Default to Farmer Bob
 }
