@@ -811,6 +811,20 @@
       console.warn('Failed to load piece overrides:', e);
     }
 
+    /**
+     * Get effective pieces for an asset, applying any overrides from localStorage.
+     * This is the single source of truth for piece lookups.
+     * @param {string} assetId - The asset ID to look up
+     * @param {Array} originalPieces - The original pieces from asset library
+     * @returns {Array} The pieces to use (override, merged, or original)
+     */
+    function getEffectivePieces(assetId, originalPieces) {
+      const override = pieceOverrides[assetId];
+      if (!override) return originalPieces;
+      if (override.replaceOriginal) return override.pieces;
+      return [...(originalPieces || []), ...override.pieces];
+    }
+
     // ===================
     // MULTI-TILESET SUPPORT
     // ===================
@@ -1087,18 +1101,7 @@
       const result = [];
 
       for (const asset of assets) {
-        // Check for piece overrides
-        const override = pieceOverrides[asset.id];
-        let piecesToUse = asset.pieces;
-
-        if (override) {
-          if (override.replaceOriginal) {
-            piecesToUse = override.pieces;
-          } else {
-            // Merge: original pieces + override pieces
-            piecesToUse = [...(asset.pieces || []), ...override.pieces];
-          }
-        }
+        const piecesToUse = getEffectivePieces(asset.id, asset.pieces);
 
         if (piecesToUse && piecesToUse.length > 0) {
           // Expand sprite sheet into individual pieces
@@ -1621,19 +1624,9 @@
       let tw = asset.tileWidth || 4;
       let th = asset.tileHeight || 4;
 
-      // Handle sprite sheet pieces - check overrides first, then original
+      // Handle sprite sheet pieces
       if (entity.pieceId) {
-        // Get effective pieces (override or original)
-        const override = pieceOverrides[entity.assetId];
-        let piecesToUse = asset.pieces;
-        if (override) {
-          if (override.replaceOriginal) {
-            piecesToUse = override.pieces;
-          } else {
-            piecesToUse = [...(asset.pieces || []), ...override.pieces];
-          }
-        }
-
+        const piecesToUse = getEffectivePieces(entity.assetId, asset.pieces);
         const piece = piecesToUse?.find(p => p.id === entity.pieceId);
         if (piece) {
           // Support both x property (variable widths) and col property (equal widths)
@@ -1772,17 +1765,9 @@
         const asset = getAnyAssetById(dragEntity.assetId);
         let tw = asset?.tileWidth || 1;
         let th = asset?.tileHeight || 1;
-        // Use piece dimensions for sprite sheet pieces - check overrides first
+        // Use piece dimensions for sprite sheet pieces
         if (dragEntity.pieceId) {
-          const override = pieceOverrides[dragEntity.assetId];
-          let piecesToUse = asset?.pieces;
-          if (override) {
-            if (override.replaceOriginal) {
-              piecesToUse = override.pieces;
-            } else {
-              piecesToUse = [...(asset?.pieces || []), ...override.pieces];
-            }
-          }
+          const piecesToUse = getEffectivePieces(dragEntity.assetId, asset?.pieces);
           const piece = piecesToUse?.find(p => p.id === dragEntity.pieceId);
           if (piece) {
             tw = piece.tileWidth;
@@ -1970,17 +1955,9 @@
         let tw = asset?.tileWidth || 4;
         let th = asset?.tileHeight || 4;
 
-        // Use piece dimensions for sprite sheet pieces - check overrides first
+        // Use piece dimensions for sprite sheet pieces
         if (e.pieceId) {
-          const override = pieceOverrides[e.assetId];
-          let piecesToUse = asset?.pieces;
-          if (override) {
-            if (override.replaceOriginal) {
-              piecesToUse = override.pieces;
-            } else {
-              piecesToUse = [...(asset?.pieces || []), ...override.pieces];
-            }
-          }
+          const piecesToUse = getEffectivePieces(e.assetId, asset?.pieces);
           const piece = piecesToUse?.find(p => p.id === e.pieceId);
           if (piece) {
             tw = piece.tileWidth;
@@ -3089,15 +3066,7 @@
         let tw = asset?.tileWidth || 1;
         let th = asset?.tileHeight || 1;
         if (selectedEntity.pieceId) {
-          const override = pieceOverrides[selectedEntity.assetId];
-          let piecesToUse = asset?.pieces;
-          if (override) {
-            if (override.replaceOriginal) {
-              piecesToUse = override.pieces;
-            } else {
-              piecesToUse = [...(asset?.pieces || []), ...override.pieces];
-            }
-          }
+          const piecesToUse = getEffectivePieces(selectedEntity.assetId, asset?.pieces);
           const piece = piecesToUse?.find(p => p.id === selectedEntity.pieceId);
           if (piece) {
             tw = piece.tileWidth;
