@@ -1,0 +1,2395 @@
+import { ASSET_LIBRARY, getAssetsByType, getAssetById, getAssetsByCategory, getCategoriesForType } from './asset-library.js';
+
+// ===================
+// EDITOR CONFIGURATION
+// ===================
+// Extracted magic numbers for maintainability
+const EDITOR_CONFIG = {
+  // UI dimensions
+  LAYER_INFO_WIDTH: 120,
+  LAYER_INFO_HEIGHT: 24,
+
+  // Opacity values for visual feedback
+  INACTIVE_LAYER_OPACITY: 0.5,
+  DRAG_PREVIEW_OPACITY: 0.7,
+  TILE_PREVIEW_OPACITY: 0.5,
+
+  // Colors
+  PLACEHOLDER_COLOR: 'rgba(100, 100, 200, 0.5)',
+  ENTITY_LABEL_BG: 'rgba(0, 0, 0, 0.7)',
+
+  // Timing
+  BUTTON_FEEDBACK_MS: 1500,
+  TOAST_DURATION_MS: 4000,
+};
+
+/**
+ * Show a toast notification to the user.
+ * @param {string} message - The message to display
+ * @param {'info'|'warn'|'error'} type - Notification type (default: 'info')
+ */
+function showNotification(message, type = 'info') {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.textContent = message;
+  container.appendChild(toast);
+
+  // Auto-remove after duration
+  setTimeout(() => {
+    toast.style.animation = 'toast-out 0.3s ease-out forwards';
+    setTimeout(() => toast.remove(), 300);
+  }, EDITOR_CONFIG.TOAST_DURATION_MS);
+}
+
+// ===================
+// STATE
+// ===================
+const TILE_SIZE = 16;
+let zoom = 2;
+let currentMode = 'tiles';  // 'tiles' or 'entities'
+let currentLayer = 'ground';
+let isEraser = false;
+let eraserSize = 1;  // Independent eraser size (1-8)
+let isFillMode = false;
+let tilesetImage = null;
+let tilesetCols = 16;
+let tilesetRows = 10;
+
+// Multi-tile brush selection
+let selectedBrush = {
+  width: 1,
+  height: 1,
+  tiles: [[0]],
+  startCol: 0,
+  startRow: 0
+};
+
+// Tileset drag selection state
+let isTilesetDragging = false;
+let tilesetDragStart = { col: 0, row: 0 };
+let tilesetDragEnd = { col: 0, row: 0 };
+
+// Hover preview state
+let hoverTileX = -1;
+let hoverTileY = -1;
+
+// Entity state
+let selectedAsset = null;
+let selectedEntity = null;  // Currently selected entity on map
+let entityImages = {};  // Cache loaded entity images
+let entityIdCounter = 0;
+let selectableAssetsCache = [];  // Expanded assets (sprite sheet pieces)
+
+// Piece overrides stored in localStorage (initialized early for getSelectableAssets)
+// Format: { 'assetId': { pieces: [...], replaceOriginal: true } }
+let pieceOverrides = {};
+try {
+  const saved = localStorage.getItem('mapEditor_pieceOverrides');
+  if (saved) pieceOverrides = JSON.parse(saved);
+} catch (e) {
+  console.warn('Failed to load piece overrides:', e);
+  showNotification('Failed to load saved sprite pieces. Using defaults.', 'warn');
+}
+
+/**
+ * Get effective pieces for an asset, applying any overrides from localStorage.
+ * This is the single source of truth for piece lookups.
+ * @param {string} assetId - The asset ID to look up
+ * @param {Array} originalPieces - The original pieces from asset library
+ * @returns {Array} The pieces to use (override, merged, or original)
+ */
+function getEffectivePieces(assetId, originalPieces) {
+  const override = pieceOverrides[assetId];
+  if (!override) return originalPieces;
+  if (override.replaceOriginal) return override.pieces;
+  return [...(originalPieces || []), ...override.pieces];
+}
+
+// ===================
+// MULTI-TILESET SUPPORT
+// ===================
+// Each tile stores [tilesetIndex, tileIndex] instead of just a number.
+// This allows mixing tiles from different tilesets on the same map.
+let loadedTilesets = {};      // { 'Grass_Tiles_1': Image, ... } - Runtime cache
+let currentTilesetName = '';  // Currently selected tileset for painting
+
+// Virtual tileset definitions (stored in localStorage)
+// Allows combining multiple source PNGs into one logical tileset
+let tilesetDefinitions = {};  // { 'Grass': { sources: ['Grass_Tiles_1', 'Grass_Tiles_2'] }, ... }
+
+// Load tileset definitions from localStorage
+function loadTilesetDefinitions() {
+  try {
+    const saved = localStorage.getItem('mapEditor_tilesetDefinitions');
+    if (saved) {
+      tilesetDefinitions = JSON.parse(saved);
+    }
+  } catch (e) {
+    console.warn('Failed to load tileset definitions:', e);
+    tilesetDefinitions = {};
+    showNotification('Failed to load saved tilesets. Using defaults.', 'warn');
+  }
+}
+
+// Save tileset definitions to localStorage
+function saveTilesetDefinitions() {
+  try {
+    localStorage.setItem('mapEditor_tilesetDefinitions', JSON.stringify(tilesetDefinitions));
+  } catch (e) {
+    console.warn('Failed to save tileset definitions:', e);
+    showNotification('Failed to save tileset. Check browser storage.', 'error');
+  }
+}
+
+/**
+ * Load a virtual tileset by combining multiple source PNGs.
+ * Creates a combined canvas stacking sources vertically.
+ * @param {string} name - Virtual tileset name
+ * @returns {Promise<HTMLCanvasElement|null>} Combined canvas or null if not virtual
+ */
+async function loadVirtualTileset(name) {
+  const def = tilesetDefinitions[name];
+  if (!def || !def.sources || def.sources.length === 0) {
+    return null;  // Not a virtual tileset
+  }
+
+  // Load all source images
+  const images = [];
+  for (const sourceName of def.sources) {
+    try {
+      // Load source if not already cached
+      if (!loadedTilesets[sourceName]) {
+        await loadTilesetByName(sourceName, false);
+      }
+      if (loadedTilesets[sourceName]) {
+        images.push(loadedTilesets[sourceName]);
+      }
+    } catch (e) {
+      console.warn(`Could not load source tileset: ${sourceName}`, e);
+      showNotification(`Could not load tileset: ${sourceName}`, 'warn');
+    }
+  }
+
+  if (images.length === 0) return null;
+
+  // Calculate combined dimensions (stack vertically, use max width)
+  const width = Math.max(...images.map(img => img.width));
+  const height = images.reduce((sum, img) => sum + img.height, 0);
+
+  // Create combined canvas
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+
+  let y = 0;
+  for (const img of images) {
+    ctx.drawImage(img, 0, y);
+    y += img.height;
+  }
+
+  // Cache the combined canvas as an "image"
+  loadedTilesets[name] = canvas;
+  return canvas;
+}
+
+/**
+ * Check if a tileset name is a virtual tileset
+ */
+function isVirtualTileset(name) {
+  return tilesetDefinitions.hasOwnProperty(name);
+}
+
+/**
+ * Get list of available raw tilesets (built-in ones)
+ */
+function getRawTilesets() {
+  return [
+    'Grass_Tiles_1', 'Grass_Tiles_2', 'Grass_Tiles_3', 'Grass_Tiles_4',
+    'Cobble_Road_1', 'Cobble_Road_2', 'Pavement_Tiles', 'Hedge_Tiles'
+  ];
+}
+
+/**
+ * Get tileset index in mapData.tilesets, adding if new.
+ * This is the canonical way to write tile data.
+ * @param {string} tilesetName - Name like 'Grass_Tiles_1'
+ * @returns {number} Index in mapData.tilesets array
+ */
+function getTilesetIndex(tilesetName) {
+  let idx = mapData.tilesets.indexOf(tilesetName);
+  if (idx === -1) {
+    idx = mapData.tilesets.length;
+    mapData.tilesets.push(tilesetName);
+  }
+  return idx;
+}
+
+/**
+ * Parse a tile value from map data.
+ * This is the canonical way to read tile data.
+ * @param {number|Array} tile - 0 for empty, or [tilesetIdx, tileIdx]
+ * @returns {{ empty: boolean, tilesetName: string|null, tileIndex: number }}
+ */
+function parseTile(tile) {
+  if (tile === 0) return { empty: true, tilesetName: null, tileIndex: 0 };
+  const [tsIdx, tileIdx] = tile;
+  return {
+    empty: false,
+    tilesetName: mapData.tilesets[tsIdx],
+    tileIndex: tileIdx
+  };
+}
+
+/**
+ * Migrate old map format (single tileset, number tiles) to new format.
+ * Old: { tileset: 'Grass', tileLayers: { ground: [[1, 2, 3], ...] } }
+ * New: { tilesets: ['Grass'], tileLayers: { ground: [[[0,0], [0,1], [0,2]], ...] } }
+ * @param {Object} data - Map data to migrate
+ * @returns {Object} Migrated map data
+ */
+function migrateMapData(data) {
+  // Already new format
+  if (data.tilesets) return data;
+
+  // Old format: single tileset, tiles are just numbers
+  const oldTileset = data.tileset || 'Grass_Tiles_1';
+  data.tilesets = [oldTileset];
+
+  // Convert tile values: number → [0, number-1]
+  // Old format stored index+1 (0=empty, 1=tile0, 2=tile1, etc.)
+  for (const layerName in data.tileLayers) {
+    const layer = data.tileLayers[layerName];
+    for (let y = 0; y < layer.length; y++) {
+      for (let x = 0; x < layer[y].length; x++) {
+        const tile = layer[y][x];
+        if (tile !== 0 && typeof tile === 'number') {
+          // Old format: stored index+1, convert to [tilesetIdx, tileIdx]
+          layer[y][x] = [0, tile - 1];
+        }
+      }
+    }
+  }
+
+  delete data.tileset;  // Remove old single-tileset field
+  return data;
+}
+
+// Drag state
+let isDragging = false;
+let dragEntity = null;
+let dragOffsetX = 0;
+let dragOffsetY = 0;
+let dragPreviewX = 0;
+let dragPreviewY = 0;
+
+// Map data (new format with entities and multi-tileset support)
+// Tiles are stored as [tilesetIndex, tileIndex] or 0 for empty
+let mapData = {
+  name: 'Village',
+  width: 50,
+  height: 45,
+  tileSize: TILE_SIZE,
+  tilesets: ['Grass_Tiles_1'],  // Array of tileset names used in this map
+  tileLayers: {
+    ground: [],
+    paths: [],
+    decorations: []
+  },
+  entities: []
+};
+
+// ===================
+// CANVAS REFS
+// ===================
+const tilesetCanvas = document.getElementById('tilesetCanvas');
+const tilesetCtx = tilesetCanvas.getContext('2d');
+const selectedPreview = document.getElementById('selectedPreview');
+const selectedCtx = selectedPreview.getContext('2d');
+const selectedAssetPreview = document.getElementById('selectedAssetPreview');
+const selectedAssetCtx = selectedAssetPreview.getContext('2d');
+const mapCanvas = document.getElementById('mapCanvas');
+const mapCtx = mapCanvas.getContext('2d');
+
+// ===================
+// INITIALIZATION
+// ===================
+function initMap(width, height) {
+  mapData.width = width;
+  mapData.height = height;
+  for (const layer of Object.keys(mapData.tileLayers)) {
+    mapData.tileLayers[layer] = [];
+    for (let y = 0; y < height; y++) {
+      mapData.tileLayers[layer][y] = new Array(width).fill(0);
+    }
+  }
+  mapData.entities = [];
+}
+
+function resizeMapCanvas() {
+  mapCanvas.width = mapData.width * TILE_SIZE * zoom;
+  mapCanvas.height = mapData.height * TILE_SIZE * zoom;
+  mapCtx.imageSmoothingEnabled = false;
+}
+
+// ===================
+// ASSET LIBRARY
+// ===================
+
+let currentEntityType = 'buildings';  // Track current entity type
+
+function loadAssetLibrary() {
+  // Load all entity types: buildings, decorations, trees
+  const entityTypes = ['buildings', 'decorations', 'trees'];
+
+  for (const type of entityTypes) {
+    const assets = getAssetsByType(type);
+    assets.forEach(asset => {
+      const img = new Image();
+      img.src = asset.file;
+      img.onload = () => {
+        entityImages[asset.id] = img;
+        renderAssetGrid();
+        renderMap();
+      };
+    });
+  }
+  renderAssetGrid();
+  updateCategorySelect();
+}
+
+// Update category select based on current entity type
+function updateCategorySelect() {
+  const categorySelect = document.getElementById('categorySelect');
+  const assets = getAssetsByType(currentEntityType);
+  const categories = [...new Set(assets.map(a => a.category))];
+
+  categorySelect.innerHTML = '<option value="all">All</option>' +
+    categories.map(cat => `<option value="${cat}">${cat.charAt(0).toUpperCase() + cat.slice(1)}</option>`).join('');
+}
+
+// Entity type selector
+document.getElementById('entityTypeSelect').addEventListener('change', (e) => {
+  currentEntityType = e.target.value;
+  selectedAsset = null;
+  updateCategorySelect();
+  renderAssetGrid();
+  updateSelectedAssetPreview();
+});
+
+// Expand sprite sheets into individual selectable pieces
+// Applies piece overrides from localStorage
+function getSelectableAssets() {
+  const assets = getAssetsByType(currentEntityType);
+  const result = [];
+
+  for (const asset of assets) {
+    const piecesToUse = getEffectivePieces(asset.id, asset.pieces);
+
+    if (piecesToUse && piecesToUse.length > 0) {
+      // Expand sprite sheet into individual pieces
+      for (let i = 0; i < piecesToUse.length; i++) {
+        const piece = piecesToUse[i];
+        result.push({
+          ...asset,
+          id: `${asset.id}__${piece.id}`,
+          name: piece.name,  // Use just piece name for brevity
+          pieceIndex: i,
+          piece: piece,
+          tileWidth: piece.tileWidth,
+          tileHeight: piece.tileHeight,
+          isSpritePiece: true,
+          parentAssetId: asset.id,
+          entityType: currentEntityType
+        });
+      }
+    } else {
+      result.push({
+        ...asset,
+        entityType: currentEntityType
+      });
+    }
+  }
+  return result;
+}
+
+function renderAssetGrid() {
+  const grid = document.getElementById('assetGrid');
+  const category = document.getElementById('categorySelect').value;
+  selectableAssetsCache = getSelectableAssets();
+
+  let assets = selectableAssetsCache;
+  if (category !== 'all') {
+    assets = assets.filter(a => a.category === category);
+  }
+
+  grid.innerHTML = assets.map(asset => `
+    <div class="asset-item ${selectedAsset?.id === asset.id ? 'selected' : ''}"
+         data-asset-id="${asset.id}">
+      <canvas class="asset-preview" width="80" height="60"
+              data-asset-id="${asset.id}"></canvas>
+      <div class="name">${asset.name}</div>
+    </div>
+  `).join('');
+
+  // Draw previews on canvases
+  for (const asset of assets) {
+    drawAssetPreview(asset);
+  }
+
+  // Add click handlers
+  grid.querySelectorAll('.asset-item').forEach(item => {
+    item.addEventListener('click', () => selectAsset(item.dataset.assetId));
+  });
+}
+
+function drawAssetPreview(asset) {
+  const canvas = document.querySelector(`canvas.asset-preview[data-asset-id="${asset.id}"]`);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, 80, 60);
+
+  const imgId = asset.parentAssetId || asset.id;
+  const img = entityImages[imgId];
+  if (!img) return;
+
+  // Calculate source region
+  let sx = 0, sy = 0, sw = img.width, sh = img.height;
+  if (asset.isSpritePiece && asset.piece) {
+    // Support both x property (variable widths) and col property (equal widths)
+    sx = asset.piece.x !== undefined ? asset.piece.x : asset.piece.col * asset.piece.width;
+    sw = asset.piece.width;
+    sh = asset.piece.height;
+  }
+
+  // Scale to fit preview
+  const scale = Math.min(80 / sw, 60 / sh);
+  const dw = sw * scale, dh = sh * scale;
+  const dx = (80 - dw) / 2, dy = (60 - dh) / 2;
+
+  ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+}
+
+function selectAsset(assetId) {
+  // Find in expanded selectable assets
+  selectedAsset = selectableAssetsCache.find(a => a.id === assetId);
+  if (!selectedAsset) {
+    // Fallback to base asset lookup in current type
+    selectedAsset = getAssetById(currentEntityType, assetId);
+  }
+  selectedEntity = null;  // Deselect any map entity
+  updatePropertiesPanel();
+  renderAssetGrid();
+  updateSelectedAssetPreview();
+}
+
+// Get asset from any entity type
+function getAnyAssetById(assetId) {
+  return getAssetById('buildings', assetId) ||
+         getAssetById('decorations', assetId) ||
+         getAssetById('trees', assetId);
+}
+
+function updateSelectedAssetPreview() {
+  selectedAssetCtx.clearRect(0, 0, 48, 48);
+  selectedAssetCtx.imageSmoothingEnabled = false;
+
+  if (!selectedAsset) {
+    document.getElementById('selectedAssetName').textContent = 'None selected';
+    document.getElementById('selectedAssetSize').textContent = 'Click asset to select';
+    return;
+  }
+
+  const imgId = selectedAsset.parentAssetId || selectedAsset.id;
+  const img = entityImages[imgId];
+  if (!img) {
+    document.getElementById('selectedAssetName').textContent = selectedAsset.name;
+    document.getElementById('selectedAssetSize').textContent = 'Loading...';
+    return;
+  }
+
+  // Calculate source region for sprite pieces
+  let sx = 0, sy = 0, sw = img.width, sh = img.height;
+  if (selectedAsset.isSpritePiece && selectedAsset.piece) {
+    // Support both x property (variable widths) and col property (equal widths)
+    sx = selectedAsset.piece.x !== undefined ? selectedAsset.piece.x : selectedAsset.piece.col * selectedAsset.piece.width;
+    sw = selectedAsset.piece.width;
+    sh = selectedAsset.piece.height;
+  }
+
+  const scale = Math.min(48 / sw, 48 / sh);
+  const dw = sw * scale, dh = sh * scale;
+  selectedAssetCtx.drawImage(img, sx, sy, sw, sh, (48 - dw) / 2, (48 - dh) / 2, dw, dh);
+
+  document.getElementById('selectedAssetName').textContent = selectedAsset.name;
+  const tw = selectedAsset.tileWidth || 1;
+  const th = selectedAsset.tileHeight || 1;
+  document.getElementById('selectedAssetSize').textContent = `${tw}x${th} tiles`;
+}
+
+// ===================
+// INITIALIZATION
+// ===================
+initMap(50, 45);
+resizeMapCanvas();
+loadAssetLibrary();
+renderMap();
+
+// ===================
+// TILESET
+// ===================
+
+// Load tileset from assets folder by name
+/**
+ * Load a tileset by name and add to cache.
+ * Sets it as current tileset for painting.
+ * @param {string} name - Tileset name (without .png extension)
+ * @param {boolean} setAsCurrent - Whether to set as current painting tileset (default: true)
+ * @returns {Promise<Image>} Resolves with loaded image
+ */
+function loadTilesetByName(name, setAsCurrent = true) {
+  return new Promise((resolve, reject) => {
+    // Return cached image if already loaded
+    if (loadedTilesets[name]) {
+      if (setAsCurrent) {
+        selectTilesetForPainting(name);
+      }
+      resolve(loadedTilesets[name]);
+      return;
+    }
+
+    const img = new Image();
+    img.onload = () => {
+      // Add to cache
+      loadedTilesets[name] = img;
+
+      if (setAsCurrent) {
+        selectTilesetForPainting(name);
+      }
+
+      resolve(img);
+    };
+    img.onerror = () => {
+      console.error(`Failed to load tileset: ${name}`);
+      reject(new Error(`Failed to load tileset: ${name}`));
+    };
+    img.src = `../assets/tiles/${name}.png`;
+  });
+}
+
+/**
+ * Set a tileset as the current one for painting.
+ * Updates UI to show this tileset's tiles.
+ * @param {string} name - Tileset name
+ */
+function selectTilesetForPainting(name) {
+  const img = loadedTilesets[name];
+  if (!img) return;
+
+  currentTilesetName = name;
+  tilesetImage = img;
+  tilesetCols = Math.floor(img.width / TILE_SIZE);
+  tilesetRows = Math.floor(img.height / TILE_SIZE);
+  tilesetCanvas.width = img.width;
+  tilesetCanvas.height = img.height;
+
+  renderTileset();
+  updateSelectedPreview();
+  renderMap();
+}
+
+// Load default tileset on startup
+loadTilesetByName('Grass_Tiles_1');
+document.getElementById('tilesetSelect').value = 'Grass_Tiles_1';
+
+document.getElementById('loadTilesetBtn').addEventListener('click', () => {
+  document.getElementById('tilesetInput').click();
+});
+
+document.getElementById('tilesetInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        // Use filename (without .png) as tileset name
+        const name = file.name.replace('.png', '');
+
+        // Add to cache and set as current
+        loadedTilesets[name] = img;
+        currentTilesetName = name;
+        tilesetImage = img;
+        tilesetCols = Math.floor(img.width / TILE_SIZE);
+        tilesetRows = Math.floor(img.height / TILE_SIZE);
+        tilesetCanvas.width = img.width;
+        tilesetCanvas.height = img.height;
+
+        document.getElementById('tilesetSelect').value = '';  // Deselect built-in
+        renderTileset();
+        updateSelectedPreview();
+        renderMap();
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+});
+
+function renderTileset() {
+  if (!tilesetImage) return;
+  tilesetCtx.clearRect(0, 0, tilesetCanvas.width, tilesetCanvas.height);
+  tilesetCtx.drawImage(tilesetImage, 0, 0);
+
+  // Draw selection rectangle for brush
+  const sx = selectedBrush.startCol * TILE_SIZE;
+  const sy = selectedBrush.startRow * TILE_SIZE;
+  const sw = selectedBrush.width * TILE_SIZE;
+  const sh = selectedBrush.height * TILE_SIZE;
+
+  // Semi-transparent fill
+  tilesetCtx.fillStyle = 'rgba(233, 69, 96, 0.2)';
+  tilesetCtx.fillRect(sx, sy, sw, sh);
+
+  // Border
+  tilesetCtx.strokeStyle = '#e94560';
+  tilesetCtx.lineWidth = 2;
+  tilesetCtx.strokeRect(sx, sy, sw, sh);
+}
+
+function updateSelectedPreview() {
+  selectedCtx.clearRect(0, 0, 32, 32);
+  selectedCtx.imageSmoothingEnabled = false;
+
+  if (isEraser) {
+    selectedCtx.fillStyle = '#333';
+    selectedCtx.fillRect(0, 0, 32, 32);
+    selectedCtx.fillStyle = '#e94560';
+    selectedCtx.font = '20px sans-serif';
+    selectedCtx.fillText('X', 8, 24);
+    // Show eraser size (independent from paint brush)
+    const sizeLabel = eraserSize === 1 ? 'Eraser' : `Eraser ${eraserSize}x${eraserSize}`;
+    document.getElementById('selectedIndex').textContent = sizeLabel;
+    return;
+  }
+
+  if (!tilesetImage) {
+    selectedCtx.fillStyle = '#333';
+    selectedCtx.fillRect(0, 0, 32, 32);
+    document.getElementById('selectedIndex').textContent = '-';
+    return;
+  }
+
+  // Calculate source region from tileset
+  const sx = selectedBrush.startCol * TILE_SIZE;
+  const sy = selectedBrush.startRow * TILE_SIZE;
+  const sw = selectedBrush.width * TILE_SIZE;
+  const sh = selectedBrush.height * TILE_SIZE;
+
+  // Scale to fit 32x32 preview
+  const scale = Math.min(32 / sw, 32 / sh);
+  const dw = sw * scale;
+  const dh = sh * scale;
+  const dx = (32 - dw) / 2;
+  const dy = (32 - dh) / 2;
+
+  selectedCtx.drawImage(tilesetImage, sx, sy, sw, sh, dx, dy, dw, dh);
+
+  // Update label
+  const label = selectedBrush.width === 1 && selectedBrush.height === 1
+    ? `Tile ${selectedBrush.tiles[0][0]}`
+    : `${selectedBrush.width}x${selectedBrush.height}`;
+  document.getElementById('selectedIndex').textContent = label;
+}
+
+// Tileset drag selection for multi-tile brush
+tilesetCanvas.addEventListener('mousedown', (e) => {
+  if (!tilesetImage) return;
+  const rect = tilesetCanvas.getBoundingClientRect();
+  const col = Math.floor((e.clientX - rect.left) / TILE_SIZE);
+  const row = Math.floor((e.clientY - rect.top) / TILE_SIZE);
+
+  isTilesetDragging = true;
+  tilesetDragStart = { col, row };
+  tilesetDragEnd = { col, row };
+
+  isEraser = false;
+  document.getElementById('eraserBtn').classList.remove('active');
+
+  updateBrushFromDrag();
+  renderTileset();
+  updateSelectedPreview();
+});
+
+tilesetCanvas.addEventListener('mousemove', (e) => {
+  if (!isTilesetDragging || !tilesetImage) return;
+  const rect = tilesetCanvas.getBoundingClientRect();
+  const col = Math.min(tilesetCols - 1, Math.max(0,
+    Math.floor((e.clientX - rect.left) / TILE_SIZE)));
+  const row = Math.min(tilesetRows - 1, Math.max(0,
+    Math.floor((e.clientY - rect.top) / TILE_SIZE)));
+
+  tilesetDragEnd = { col, row };
+  updateBrushFromDrag();
+  renderTileset();
+  updateSelectedPreview();
+});
+
+tilesetCanvas.addEventListener('mouseup', () => {
+  isTilesetDragging = false;
+});
+
+tilesetCanvas.addEventListener('mouseleave', () => {
+  isTilesetDragging = false;
+});
+
+function updateBrushFromDrag() {
+  // Normalize selection (handle drag in any direction)
+  const minCol = Math.min(tilesetDragStart.col, tilesetDragEnd.col);
+  const maxCol = Math.max(tilesetDragStart.col, tilesetDragEnd.col);
+  const minRow = Math.min(tilesetDragStart.row, tilesetDragEnd.row);
+  const maxRow = Math.max(tilesetDragStart.row, tilesetDragEnd.row);
+
+  const width = maxCol - minCol + 1;
+  const height = maxRow - minRow + 1;
+
+  // Build 2D tile array
+  const tiles = [];
+  for (let r = 0; r < height; r++) {
+    const row = [];
+    for (let c = 0; c < width; c++) {
+      const tileIndex = (minRow + r) * tilesetCols + (minCol + c);
+      row.push(tileIndex);
+    }
+    tiles.push(row);
+  }
+
+  selectedBrush = { width, height, tiles, startCol: minCol, startRow: minRow };
+}
+
+// ===================
+// MAP RENDERING
+// ===================
+function renderMap() {
+  mapCtx.clearRect(0, 0, mapCanvas.width, mapCanvas.height);
+
+  // Background
+  mapCtx.fillStyle = '#2d5a27';
+  mapCtx.fillRect(0, 0, mapCanvas.width, mapCanvas.height);
+
+  // Grid
+  mapCtx.strokeStyle = 'rgba(255,255,255,0.1)';
+  mapCtx.lineWidth = 1;
+  for (let x = 0; x <= mapData.width; x++) {
+    mapCtx.beginPath();
+    mapCtx.moveTo(x * TILE_SIZE * zoom, 0);
+    mapCtx.lineTo(x * TILE_SIZE * zoom, mapCanvas.height);
+    mapCtx.stroke();
+  }
+  for (let y = 0; y <= mapData.height; y++) {
+    mapCtx.beginPath();
+    mapCtx.moveTo(0, y * TILE_SIZE * zoom);
+    mapCtx.lineTo(mapCanvas.width, y * TILE_SIZE * zoom);
+    mapCtx.stroke();
+  }
+
+  // Render tile layers (multi-tileset support)
+  const layerOrder = ['ground', 'paths', 'decorations'];
+  for (const layerName of layerOrder) {
+    const layer = mapData.tileLayers[layerName];
+    const opacity = (currentMode === 'tiles' && layerName === currentLayer) ? 1 : 0.5;
+    mapCtx.globalAlpha = currentMode === 'entities' ? 0.3 : opacity;
+
+    for (let y = 0; y < mapData.height; y++) {
+      for (let x = 0; x < mapData.width; x++) {
+        const tileData = layer[y]?.[x] || 0;
+        if (tileData === 0) continue;
+
+        // Parse tile to get tileset name and tile index
+        const { tilesetName, tileIndex } = parseTile(tileData);
+        const tilesetImg = loadedTilesets[tilesetName];
+        if (!tilesetImg) continue;
+
+        // Calculate source position in that tileset
+        const cols = Math.floor(tilesetImg.width / TILE_SIZE);
+        const sx = (tileIndex % cols) * TILE_SIZE;
+        const sy = Math.floor(tileIndex / cols) * TILE_SIZE;
+
+        mapCtx.drawImage(
+          tilesetImg,
+          sx, sy, TILE_SIZE, TILE_SIZE,
+          x * TILE_SIZE * zoom, y * TILE_SIZE * zoom,
+          TILE_SIZE * zoom, TILE_SIZE * zoom
+        );
+      }
+    }
+  }
+  mapCtx.globalAlpha = 1;
+
+  // Render entities
+  for (const entity of mapData.entities) {
+    renderEntity(entity);
+  }
+
+  // Mode indicator
+  mapCtx.fillStyle = 'rgba(233, 69, 96, 0.2)';
+  mapCtx.fillRect(0, 0, EDITOR_CONFIG.LAYER_INFO_WIDTH, EDITOR_CONFIG.LAYER_INFO_HEIGHT);
+  mapCtx.fillStyle = '#e94560';
+  mapCtx.font = '12px sans-serif';
+  const modeText = currentMode === 'tiles' ? `Tiles: ${currentLayer}` : 'Entities';
+  mapCtx.fillText(modeText, 8, 16);
+
+  // Draw hover preview (after all tiles/entities)
+  if (currentMode === 'tiles' && hoverTileX >= 0 && hoverTileY >= 0) {
+    drawBrushPreview(hoverTileX, hoverTileY);
+  }
+}
+
+// Draw brush/eraser preview at cursor position
+function drawBrushPreview(tileX, tileY) {
+  // Use eraserSize when erasing, selectedBrush when painting
+  const brushW = isEraser ? eraserSize : selectedBrush.width;
+  const brushH = isEraser ? eraserSize : selectedBrush.height;
+
+  for (let dy = 0; dy < brushH; dy++) {
+    for (let dx = 0; dx < brushW; dx++) {
+      const mapX = tileX + dx;
+      const mapY = tileY + dy;
+
+      if (mapX < 0 || mapX >= mapData.width ||
+          mapY < 0 || mapY >= mapData.height) continue;
+
+      const px = mapX * TILE_SIZE * zoom;
+      const py = mapY * TILE_SIZE * zoom;
+      const size = TILE_SIZE * zoom;
+
+      if (isEraser) {
+        // Red overlay for eraser
+        mapCtx.fillStyle = 'rgba(233, 69, 96, 0.4)';
+        mapCtx.fillRect(px, py, size, size);
+        // X pattern
+        mapCtx.strokeStyle = 'rgba(233, 69, 96, 0.8)';
+        mapCtx.lineWidth = 2;
+        mapCtx.beginPath();
+        mapCtx.moveTo(px + 4, py + 4);
+        mapCtx.lineTo(px + size - 4, py + size - 4);
+        mapCtx.moveTo(px + size - 4, py + 4);
+        mapCtx.lineTo(px + 4, py + size - 4);
+        mapCtx.stroke();
+      } else if (tilesetImage) {
+        // Ghost preview of tile to paint
+        const tileIndex = selectedBrush.tiles[dy][dx];
+        const sx = (tileIndex % tilesetCols) * TILE_SIZE;
+        const sy = Math.floor(tileIndex / tilesetCols) * TILE_SIZE;
+
+        mapCtx.globalAlpha = EDITOR_CONFIG.TILE_PREVIEW_OPACITY;
+        mapCtx.drawImage(tilesetImage, sx, sy, TILE_SIZE, TILE_SIZE,
+                         px, py, size, size);
+        mapCtx.globalAlpha = 1;
+
+        // Border
+        mapCtx.strokeStyle = 'rgba(233, 69, 96, 0.8)';
+        mapCtx.lineWidth = 2;
+        mapCtx.strokeRect(px, py, size, size);
+      }
+    }
+  }
+}
+
+function renderEntity(entity) {
+  const asset = getAnyAssetById(entity.assetId);
+  const img = entityImages[entity.assetId];
+  if (!asset) return;
+
+  // Calculate source region and tile dimensions
+  let sx = 0, sy = 0, sw = img?.width || 0, sh = img?.height || 0;
+  let tw = asset.tileWidth || 4;
+  let th = asset.tileHeight || 4;
+
+  // Handle sprite sheet pieces
+  if (entity.pieceId) {
+    const piecesToUse = getEffectivePieces(entity.assetId, asset.pieces);
+    const piece = piecesToUse?.find(p => p.id === entity.pieceId);
+    if (piece) {
+      // Support both x property (variable widths) and col property (equal widths)
+      sx = piece.x !== undefined ? piece.x : piece.col * piece.width;
+      sy = 0;  // All pieces are in one row
+      sw = piece.width;
+      sh = piece.height;
+      tw = piece.tileWidth;
+      th = piece.tileHeight;
+    }
+  }
+
+  const pw = tw * TILE_SIZE * zoom;
+  const ph = th * TILE_SIZE * zoom;
+
+  // Check if this entity is being dragged
+  const isBeingDragged = isDragging && dragEntity?.id === entity.id;
+
+  // Use drag preview position if dragging
+  const drawX = isBeingDragged ? dragPreviewX : entity.x;
+  const drawY = isBeingDragged ? dragPreviewY : entity.y;
+  const px = drawX * TILE_SIZE * zoom;
+  const py = drawY * TILE_SIZE * zoom;
+
+  // Semi-transparent while dragging
+  if (isBeingDragged) {
+    mapCtx.globalAlpha = EDITOR_CONFIG.DRAG_PREVIEW_OPACITY;
+  }
+
+  if (img) {
+    // Use 9-arg drawImage: source region → destination
+    mapCtx.drawImage(img, sx, sy, sw, sh, px, py, pw, ph);
+  } else {
+    // Placeholder
+    mapCtx.fillStyle = EDITOR_CONFIG.PLACEHOLDER_COLOR;
+    mapCtx.fillRect(px, py, pw, ph);
+    mapCtx.strokeStyle = '#6464c8';
+    mapCtx.strokeRect(px, py, pw, ph);
+  }
+
+  mapCtx.globalAlpha = 1;
+
+  // Selection highlight (use current/drag position)
+  if (selectedEntity?.id === entity.id) {
+    mapCtx.strokeStyle = isBeingDragged ? '#00ff00' : '#e94560';
+    mapCtx.lineWidth = 3;
+    mapCtx.setLineDash(isBeingDragged ? [5, 3] : []);
+    mapCtx.strokeRect(px - 2, py - 2, pw + 4, ph + 4);
+    mapCtx.setLineDash([]);
+    mapCtx.lineWidth = 1;
+  }
+
+  // Name label
+  if (entity.properties?.name && !isBeingDragged) {
+    mapCtx.fillStyle = EDITOR_CONFIG.ENTITY_LABEL_BG;
+    mapCtx.fillRect(px, py - 18, mapCtx.measureText(entity.properties.name).width + 8, 16);
+    mapCtx.fillStyle = '#fff';
+    mapCtx.font = '11px sans-serif';
+    mapCtx.fillText(entity.properties.name, px + 4, py - 6);
+  }
+}
+
+// ===================
+// MAP INTERACTION
+// ===================
+let isPainting = false;
+
+mapCanvas.addEventListener('mousedown', (e) => {
+  const rect = mapCanvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  const tileX = Math.floor(mx / (TILE_SIZE * zoom));
+  const tileY = Math.floor(my / (TILE_SIZE * zoom));
+
+  if (currentMode === 'tiles') {
+    if (e.button === 0) {
+      isPainting = true;
+      paintTile(tileX, tileY);
+    } else if (e.button === 2) {
+      eraseTile(tileX, tileY);
+    }
+  } else if (currentMode === 'entities') {
+    if (e.button === 0) {
+      // Check if clicking on existing entity
+      const clicked = findEntityAt(tileX, tileY);
+      if (clicked) {
+        // If clicking on already selected entity, start drag
+        if (selectedEntity?.id === clicked.id) {
+          isDragging = true;
+          dragEntity = clicked;
+          dragOffsetX = tileX - clicked.x;
+          dragOffsetY = tileY - clicked.y;
+          dragPreviewX = clicked.x;
+          dragPreviewY = clicked.y;
+          mapCanvas.style.cursor = 'grabbing';
+        } else {
+          selectEntity(clicked);
+        }
+      } else if (selectedAsset) {
+        placeEntity(tileX, tileY);
+      }
+    } else if (e.button === 2) {
+      // Right-click to deselect or delete
+      if (selectedEntity) {
+        deleteSelectedEntity();
+      }
+    }
+  }
+});
+
+mapCanvas.addEventListener('mousemove', (e) => {
+  const rect = mapCanvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  const tileX = Math.floor(mx / (TILE_SIZE * zoom));
+  const tileY = Math.floor(my / (TILE_SIZE * zoom));
+
+  document.getElementById('cursorInfo').textContent = `Cursor: ${tileX}, ${tileY}`;
+
+  // Track hover position for preview
+  if (currentMode === 'tiles') {
+    const needsRender = hoverTileX !== tileX || hoverTileY !== tileY;
+    hoverTileX = tileX;
+    hoverTileY = tileY;
+    if (needsRender && !isPainting) {
+      renderMap();
+    }
+  }
+
+  if (currentMode === 'tiles' && isPainting && !isFillMode) {
+    paintTile(tileX, tileY);
+  }
+
+  // Entity dragging
+  if (isDragging && dragEntity) {
+    const asset = getAnyAssetById(dragEntity.assetId);
+    let tw = asset?.tileWidth || 1;
+    let th = asset?.tileHeight || 1;
+    // Use piece dimensions for sprite sheet pieces
+    if (dragEntity.pieceId) {
+      const piecesToUse = getEffectivePieces(dragEntity.assetId, asset?.pieces);
+      const piece = piecesToUse?.find(p => p.id === dragEntity.pieceId);
+      if (piece) {
+        tw = piece.tileWidth;
+        th = piece.tileHeight;
+      }
+    }
+    dragPreviewX = Math.max(0, Math.min(mapData.width - tw, tileX - dragOffsetX));
+    dragPreviewY = Math.max(0, Math.min(mapData.height - th, tileY - dragOffsetY));
+    renderMap();
+  }
+});
+
+mapCanvas.addEventListener('mouseup', () => {
+  if (isDragging && dragEntity) {
+    // Apply the drag
+    dragEntity.x = dragPreviewX;
+    dragEntity.y = dragPreviewY;
+    updatePropertiesPanel();
+    mapCanvas.style.cursor = 'crosshair';
+  }
+  isPainting = false;
+  isDragging = false;
+  dragEntity = null;
+  renderMap();
+});
+
+mapCanvas.addEventListener('mouseleave', () => {
+  isPainting = false;
+  // Clear hover preview
+  hoverTileX = -1;
+  hoverTileY = -1;
+  if (isDragging) {
+    // Cancel drag on leave
+    isDragging = false;
+    dragEntity = null;
+    mapCanvas.style.cursor = 'crosshair';
+  }
+  renderMap();
+});
+
+mapCanvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+// Mouse wheel to adjust brush size
+mapCanvas.addEventListener('wheel', (e) => {
+  if (currentMode !== 'tiles') return;
+
+  // Only adjust size for eraser or single-tile brush
+  if (!isEraser && (selectedBrush.width > 1 || selectedBrush.height > 1)) {
+    return;  // Don't resize multi-tile paint brushes
+  }
+
+  e.preventDefault();
+  const delta = e.deltaY < 0 ? 1 : -1;  // Scroll up = increase, down = decrease
+  adjustBrushSize(delta);
+}, { passive: false });
+
+// Adjust brush/eraser size (square only)
+function adjustBrushSize(delta) {
+  if (isEraser) {
+    // Adjust eraser size independently
+    const newSize = Math.max(1, Math.min(8, eraserSize + delta));
+    if (newSize === eraserSize) return;
+    eraserSize = newSize;
+    updateSelectedPreview();
+    renderMap();
+  } else {
+    // Adjust paint brush (only if single tile)
+    if (selectedBrush.width > 1 || selectedBrush.height > 1) return;
+
+    const newSize = Math.max(1, Math.min(8, selectedBrush.width + delta));
+    if (newSize === selectedBrush.width) return;
+
+    // Rebuild brush as square of single tile
+    const baseTile = selectedBrush.tiles[0][0];
+    const tiles = [];
+    for (let r = 0; r < newSize; r++) {
+      const row = [];
+      for (let c = 0; c < newSize; c++) {
+        row.push(baseTile);
+      }
+      tiles.push(row);
+    }
+
+    selectedBrush = {
+      width: newSize,
+      height: newSize,
+      tiles: tiles,
+      startCol: selectedBrush.startCol,
+      startRow: selectedBrush.startRow
+    };
+
+    updateSelectedPreview();
+    renderTileset();
+    renderMap();
+  }
+}
+
+function paintTile(x, y) {
+  if (x < 0 || x >= mapData.width || y < 0 || y >= mapData.height) return;
+
+  const layer = mapData.tileLayers[currentLayer];
+
+  if (isFillMode) {
+    // Fill with top-left tile of brush
+    // New format: [tilesetIdx, tileIdx] or 0 for empty
+    const targetTile = layer[y][x];
+    const tsIdx = getTilesetIndex(currentTilesetName);
+    const fillTile = isEraser ? 0 : [tsIdx, selectedBrush.tiles[0][0]];
+    if (!tilesEqual(targetTile, fillTile)) {
+      floodFill(layer, x, y, targetTile, fillTile);
+    }
+    isFillMode = false;
+    document.getElementById('fillBtn').classList.remove('active');
+  } else if (isEraser) {
+    // Erase with independent eraser size
+    for (let dy = 0; dy < eraserSize; dy++) {
+      for (let dx = 0; dx < eraserSize; dx++) {
+        const mapX = x + dx;
+        const mapY = y + dy;
+        if (mapX >= 0 && mapX < mapData.width &&
+            mapY >= 0 && mapY < mapData.height) {
+          layer[mapY][mapX] = 0;
+        }
+      }
+    }
+  } else {
+    // Paint brush pattern
+    // New format: [tilesetIdx, tileIdx]
+    const tsIdx = getTilesetIndex(currentTilesetName);
+    for (let dy = 0; dy < selectedBrush.height; dy++) {
+      for (let dx = 0; dx < selectedBrush.width; dx++) {
+        const mapX = x + dx;
+        const mapY = y + dy;
+        if (mapX >= 0 && mapX < mapData.width &&
+            mapY >= 0 && mapY < mapData.height) {
+          layer[mapY][mapX] = [tsIdx, selectedBrush.tiles[dy][dx]];
+        }
+      }
+    }
+  }
+  renderMap();
+}
+
+// Compare two tile values (handles both 0 and [idx, idx] format)
+function tilesEqual(a, b) {
+  if (a === 0 && b === 0) return true;
+  if (a === 0 || b === 0) return false;
+  return a[0] === b[0] && a[1] === b[1];
+}
+
+function eraseTile(x, y) {
+  if (x < 0 || x >= mapData.width || y < 0 || y >= mapData.height) return;
+  mapData.tileLayers[currentLayer][y][x] = 0;
+  renderMap();
+}
+
+function floodFill(layer, startX, startY, targetTile, fillTile) {
+  const stack = [[startX, startY]];
+  const visited = new Set();
+
+  while (stack.length > 0) {
+    const [x, y] = stack.pop();
+    const key = `${x},${y}`;
+
+    if (visited.has(key)) continue;
+    if (x < 0 || x >= mapData.width || y < 0 || y >= mapData.height) continue;
+    // Use tilesEqual for array comparison (new multi-tileset format)
+    if (!tilesEqual(layer[y][x], targetTile)) continue;
+
+    visited.add(key);
+    layer[y][x] = fillTile;
+
+    stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+  }
+}
+
+// ===================
+// ENTITY OPERATIONS
+// ===================
+function findEntityAt(tileX, tileY) {
+  // Find entity that contains this tile (reverse order for top-most)
+  for (let i = mapData.entities.length - 1; i >= 0; i--) {
+    const e = mapData.entities[i];
+    const asset = getAnyAssetById(e.assetId);
+    let tw = asset?.tileWidth || 4;
+    let th = asset?.tileHeight || 4;
+
+    // Use piece dimensions for sprite sheet pieces
+    if (e.pieceId) {
+      const piecesToUse = getEffectivePieces(e.assetId, asset?.pieces);
+      const piece = piecesToUse?.find(p => p.id === e.pieceId);
+      if (piece) {
+        tw = piece.tileWidth;
+        th = piece.tileHeight;
+      }
+    }
+
+    if (tileX >= e.x && tileX < e.x + tw &&
+        tileY >= e.y && tileY < e.y + th) {
+      return e;
+    }
+  }
+  return null;
+}
+
+function selectEntity(entity) {
+  selectedEntity = entity;
+  selectedAsset = null;  // Deselect palette asset
+  renderAssetGrid();
+  updateSelectedAssetPreview();
+  updatePropertiesPanel();
+  renderMap();
+}
+
+function placeEntity(tileX, tileY) {
+  if (!selectedAsset) return;
+
+  // Determine entity type from selectedAsset
+  const entityType = selectedAsset.entityType || currentEntityType;
+
+  const entity = {
+    id: `entity-${++entityIdCounter}`,
+    type: entityType,  // 'buildings', 'decorations', or 'trees'
+    assetId: selectedAsset.parentAssetId || selectedAsset.id,
+    x: tileX,
+    y: tileY,
+    properties: {
+      name: selectedAsset.name,
+      url: '',
+      interactive: entityType === 'buildings'  // Only buildings are interactive by default
+    }
+  };
+
+  // Store piece info for sprite sheet pieces
+  if (selectedAsset.isSpritePiece && selectedAsset.piece) {
+    entity.pieceId = selectedAsset.piece.id;
+    entity.pieceIndex = selectedAsset.pieceIndex;
+  }
+
+  mapData.entities.push(entity);
+  selectEntity(entity);
+  renderMap();
+}
+
+function deleteSelectedEntity() {
+  if (!selectedEntity) return;
+  mapData.entities = mapData.entities.filter(e => e.id !== selectedEntity.id);
+  selectedEntity = null;
+  updatePropertiesPanel();
+  renderMap();
+}
+
+function updatePropertiesPanel() {
+  const panel = document.getElementById('propertiesPanel');
+
+  if (selectedEntity) {
+    panel.classList.remove('hidden');
+    document.getElementById('propName').value = selectedEntity.properties?.name || '';
+    document.getElementById('propUrl').value = selectedEntity.properties?.url || '';
+    document.getElementById('propInteractive').checked = selectedEntity.properties?.interactive || false;
+    document.getElementById('propPosition').textContent = `${selectedEntity.x}, ${selectedEntity.y}`;
+  } else {
+    panel.classList.add('hidden');
+  }
+}
+
+// Property change handlers
+document.getElementById('propName').addEventListener('input', (e) => {
+  if (selectedEntity) {
+    selectedEntity.properties.name = e.target.value;
+    renderMap();
+  }
+});
+
+document.getElementById('propUrl').addEventListener('input', (e) => {
+  if (selectedEntity) {
+    selectedEntity.properties.url = e.target.value;
+  }
+});
+
+document.getElementById('propInteractive').addEventListener('change', (e) => {
+  if (selectedEntity) {
+    selectedEntity.properties.interactive = e.target.checked;
+  }
+});
+
+document.getElementById('deleteEntityBtn').addEventListener('click', deleteSelectedEntity);
+
+// Edit sprite pieces button - opens slicer with selected asset's sprite
+document.getElementById('editSpriteBtn').addEventListener('click', () => {
+  if (!selectedAsset) return;
+
+  // Get the parent asset ID (for sprite pieces, use parentAssetId)
+  const assetId = selectedAsset.parentAssetId || selectedAsset.id;
+
+  // Open slicer modal
+  document.getElementById('spriteSlicerModal').classList.remove('hidden');
+  populateSlicerFileList();
+  renderOverridesList();
+
+  // Auto-select the asset in dropdown and trigger change
+  const select = document.getElementById('slicerFileSelect');
+  select.value = assetId;
+  select.dispatchEvent(new Event('change'));
+});
+
+// ===================
+// MODE SWITCHING
+// ===================
+document.querySelectorAll('.mode-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    currentMode = tab.dataset.mode;
+
+    document.getElementById('tilesPanel').classList.toggle('hidden', currentMode !== 'tiles');
+    document.getElementById('entitiesPanel').classList.toggle('hidden', currentMode !== 'entities');
+
+    renderMap();
+  });
+});
+
+// Category filter
+document.getElementById('categorySelect').addEventListener('change', renderAssetGrid);
+
+// ===================
+// LAYER BUTTONS
+// ===================
+document.querySelectorAll('.layer-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.layer-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentLayer = btn.dataset.layer;
+    renderMap();
+  });
+});
+
+// ===================
+// TOOLS
+// ===================
+document.getElementById('eraserBtn').addEventListener('click', (e) => {
+  isEraser = !isEraser;
+  e.target.classList.toggle('active', isEraser);
+  updateSelectedPreview();
+});
+
+document.getElementById('fillBtn').addEventListener('click', (e) => {
+  isFillMode = !isFillMode;
+  e.target.classList.toggle('active', isFillMode);
+});
+
+// ===================
+// ZOOM
+// ===================
+document.getElementById('zoomIn').addEventListener('click', () => {
+  zoom = Math.min(zoom + 1, 6);
+  document.getElementById('zoomLevel').textContent = `${zoom}x`;
+  resizeMapCanvas();
+  renderMap();
+});
+
+document.getElementById('zoomOut').addEventListener('click', () => {
+  zoom = Math.max(zoom - 1, 1);
+  document.getElementById('zoomLevel').textContent = `${zoom}x`;
+  resizeMapCanvas();
+  renderMap();
+});
+
+// ===================
+// MAP OPERATIONS
+// ===================
+document.getElementById('resizeBtn').addEventListener('click', () => {
+  const newWidth = parseInt(document.getElementById('mapWidth').value);
+  const newHeight = parseInt(document.getElementById('mapHeight').value);
+
+  const oldLayers = JSON.parse(JSON.stringify(mapData.tileLayers));
+  const oldEntities = [...mapData.entities];
+
+  initMap(newWidth, newHeight);
+
+  // Copy old tile data
+  for (const layerName of Object.keys(oldLayers)) {
+    for (let y = 0; y < Math.min(oldLayers[layerName].length, newHeight); y++) {
+      for (let x = 0; x < Math.min(oldLayers[layerName][y].length, newWidth); x++) {
+        mapData.tileLayers[layerName][y][x] = oldLayers[layerName][y][x];
+      }
+    }
+  }
+
+  // Keep entities within bounds
+  mapData.entities = oldEntities.filter(e => e.x < newWidth && e.y < newHeight);
+
+  resizeMapCanvas();
+  renderMap();
+});
+
+document.getElementById('newMapBtn').addEventListener('click', () => {
+  if (confirm('Create new map? Unsaved changes will be lost.')) {
+    initMap(50, 45);
+    // Reset to just the current tileset
+    mapData.tilesets = currentTilesetName ? [currentTilesetName] : ['Grass_Tiles_1'];
+    entityIdCounter = 0;
+    selectedEntity = null;
+    document.getElementById('mapWidth').value = 50;
+    document.getElementById('mapHeight').value = 45;
+    updatePropertiesPanel();
+    resizeMapCanvas();
+    renderMap();
+  }
+});
+
+// ===================
+// SAVE/LOAD
+// ===================
+document.getElementById('loadJsonBtn').addEventListener('click', () => {
+  document.getElementById('fileInput').click();
+});
+
+document.getElementById('fileInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        let data = JSON.parse(event.target.result);
+
+        // Handle old format (layers) vs new format (tileLayers)
+        if (data.layers && !data.tileLayers) {
+          data.tileLayers = data.layers;
+          delete data.layers;
+        }
+
+        // Migrate old single-tileset format to multi-tileset format
+        data = migrateMapData(data);
+
+        mapData = {
+          name: data.name || 'Untitled',
+          width: data.width,
+          height: data.height,
+          tileSize: data.tileSize || TILE_SIZE,
+          tilesets: data.tilesets || ['Grass_Tiles_1'],
+          tileLayers: data.tileLayers || { ground: [], paths: [], decorations: [] },
+          entities: data.entities || []
+        };
+
+        // Update entity ID counter
+        entityIdCounter = mapData.entities.reduce((max, e) => {
+          const num = parseInt(e.id.split('-')[1]) || 0;
+          return Math.max(max, num);
+        }, 0);
+
+        // Load all tilesets used by this map
+        for (const tsName of mapData.tilesets) {
+          try {
+            await loadTilesetByName(tsName, false);  // Don't switch UI yet
+          } catch (err) {
+            console.warn(`Could not load tileset: ${tsName}`, err);
+          }
+        }
+
+        // Set first tileset as current for painting
+        if (mapData.tilesets.length > 0) {
+          selectTilesetForPainting(mapData.tilesets[0]);
+          document.getElementById('tilesetSelect').value = mapData.tilesets[0];
+        }
+
+        document.getElementById('mapWidth').value = mapData.width;
+        document.getElementById('mapHeight').value = mapData.height;
+        selectedEntity = null;
+        updatePropertiesPanel();
+        resizeMapCanvas();
+        renderMap();
+        alert('Map loaded successfully!');
+      } catch (err) {
+        alert('Error loading map: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+  }
+});
+
+document.getElementById('saveJsonBtn').addEventListener('click', () => {
+  const json = JSON.stringify(mapData, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${mapData.name.toLowerCase().replace(/\s+/g, '_')}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+// ===================
+// TILESET BUILDER
+// ===================
+let editingTilesetName = null;  // Name of tileset being edited (null = creating new)
+let editSources = [];  // Sources currently selected in edit view
+
+// Initialize tileset definitions on load
+loadTilesetDefinitions();
+updateVirtualTilesetDropdown();
+
+// Open modal
+document.getElementById('manageTilesetsBtn').addEventListener('click', () => {
+  document.getElementById('tilesetBuilderModal').classList.remove('hidden');
+  showTilesetListView();
+});
+
+// Close modal
+document.getElementById('closeTilesetModal').addEventListener('click', closeTilesetModal);
+document.getElementById('tilesetBuilderModal').addEventListener('click', (e) => {
+  if (e.target.id === 'tilesetBuilderModal') closeTilesetModal();
+});
+
+function closeTilesetModal() {
+  document.getElementById('tilesetBuilderModal').classList.add('hidden');
+  showTilesetListView();
+}
+
+// Show list view (default)
+function showTilesetListView() {
+  document.getElementById('tilesetListView').classList.remove('hidden');
+  document.getElementById('tilesetEditView').classList.add('hidden');
+  document.getElementById('cancelTilesetEdit').classList.add('hidden');
+  document.getElementById('saveTilesetBtn').classList.add('hidden');
+  renderVirtualTilesetList();
+}
+
+// Show edit view
+function showTilesetEditView(tilesetName = null) {
+  editingTilesetName = tilesetName;
+  editSources = tilesetName && tilesetDefinitions[tilesetName]
+    ? [...tilesetDefinitions[tilesetName].sources]
+    : [];
+
+  document.getElementById('tilesetListView').classList.add('hidden');
+  document.getElementById('tilesetEditView').classList.remove('hidden');
+  document.getElementById('cancelTilesetEdit').classList.remove('hidden');
+  document.getElementById('saveTilesetBtn').classList.remove('hidden');
+
+  document.getElementById('editTilesetName').value = tilesetName || '';
+  renderEditSources();
+  renderAvailableSources();
+}
+
+// Render list of virtual tilesets
+function renderVirtualTilesetList() {
+  const container = document.getElementById('virtualTilesetList');
+  const names = Object.keys(tilesetDefinitions);
+
+  if (names.length === 0) {
+    container.innerHTML = '<div style="color: #666; text-align: center; padding: 20px;">No virtual tilesets yet. Create one to combine multiple tilesets.</div>';
+    return;
+  }
+
+  container.innerHTML = names.map(name => {
+    const def = tilesetDefinitions[name];
+    return `
+      <div class="virtual-tileset-item">
+        <div class="virtual-tileset-header">
+          <span class="virtual-tileset-name">${name}</span>
+          <div>
+            <button class="btn-small" onclick="editVirtualTileset('${name}')">Edit</button>
+            <button class="btn-small btn-danger" onclick="deleteVirtualTileset('${name}')">Delete</button>
+          </div>
+        </div>
+        <div class="virtual-tileset-sources">
+          ${def.sources.map(s => `<div>└ ${s}</div>`).join('')}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// Global functions for onclick handlers
+window.editVirtualTileset = (name) => showTilesetEditView(name);
+window.deleteVirtualTileset = (name) => {
+  if (confirm(`Delete virtual tileset "${name}"?`)) {
+    delete tilesetDefinitions[name];
+    delete loadedTilesets[name];  // Remove from cache
+    saveTilesetDefinitions();
+    updateVirtualTilesetDropdown();
+    renderVirtualTilesetList();
+  }
+};
+
+// Render selected sources in edit view
+function renderEditSources() {
+  const container = document.getElementById('selectedSources');
+  if (editSources.length === 0) {
+    container.innerHTML = '<div style="color: #666; text-align: center; padding: 20px;">Click sources below to add them</div>';
+    return;
+  }
+
+  container.innerHTML = editSources.map((source, idx) => `
+    <div class="source-item">
+      <span>${source}</span>
+      <div>
+        ${idx > 0 ? `<button class="btn-small" onclick="moveSourceUp(${idx})">↑</button>` : ''}
+        ${idx < editSources.length - 1 ? `<button class="btn-small" onclick="moveSourceDown(${idx})">↓</button>` : ''}
+        <button class="btn-small btn-danger" onclick="removeSource(${idx})">×</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// Render available sources
+function renderAvailableSources() {
+  const container = document.getElementById('availableSources');
+  const rawTilesets = getRawTilesets();
+  const available = rawTilesets.filter(t => !editSources.includes(t));
+
+  container.innerHTML = available.map(name =>
+    `<button onclick="addSource('${name}')">${name}</button>`
+  ).join('');
+}
+
+// Source manipulation functions
+window.addSource = (name) => {
+  if (!editSources.includes(name)) {
+    editSources.push(name);
+    renderEditSources();
+    renderAvailableSources();
+  }
+};
+
+window.removeSource = (idx) => {
+  editSources.splice(idx, 1);
+  renderEditSources();
+  renderAvailableSources();
+};
+
+window.moveSourceUp = (idx) => {
+  if (idx > 0) {
+    [editSources[idx - 1], editSources[idx]] = [editSources[idx], editSources[idx - 1]];
+    renderEditSources();
+  }
+};
+
+window.moveSourceDown = (idx) => {
+  if (idx < editSources.length - 1) {
+    [editSources[idx], editSources[idx + 1]] = [editSources[idx + 1], editSources[idx]];
+    renderEditSources();
+  }
+};
+
+// Cancel edit
+document.getElementById('cancelTilesetEdit').addEventListener('click', showTilesetListView);
+
+// Create new tileset button
+document.getElementById('createTilesetBtn').addEventListener('click', () => {
+  showTilesetEditView(null);
+});
+
+// Save tileset
+document.getElementById('saveTilesetBtn').addEventListener('click', async () => {
+  const name = document.getElementById('editTilesetName').value.trim();
+
+  if (!name) {
+    alert('Please enter a tileset name');
+    return;
+  }
+
+  if (editSources.length === 0) {
+    alert('Please add at least one source tileset');
+    return;
+  }
+
+  // Check for name conflicts with raw tilesets
+  if (getRawTilesets().includes(name)) {
+    alert('This name conflicts with a raw tileset. Choose a different name.');
+    return;
+  }
+
+  // If renaming, remove old entry
+  if (editingTilesetName && editingTilesetName !== name) {
+    delete tilesetDefinitions[editingTilesetName];
+    delete loadedTilesets[editingTilesetName];
+  }
+
+  // Save definition
+  tilesetDefinitions[name] = { sources: [...editSources] };
+  saveTilesetDefinitions();
+
+  // Pre-load the virtual tileset
+  await loadVirtualTileset(name);
+
+  updateVirtualTilesetDropdown();
+  showTilesetListView();
+});
+
+// Export tileset definitions to JSON file
+document.getElementById('exportDefinitionsBtn').addEventListener('click', () => {
+  const json = JSON.stringify(tilesetDefinitions, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'tileset-definitions.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+// Import tileset definitions from JSON file
+document.getElementById('importDefinitionsBtn').addEventListener('click', () => {
+  document.getElementById('importDefinitionsInput').click();
+});
+
+document.getElementById('importDefinitionsInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    try {
+      const imported = JSON.parse(event.target.result);
+
+      // Validate structure
+      if (typeof imported !== 'object') {
+        throw new Error('Invalid format');
+      }
+
+      // Merge with existing (imported overwrites conflicts)
+      const count = Object.keys(imported).length;
+      Object.assign(tilesetDefinitions, imported);
+      saveTilesetDefinitions();
+      updateVirtualTilesetDropdown();
+      renderVirtualTilesetList();
+
+      alert(`Imported ${count} tileset definition(s)`);
+    } catch (err) {
+      alert('Error importing: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';  // Reset for re-import
+});
+
+// Update dropdown with virtual tilesets
+function updateVirtualTilesetDropdown() {
+  const group = document.getElementById('virtualTilesetGroup');
+  const names = Object.keys(tilesetDefinitions);
+
+  if (names.length === 0) {
+    group.innerHTML = '<option disabled>No virtual tilesets</option>';
+  } else {
+    group.innerHTML = names.map(name =>
+      `<option value="${name}">⚡ ${name}</option>`
+    ).join('');
+  }
+}
+
+// Update tileset select handler to support virtual tilesets
+document.getElementById('tilesetSelect').addEventListener('change', async (e) => {
+  const name = e.target.value;
+  if (!name) return;
+
+  if (isVirtualTileset(name)) {
+    // Load virtual tileset
+    await loadVirtualTileset(name);
+    selectTilesetForPainting(name);
+  } else {
+    // Load raw tileset
+    await loadTilesetByName(name);
+  }
+});
+
+// ===================
+// SPRITE SLICER
+// ===================
+let slicerImage = null;
+let slicerImagePath = '';
+let slicerAssetId = '';  // Currently selected asset ID
+let slicerAssetType = '';  // Entity type (buildings, decorations, trees)
+let slicerSplits = [];  // Array of x-positions for vertical splits
+let slicerPieceNames = [];  // Names for each piece
+let slicerZoom = 2;
+let slicerGridSize = 16;
+const slicerCanvas = document.getElementById('slicerCanvas');
+const slicerCtx = slicerCanvas.getContext('2d');
+
+// Save piece overrides to localStorage
+function savePieceOverrides() {
+  try {
+    localStorage.setItem('mapEditor_pieceOverrides', JSON.stringify(pieceOverrides));
+  } catch (e) {
+    console.warn('Failed to save piece overrides:', e);
+    showNotification('Failed to save sprite pieces. Check browser storage.', 'error');
+  }
+}
+
+// Open sprite slicer modal
+document.getElementById('openSlicerBtn').addEventListener('click', () => {
+  document.getElementById('spriteSlicerModal').classList.remove('hidden');
+  populateSlicerFileList();
+});
+
+// Close sprite slicer modal
+document.getElementById('closeSlicerModal').addEventListener('click', closeSlicerModal);
+document.getElementById('spriteSlicerModal').addEventListener('click', (e) => {
+  if (e.target.id === 'spriteSlicerModal') closeSlicerModal();
+});
+
+function closeSlicerModal() {
+  document.getElementById('spriteSlicerModal').classList.add('hidden');
+}
+
+// Populate sprite file list from asset library
+function populateSlicerFileList() {
+  const select = document.getElementById('slicerFileSelect');
+  const entityTypes = ['buildings', 'decorations', 'trees'];
+
+  let html = '<option value="">-- Select Sprite --</option>';
+
+  for (const type of entityTypes) {
+    const assets = getAssetsByType(type);
+    if (assets.length === 0) continue;
+
+    html += `<optgroup label="${type.charAt(0).toUpperCase() + type.slice(1)}">`;
+    for (const asset of assets) {
+      // Only show assets that might be sprite sheets (have pieces or have multiple items)
+      html += `<option value="${asset.id}" data-type="${type}">${asset.name} (${asset.width}x${asset.height})</option>`;
+    }
+    html += '</optgroup>';
+  }
+
+  select.innerHTML = html;
+}
+
+// Handle sprite selection
+document.getElementById('slicerFileSelect').addEventListener('change', async (e) => {
+  const assetId = e.target.value;
+  if (!assetId) {
+    slicerImage = null;
+    slicerAssetId = '';
+    slicerAssetType = '';
+    slicerSplits = [];
+    slicerPieceNames = ['Piece 1'];
+    renderSlicerCanvas();
+    updateSlicerPieces();
+    updateSlicerOutput();
+    return;
+  }
+
+  const option = e.target.selectedOptions[0];
+  const type = option.dataset.type;
+  const asset = getAssetById(type, assetId);
+
+  if (!asset) return;
+
+  // Track current asset
+  slicerAssetId = assetId;
+  slicerAssetType = type;
+
+  // Load image
+  slicerImagePath = asset.file;
+  slicerImage = await loadSlicerImage(asset.file);
+  slicerSplits = [];
+  slicerPieceNames = ['Piece 1'];
+
+  // Check for existing override first, then original pieces
+  const override = pieceOverrides[assetId];
+  const piecesToUse = override ? override.pieces : asset.pieces;
+
+  // If asset already has pieces, pre-populate splits
+  if (piecesToUse && piecesToUse.length > 1) {
+    for (let i = 0; i < piecesToUse.length - 1; i++) {
+      const piece = piecesToUse[i];
+      // Use x if available, otherwise calculate from col * width
+      const pieceX = piece.x !== undefined ? piece.x : piece.col * piece.width;
+      slicerSplits.push(pieceX + piece.width);
+    }
+    slicerPieceNames = piecesToUse.map(p => p.name);
+  }
+
+  // Update replace checkbox based on existing override
+  document.getElementById('slicerReplaceOriginal').checked = override ? override.replaceOriginal : true;
+
+  renderSlicerCanvas();
+  updateSlicerPieces();
+  updateSlicerOutput();
+});
+
+// Load image for slicer
+function loadSlicerImage(path) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error(`Failed to load: ${path}`));
+    img.src = path;
+  });
+}
+
+// Handle grid size change
+document.getElementById('slicerGridSize').addEventListener('change', (e) => {
+  slicerGridSize = parseInt(e.target.value);
+  renderSlicerCanvas();
+});
+
+// Handle zoom change
+document.getElementById('slicerZoom').addEventListener('change', (e) => {
+  slicerZoom = parseInt(e.target.value);
+  renderSlicerCanvas();
+});
+
+// Render the slicer canvas
+function renderSlicerCanvas() {
+  if (!slicerImage) {
+    slicerCanvas.width = 200;
+    slicerCanvas.height = 100;
+    slicerCtx.fillStyle = '#1a1a2e';
+    slicerCtx.fillRect(0, 0, 200, 100);
+    slicerCtx.fillStyle = '#666';
+    slicerCtx.font = '12px sans-serif';
+    slicerCtx.textAlign = 'center';
+    slicerCtx.fillText('Select a sprite', 100, 55);
+    return;
+  }
+
+  // Size canvas to zoomed image
+  slicerCanvas.width = slicerImage.width * slicerZoom;
+  slicerCanvas.height = slicerImage.height * slicerZoom;
+
+  // Draw sprite (pixelated for pixel art)
+  slicerCtx.imageSmoothingEnabled = false;
+  slicerCtx.drawImage(slicerImage, 0, 0, slicerCanvas.width, slicerCanvas.height);
+
+  // Draw grid
+  slicerCtx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+  slicerCtx.lineWidth = 1;
+  const gridStep = slicerGridSize * slicerZoom;
+
+  // Vertical grid lines
+  for (let x = gridStep; x < slicerCanvas.width; x += gridStep) {
+    slicerCtx.beginPath();
+    slicerCtx.moveTo(x, 0);
+    slicerCtx.lineTo(x, slicerCanvas.height);
+    slicerCtx.stroke();
+  }
+
+  // Horizontal grid lines
+  for (let y = gridStep; y < slicerCanvas.height; y += gridStep) {
+    slicerCtx.beginPath();
+    slicerCtx.moveTo(0, y);
+    slicerCtx.lineTo(slicerCanvas.width, y);
+    slicerCtx.stroke();
+  }
+
+  // Draw split lines
+  slicerCtx.strokeStyle = '#e94560';
+  slicerCtx.lineWidth = 3;
+  for (const split of slicerSplits) {
+    const x = split * slicerZoom;
+    slicerCtx.beginPath();
+    slicerCtx.moveTo(x, 0);
+    slicerCtx.lineTo(x, slicerCanvas.height);
+    slicerCtx.stroke();
+
+    // Draw handles at top and bottom
+    slicerCtx.fillStyle = '#e94560';
+    slicerCtx.fillRect(x - 4, 0, 8, 8);
+    slicerCtx.fillRect(x - 4, slicerCanvas.height - 8, 8, 8);
+  }
+
+  // Draw piece numbers
+  slicerCtx.font = `${14 * slicerZoom}px sans-serif`;
+  slicerCtx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+  slicerCtx.textAlign = 'center';
+
+  const splits = [0, ...slicerSplits, slicerImage.width];
+  for (let i = 0; i < splits.length - 1; i++) {
+    const startX = splits[i] * slicerZoom;
+    const endX = splits[i + 1] * slicerZoom;
+    const centerX = (startX + endX) / 2;
+    slicerCtx.fillText(`${i + 1}`, centerX, slicerCanvas.height / 2);
+  }
+}
+
+// Click handler for adding/removing splits
+slicerCanvas.addEventListener('click', (e) => {
+  if (!slicerImage) return;
+
+  const rect = slicerCanvas.getBoundingClientRect();
+  const clickX = e.clientX - rect.left;
+  const x = Math.round(clickX / slicerZoom);
+
+  // Snap to grid
+  const snapped = Math.round(x / slicerGridSize) * slicerGridSize;
+
+  // Don't allow splits at edges
+  if (snapped <= 0 || snapped >= slicerImage.width) return;
+
+  // Check if clicking near existing split (within 8px tolerance)
+  const tolerance = 8;
+  const existingIdx = slicerSplits.findIndex(s =>
+    Math.abs(s * slicerZoom - clickX) < tolerance
+  );
+
+  if (existingIdx !== -1) {
+    // Remove existing split
+    slicerSplits.splice(existingIdx, 1);
+    // Remove corresponding piece name (keep first, remove the one after the split)
+    if (slicerPieceNames.length > existingIdx + 1) {
+      slicerPieceNames.splice(existingIdx + 1, 1);
+    }
+  } else {
+    // Add new split
+    slicerSplits.push(snapped);
+    slicerSplits.sort((a, b) => a - b);
+    // Add a new piece name
+    const newIdx = slicerSplits.indexOf(snapped);
+    slicerPieceNames.splice(newIdx + 1, 0, `Piece ${slicerSplits.length + 1}`);
+  }
+
+  renderSlicerCanvas();
+  updateSlicerPieces();
+  updateSlicerOutput();
+});
+
+// Update piece previews
+function updateSlicerPieces() {
+  const container = document.getElementById('slicerPieces');
+
+  if (!slicerImage) {
+    container.innerHTML = '<div style="color: #666; padding: 20px; text-align: center; width: 100%;">Select a sprite and add splits to define pieces</div>';
+    return;
+  }
+
+  const splits = [0, ...slicerSplits, slicerImage.width];
+  const pieces = [];
+
+  for (let i = 0; i < splits.length - 1; i++) {
+    const startX = splits[i];
+    const width = splits[i + 1] - startX;
+    pieces.push({
+      index: i,
+      x: startX,
+      width: width,
+      height: slicerImage.height,
+      name: slicerPieceNames[i] || `Piece ${i + 1}`
+    });
+  }
+
+  container.innerHTML = pieces.map(piece => {
+    const previewScale = Math.min(60 / piece.width, 50 / piece.height, 2);
+    const pw = Math.ceil(piece.width * previewScale);
+    const ph = Math.ceil(piece.height * previewScale);
+
+    return `
+      <div class="slicer-piece">
+        <canvas width="${pw}" height="${ph}" data-piece-idx="${piece.index}"></canvas>
+        <input type="text" value="${piece.name}" data-name-idx="${piece.index}" placeholder="Name">
+        <div class="piece-info">x:${piece.x} w:${piece.width}</div>
+      </div>
+    `;
+  }).join('');
+
+  // Draw piece previews
+  for (const piece of pieces) {
+    const canvas = container.querySelector(`canvas[data-piece-idx="${piece.index}"]`);
+    if (!canvas) continue;
+
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+
+    const scale = Math.min(canvas.width / piece.width, canvas.height / piece.height);
+    const dw = piece.width * scale;
+    const dh = piece.height * scale;
+    const dx = (canvas.width - dw) / 2;
+    const dy = (canvas.height - dh) / 2;
+
+    ctx.drawImage(slicerImage, piece.x, 0, piece.width, piece.height, dx, dy, dw, dh);
+  }
+
+  // Add name change handlers
+  container.querySelectorAll('input[data-name-idx]').forEach(input => {
+    input.addEventListener('input', (e) => {
+      const idx = parseInt(e.target.dataset.nameIdx);
+      slicerPieceNames[idx] = e.target.value;
+      updateSlicerOutput();
+    });
+  });
+}
+
+// Generate and display output code
+function updateSlicerOutput() {
+  const output = document.getElementById('slicerCodeOutput');
+
+  if (!slicerImage) {
+    output.textContent = '// Select a sprite to generate code';
+    return;
+  }
+
+  const code = generateSlicerOutput();
+  output.textContent = code;
+}
+
+// Generate pieces array code
+function generateSlicerOutput() {
+  if (!slicerImage) return '';
+
+  const splits = [0, ...slicerSplits, slicerImage.width];
+  const pieces = [];
+
+  for (let i = 0; i < splits.length - 1; i++) {
+    const startX = splits[i];
+    const width = splits[i + 1] - startX;
+    const name = slicerPieceNames[i] || `Piece ${i + 1}`;
+    const id = name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+
+    pieces.push({
+      id: id || `piece_${i + 1}`,
+      name: name,
+      x: startX,
+      width: width,
+      height: slicerImage.height,
+      tileWidth: Math.ceil(width / 16),
+      tileHeight: Math.ceil(slicerImage.height / 16),
+    });
+  }
+
+  // Generate code
+  const lines = pieces.map(p =>
+    `  { id: '${p.id}', name: '${p.name}', x: ${p.x}, width: ${p.width}, height: ${p.height}, tileWidth: ${p.tileWidth}, tileHeight: ${p.tileHeight} },`
+  );
+
+  return `pieces: [\n${lines.join('\n')}\n],`;
+}
+
+// Copy output to clipboard
+document.getElementById('copySlicerOutput').addEventListener('click', () => {
+  const code = generateSlicerOutput();
+  navigator.clipboard.writeText(code).then(() => {
+    const btn = document.getElementById('copySlicerOutput');
+    const original = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = original, EDITOR_CONFIG.BUTTON_FEEDBACK_MS);
+  }).catch(err => {
+    console.error('Failed to copy:', err);
+    alert('Failed to copy to clipboard');
+  });
+});
+
+// Apply piece definitions to localStorage override
+document.getElementById('applySlicerOutput').addEventListener('click', () => {
+  if (!slicerImage || !slicerAssetId) {
+    alert('Please select a sprite first');
+    return;
+  }
+
+  const pieces = generateSlicerPieces();
+  const replaceOriginal = document.getElementById('slicerReplaceOriginal').checked;
+
+  // Save override
+  pieceOverrides[slicerAssetId] = {
+    pieces: pieces,
+    replaceOriginal: replaceOriginal,
+    assetType: slicerAssetType
+  };
+  savePieceOverrides();
+
+  // Refresh the asset grid to show new pieces
+  renderAssetGrid();
+  renderOverridesList();
+
+  // Show confirmation
+  const btn = document.getElementById('applySlicerOutput');
+  const original = btn.textContent;
+  btn.textContent = 'Applied!';
+  btn.style.background = '#2ecc71';
+  setTimeout(() => {
+    btn.textContent = original;
+    btn.style.background = '#27ae60';
+  }, 1500);
+});
+
+// Generate pieces array (returns JS array, not string)
+function generateSlicerPieces() {
+  if (!slicerImage) return [];
+
+  const splits = [0, ...slicerSplits, slicerImage.width];
+  const pieces = [];
+
+  for (let i = 0; i < splits.length - 1; i++) {
+    const startX = splits[i];
+    const width = splits[i + 1] - startX;
+    const name = slicerPieceNames[i] || `Piece ${i + 1}`;
+    const id = name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+
+    pieces.push({
+      id: id || `piece_${i + 1}`,
+      name: name,
+      x: startX,
+      width: width,
+      height: slicerImage.height,
+      tileWidth: Math.ceil(width / 16),
+      tileHeight: Math.ceil(slicerImage.height / 16),
+    });
+  }
+
+  return pieces;
+}
+
+// Render list of applied overrides
+function renderOverridesList() {
+  const container = document.getElementById('slicerOverridesList');
+  const overrideKeys = Object.keys(pieceOverrides);
+
+  if (overrideKeys.length === 0) {
+    container.innerHTML = 'No overrides applied yet';
+    return;
+  }
+
+  container.innerHTML = overrideKeys.map(assetId => {
+    const override = pieceOverrides[assetId];
+    const pieceCount = override.pieces.length;
+    return `
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; background: #0f3460; border-radius: 4px; margin-bottom: 4px;">
+        <span style="cursor: pointer; flex: 1;" onclick="loadOverrideForEditing('${assetId}')" title="Click to edit">${assetId} (${pieceCount} pieces)</span>
+        <button class="btn-small btn-danger" onclick="removeOverride('${assetId}')" style="margin-left: 8px;">Remove</button>
+      </div>
+    `;
+  }).join('');
+}
+
+// Load an override for editing (click handler)
+window.loadOverrideForEditing = (assetId) => {
+  const select = document.getElementById('slicerFileSelect');
+  select.value = assetId;
+  select.dispatchEvent(new Event('change'));
+};
+
+// Remove an override
+window.removeOverride = (assetId) => {
+  if (confirm(`Remove piece override for "${assetId}"?`)) {
+    delete pieceOverrides[assetId];
+    savePieceOverrides();
+    renderAssetGrid();
+    renderOverridesList();
+
+    // If currently viewing this asset, reset splits
+    if (slicerAssetId === assetId) {
+      document.getElementById('slicerFileSelect').dispatchEvent(new Event('change'));
+    }
+  }
+};
+
+// Initialize overrides list on modal open
+const originalOpenSlicer = document.getElementById('openSlicerBtn').onclick;
+document.getElementById('openSlicerBtn').addEventListener('click', () => {
+  renderOverridesList();
+});
+
+// ===================
+// KEYBOARD SHORTCUTS
+// ===================
+document.addEventListener('keydown', (e) => {
+  // Don't trigger when typing in inputs
+  if (e.target.tagName === 'INPUT') return;
+
+  if (e.key === 'e' || e.key === 'E') {
+    isEraser = !isEraser;
+    document.getElementById('eraserBtn').classList.toggle('active', isEraser);
+    updateSelectedPreview();
+  }
+  if (e.key === 'f' || e.key === 'F') {
+    isFillMode = !isFillMode;
+    document.getElementById('fillBtn').classList.toggle('active', isFillMode);
+  }
+  if (e.key === '1') document.querySelectorAll('.layer-btn')[0].click();
+  if (e.key === '2') document.querySelectorAll('.layer-btn')[1].click();
+  if (e.key === '3') document.querySelectorAll('.layer-btn')[2].click();
+  // Brush size adjustment
+  if (e.key === '[') {
+    if (currentMode === 'tiles' && (isEraser || (selectedBrush.width === 1 && selectedBrush.height === 1))) {
+      adjustBrushSize(-1);
+    }
+  }
+  if (e.key === ']') {
+    if (currentMode === 'tiles' && (isEraser || (selectedBrush.width === 1 && selectedBrush.height === 1))) {
+      adjustBrushSize(1);
+    }
+  }
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    if (currentMode === 'entities' && selectedEntity) {
+      deleteSelectedEntity();
+    }
+  }
+  // Arrow key movement for entities
+  if (currentMode === 'entities' && selectedEntity) {
+    // Get entity dimensions (accounting for sprite pieces and overrides)
+    const asset = getAnyAssetById(selectedEntity.assetId);
+    let tw = asset?.tileWidth || 1;
+    let th = asset?.tileHeight || 1;
+    if (selectedEntity.pieceId) {
+      const piecesToUse = getEffectivePieces(selectedEntity.assetId, asset?.pieces);
+      const piece = piecesToUse?.find(p => p.id === selectedEntity.pieceId);
+      if (piece) {
+        tw = piece.tileWidth;
+        th = piece.tileHeight;
+      }
+    }
+
+    let moved = false;
+    if (e.key === 'ArrowLeft') {
+      selectedEntity.x = Math.max(0, selectedEntity.x - 1);
+      moved = true;
+    }
+    if (e.key === 'ArrowRight') {
+      const maxX = mapData.width - tw;
+      selectedEntity.x = Math.min(maxX, selectedEntity.x + 1);
+      moved = true;
+    }
+    if (e.key === 'ArrowUp') {
+      selectedEntity.y = Math.max(0, selectedEntity.y - 1);
+      moved = true;
+    }
+    if (e.key === 'ArrowDown') {
+      const maxY = mapData.height - th;
+      selectedEntity.y = Math.min(maxY, selectedEntity.y + 1);
+      moved = true;
+    }
+    if (moved) {
+      e.preventDefault();
+      updatePropertiesPanel();
+      renderMap();
+    }
+  }
+  if (e.key === 'Escape') {
+    selectedEntity = null;
+    selectedAsset = null;
+    updatePropertiesPanel();
+    renderAssetGrid();
+    updateSelectedAssetPreview();
+    renderMap();
+  }
+});
