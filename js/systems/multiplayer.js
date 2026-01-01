@@ -12,6 +12,7 @@ import { playSound } from './audio.js';
 let socket = null;
 let localPlayerId = null;
 let connected = false;
+let pendingPlayerName = 'Player'; // Name to send on connect
 
 // Other player entities
 const otherPlayers = new Map(); // id -> { parts, label, targetX, targetY }
@@ -34,6 +35,7 @@ const PLAYER_COLORS = [
  * Connect to multiplayer server
  */
 export function connectToServer(playerName = 'Player') {
+  pendingPlayerName = playerName; // Store for sending after init
   return new Promise((resolve) => {
     try {
       console.log('Connecting to:', SERVER_URL);
@@ -88,7 +90,9 @@ function handleMessage(msg, initResolve) {
       connected = true;
       console.log('Connected as', msg.player.name, '- id:', localPlayerId);
 
-      // Send our character selection to server
+      // Send our name and character selection to server
+      socket.send(JSON.stringify({ type: 'setName', name: pendingPlayerName }));
+
       const selectedChar = getSelectedCharacter();
       socket.send(
         JSON.stringify({

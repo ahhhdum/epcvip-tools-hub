@@ -52,7 +52,8 @@ export async function overworldScene() {
   clearDialog();
 
   // Try to connect to multiplayer server (non-blocking)
-  connectToServer('Player').then((connected) => {
+  const playerName = localStorage.getItem('epcvip_playerName') || 'Player';
+  connectToServer(playerName).then((connected) => {
     if (connected) {
       showDialog('Connected to multiplayer! Other players will appear soon.');
       wait(3, clearDialog);

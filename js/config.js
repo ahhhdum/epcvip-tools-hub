@@ -14,7 +14,7 @@ export const GAME_CONFIG = {
   width: 1200,
   height: 864,
   tileSize: 24,
-  uiScale: 1.8, // Scale factor for UI elements (increased proportionally)
+  uiScale: 2.0, // Scale factor for UI elements (integer for crisp text)
 
   // World dimensions (scrollable area) - expanded for larger viewport
   worldWidth: 1200, // 50 tiles wide

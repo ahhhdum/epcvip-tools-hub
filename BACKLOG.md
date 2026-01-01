@@ -103,6 +103,11 @@ Start with localStorage for name/colors. Add SSO later when there's enough value
 
 ## Future Ideas (Icebox)
 
+### Hub Landing Page Visual Improvements
+- Replace green grass background with something more fitting (gradient, pattern, or themed graphic)
+- Current grass color feels out of place for a tools hub landing page
+- Consider: dark gradient, subtle grid pattern, or stylized tech-themed background
+
 ### Improved Hitbox Management
 Editor or tooling for creating pixel-perfect collision shapes.
 
