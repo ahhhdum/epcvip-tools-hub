@@ -9,18 +9,11 @@
 - [x] Player-to-player hit detection
 - [x] Railway deployment
 - [x] Directional character sprites (Farmer_Bob, 8-direction walk/idle)
+- [x] Player name input (entry modal, localStorage, server sync, display above character)
+- [x] Tilemap system with multi-tileset support
+- [x] Plain grass tile for cleaner maps
 
 **Live at:** https://epcvip-tools-hub-production.up.railway.app
-
----
-
-## Priority 1: Quick Wins
-
-### Player Name Input
-- Add name entry on game start
-- Send `setName` message to server (handler already exists)
-- Display above player character
-- Persist in localStorage
 
 ---
 
