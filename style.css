@@ -43,7 +43,6 @@ body {
 
 .screen-inner {
     background: #0f0f0f;
-    padding: 8px;
     border-radius: 3px;
     display: flex;
     flex-direction: column;
@@ -61,16 +60,15 @@ body {
     width: 100%;
 }
 
-/* Game Canvas - stretch mode handles coordinate transform */
+/* Game Canvas - explicit size matches KaPlay internal resolution */
 #gameCanvas {
     display: block;
+    width: 1200px;
+    height: 864px;
     image-rendering: pixelated;
     image-rendering: crisp-edges;
     border: 2px solid #2a2a2a;
     background: #58a028;
-    width: 100%;
-    height: auto;
-    aspect-ratio: 25 / 18; /* Match game aspect ratio (1200/864 = 25/18) */
 }
 
 /* Dialog Box */

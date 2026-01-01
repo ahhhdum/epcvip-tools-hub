@@ -17,8 +17,8 @@ const k = kaplay({
   canvas: document.getElementById('gameCanvas'),
   width: GAME_CONFIG.width,
   height: GAME_CONFIG.height,
-  stretch: true, // Scale to container + handle mouse coordinates
-  letterbox: true, // Maintain aspect ratio
+  stretch: false, // 1:1 size - CSS matches internal resolution
+  letterbox: false,
   crisp: true,
   pixelDensity: 1,
   background: COLORS.grass,

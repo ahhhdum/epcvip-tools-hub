@@ -49,7 +49,13 @@ function getRandomName() {
   return `${adj}${noun}`;
 }
 
+// Track if modal is open to disable background keyboard navigation
+let modalOpen = false;
+
 export function loadingScene() {
+  // Reset modal state when scene loads
+  modalOpen = false;
+
   // Load assets in background (non-blocking)
   loadAssets();
 
@@ -89,6 +95,11 @@ export function loadingScene() {
   const gridStartX = centerX - gridWidth / 2;
   const gridStartY = 130 * S;
 
+  // Track cards for keyboard navigation
+  // Items: tool cards + "Enter Overworld" button (last item)
+  const cardRefs = [];
+  let selectedIndex = -1; // -1 means nothing selected
+
   liveTools.forEach((tool, i) => {
     const col = i % cols;
     const row = Math.floor(i / cols);
@@ -96,15 +107,16 @@ export function loadingScene() {
     const cardY = gridStartY + row * (cardHeight + cardGap);
 
     // Card background
-    add([
+    const card = add([
       rect(cardWidth, cardHeight, { radius: 4 }),
       pos(cardX, cardY),
       color(22, 33, 62),
       outline(2, rgb(...COLORS.gold)),
       area(),
       'tool-card',
-      { url: tool.url, toolName: tool.name },
+      { url: tool.url, toolName: tool.name, cardIndex: i },
     ]);
+    cardRefs.push({ card, url: tool.url, isButton: false });
 
     // Tool name
     add([
@@ -133,24 +145,6 @@ export function loadingScene() {
     ]);
   });
 
-  // Click handler for tool cards
-  onClick('tool-card', (card) => {
-    if (card.url) {
-      window.open(card.url, '_blank');
-    }
-  });
-
-  // Hover effect for cards
-  onHover('tool-card', (card) => {
-    card.outline.color = rgb(255, 215, 0);
-    card.color = rgb(26, 39, 68);
-  });
-
-  onHoverEnd('tool-card', (card) => {
-    card.outline.color = rgb(...COLORS.gold);
-    card.color = rgb(22, 33, 62);
-  });
-
   // "Enter Overworld" button - positioned below the grid
   const gridRows = Math.ceil(liveTools.length / cols);
   const gridEndY = gridStartY + gridRows * (cardHeight + cardGap);
@@ -166,6 +160,7 @@ export function loadingScene() {
     area(),
     'enter-btn',
   ]);
+  cardRefs.push({ card: enterBtn, url: null, isButton: true });
 
   add([
     text('Enter Overworld', { size: 14 * S }),
@@ -174,13 +169,66 @@ export function loadingScene() {
     color(...COLORS.dark),
   ]);
 
+  // Update visual selection
+  function updateSelection(newIndex) {
+    // Deselect old
+    if (selectedIndex >= 0 && selectedIndex < cardRefs.length) {
+      const old = cardRefs[selectedIndex];
+      if (old.isButton) {
+        old.card.color = rgb(...COLORS.gold);
+        old.card.outline.color = rgb(255, 215, 0);
+      } else {
+        old.card.color = rgb(22, 33, 62);
+        old.card.outline.color = rgb(...COLORS.gold);
+      }
+    }
+    // Select new
+    selectedIndex = newIndex;
+    if (selectedIndex >= 0 && selectedIndex < cardRefs.length) {
+      const sel = cardRefs[selectedIndex];
+      if (sel.isButton) {
+        sel.card.color = rgb(255, 230, 100);
+        sel.card.outline.color = rgb(255, 255, 200);
+      } else {
+        sel.card.color = rgb(40, 55, 90);
+        sel.card.outline.color = rgb(255, 255, 200);
+      }
+    }
+  }
+
+  // Click handler for tool cards
+  onClick('tool-card', (card) => {
+    if (card.url) {
+      window.open(card.url, '_blank');
+    }
+  });
+
+  // Hover effect for cards
+  onHover('tool-card', (card) => {
+    if (card.cardIndex !== selectedIndex) {
+      card.outline.color = rgb(255, 215, 0);
+      card.color = rgb(26, 39, 68);
+    }
+  });
+
+  onHoverEnd('tool-card', (card) => {
+    if (card.cardIndex !== selectedIndex) {
+      card.outline.color = rgb(...COLORS.gold);
+      card.color = rgb(22, 33, 62);
+    }
+  });
+
   // Button hover
   onHover('enter-btn', () => {
-    enterBtn.color = rgb(255, 215, 0);
+    if (selectedIndex !== cardRefs.length - 1) {
+      enterBtn.color = rgb(255, 215, 0);
+    }
   });
 
   onHoverEnd('enter-btn', () => {
-    enterBtn.color = rgb(...COLORS.gold);
+    if (selectedIndex !== cardRefs.length - 1) {
+      enterBtn.color = rgb(...COLORS.gold);
+    }
   });
 
   // Button click - show character selection modal
@@ -188,18 +236,70 @@ export function loadingScene() {
     showCharacterModal();
   });
 
-  // Keyboard shortcut
-  onKeyPress('enter', () => {
-    showCharacterModal();
+  // Keyboard navigation (disabled when modal is open)
+  const totalItems = cardRefs.length;
+
+  onKeyPress('up', () => {
+    if (modalOpen) return;
+    if (selectedIndex < 0) {
+      updateSelection(totalItems - 1);
+    } else if (selectedIndex >= cols) {
+      updateSelection(selectedIndex - cols);
+    }
   });
+
+  onKeyPress('down', () => {
+    if (modalOpen) return;
+    if (selectedIndex < 0) {
+      updateSelection(0);
+    } else if (selectedIndex < totalItems - cols) {
+      updateSelection(selectedIndex + cols);
+    } else if (selectedIndex < totalItems - 1) {
+      updateSelection(totalItems - 1); // Jump to button
+    }
+  });
+
+  onKeyPress('left', () => {
+    if (modalOpen) return;
+    if (selectedIndex < 0) {
+      updateSelection(0);
+    } else if (selectedIndex > 0) {
+      updateSelection(selectedIndex - 1);
+    }
+  });
+
+  onKeyPress('right', () => {
+    if (modalOpen) return;
+    if (selectedIndex < 0) {
+      updateSelection(0);
+    } else if (selectedIndex < totalItems - 1) {
+      updateSelection(selectedIndex + 1);
+    }
+  });
+
+  // A button or Enter to activate selection (disabled when modal is open)
+  const activateSelection = () => {
+    if (modalOpen) return;
+    if (selectedIndex < 0) {
+      // Nothing selected, go to overworld
+      showCharacterModal();
+    } else if (cardRefs[selectedIndex].isButton) {
+      showCharacterModal();
+    } else if (cardRefs[selectedIndex].url) {
+      window.open(cardRefs[selectedIndex].url, '_blank');
+    }
+  };
+
+  onKeyPress('enter', activateSelection);
+  onKeyPress('a', activateSelection);
 
   // Footer hint
   add([
-    text('Press ENTER or click to play the game', { size: 10 * S }),
+    text('Arrows to select • A/Enter to open • Enter for Overworld', { size: 9 * S }),
     pos(centerX, height() - 30 * S),
     anchor('center'),
     color(...COLORS.white),
-    opacity(0.4),
+    opacity(0.5),
   ]);
 }
 
@@ -232,6 +332,9 @@ function loadAssets() {
 
 // Show character + name selection modal
 function showCharacterModal() {
+  // Disable background keyboard navigation
+  modalOpen = true;
+
   const S = GAME_CONFIG.uiScale;
   const centerX = width() / 2;
   const centerY = height() / 2;
@@ -246,10 +349,24 @@ function showCharacterModal() {
   const savedName = getSavedName();
   let playerName = savedName || getRandomName();
 
-  // Dark overlay
+  // Dark overlay - blocks clicks to elements underneath
   modalObjects.push(
-    add([rect(width(), height()), pos(0, 0), color(0, 0, 0), opacity(0.85), fixed(), z(100)])
+    add([
+      rect(width(), height()),
+      pos(0, 0),
+      color(0, 0, 0),
+      opacity(0.85),
+      fixed(),
+      z(100),
+      area(),
+      'modal-overlay',
+    ])
   );
+
+  // Prevent clicks on overlay from propagating
+  onClick('modal-overlay', () => {
+    // Do nothing - just block the click
+  });
 
   // Modal box
   const modalWidth = 320 * S;
@@ -562,5 +679,7 @@ function showCharacterModal() {
     handleEnter.cancel();
     handleEscape.cancel();
     modalObjects.forEach((obj) => destroy(obj));
+    // Re-enable background keyboard navigation
+    modalOpen = false;
   });
 }
