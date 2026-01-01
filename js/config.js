@@ -14,19 +14,19 @@ export const GAME_CONFIG = {
   width: 1200,
   height: 864,
   tileSize: 24,
-  uiScale: 1.8,  // Scale factor for UI elements (increased proportionally)
+  uiScale: 1.8, // Scale factor for UI elements (increased proportionally)
 
   // World dimensions (scrollable area) - expanded for larger viewport
-  worldWidth: 1200,   // 50 tiles wide
-  worldHeight: 1080,  // 45 tiles tall
+  worldWidth: 1200, // 50 tiles wide
+  worldHeight: 1080, // 45 tiles tall
 
   playerSpeed: 120,
   dialogHeight: 70,
 
   // Fritelle collectibles
-  fritelleCount: 8,        // Number of fritelles to spawn
-  fritelleRespawnMin: 3,   // Min seconds before respawn
-  fritelleRespawnMax: 8,   // Max seconds before respawn
+  fritelleCount: 8, // Number of fritelles to spawn
+  fritelleRespawnMin: 3, // Min seconds before respawn
+  fritelleRespawnMax: 8, // Max seconds before respawn
 };
 
 export const COLORS = {
@@ -44,17 +44,20 @@ export const COLORS = {
 const COLLISION_SHAPES = {
   // house-1: 96x128 - triangle roof fits well, use compound shape
   house1: [
-    { type: 'polygon', points: [[0.5, 0], [0.05, 0.35], [0.95, 0.35]] },  // Roof triangle (inset 5%)
-    { type: 'rect', x: 0.10, y: 0.35, w: 0.80, h: 0.50 },                 // Body (inset 10%, shorter)
+    {
+      type: 'polygon',
+      points: [
+        [0.5, 0],
+        [0.05, 0.35],
+        [0.95, 0.35],
+      ],
+    }, // Roof triangle (inset 5%)
+    { type: 'rect', x: 0.1, y: 0.35, w: 0.8, h: 0.5 }, // Body (inset 10%, shorter)
   ],
   // house-2: 144x128 - triangle doesn't fit, use simple inset rect
-  house2: [
-    { type: 'rect', x: 0.08, y: 0.25, w: 0.84, h: 0.55 },
-  ],
+  house2: [{ type: 'rect', x: 0.08, y: 0.25, w: 0.84, h: 0.55 }],
   // house-3: 144x128 - same as house-2
-  house3: [
-    { type: 'rect', x: 0.08, y: 0.25, w: 0.84, h: 0.55 },
-  ],
+  house3: [{ type: 'rect', x: 0.08, y: 0.25, w: 0.84, h: 0.55 }],
 };
 
 // DEPRECATED: Buildings should now be placed using the map editor and saved to maps/village.json
@@ -66,11 +69,11 @@ export const TOOLS = [
     id: 'ping-tree',
     name: 'Ping Tree Compare',
     description: 'Compare ping tree configurations to identify campaign differences.',
-    url: 'https://ping-tree-compare-production.up.railway.app',  // Direct link (proxy has no auth issues)
+    url: 'https://ping-tree-compare-production.up.railway.app', // Direct link (proxy has no auth issues)
     position: { x: 3, y: 3 },
     color: [72, 168, 104],
     sprite: 'building-house-1',
-    spriteWidth: 96,   // Actual sprite dimensions
+    spriteWidth: 96, // Actual sprite dimensions
     spriteHeight: 128,
     collisionShapes: COLLISION_SHAPES.house1,
     live: true,
@@ -79,7 +82,7 @@ export const TOOLS = [
     id: 'athena',
     name: 'Athena Monitor',
     description: 'Monitor AWS Athena query usage, costs, and performance.',
-    url: 'https://epcvip-athena-usage-monitor.up.railway.app',  // Direct link (Streamlit auth breaks proxy)
+    url: 'https://epcvip-athena-usage-monitor.up.railway.app', // Direct link (Streamlit auth breaks proxy)
     position: { x: 17, y: 3 },
     color: [88, 120, 168],
     sprite: 'building-house-2',
@@ -92,7 +95,7 @@ export const TOOLS = [
     id: 'validator',
     name: 'Datalake Validator',
     description: 'Validate SQL queries against the datalake schema.',
-    url: 'https://streamlit-validator-production.up.railway.app',  // Direct link (Streamlit auth breaks proxy)
+    url: 'https://streamlit-validator-production.up.railway.app', // Direct link (Streamlit auth breaks proxy)
     position: { x: 31, y: 3 },
     color: [240, 192, 0],
     sprite: 'building-house-3',
@@ -108,7 +111,7 @@ export const TOOLS = [
     url: null,
     position: { x: 7, y: 17 },
     color: [128, 128, 128],
-    sprite: 'building-house-1',  // Placeholder
+    sprite: 'building-house-1', // Placeholder
     spriteWidth: 96,
     spriteHeight: 128,
     collisionShapes: COLLISION_SHAPES.house1,
@@ -121,7 +124,7 @@ export const TOOLS = [
     url: null,
     position: { x: 25, y: 17 },
     color: [128, 128, 128],
-    sprite: 'building-house-2',  // Placeholder
+    sprite: 'building-house-2', // Placeholder
     spriteWidth: 144,
     spriteHeight: 128,
     collisionShapes: COLLISION_SHAPES.house2,
@@ -147,7 +150,7 @@ export function getSelectedCharacter() {
   if (saved) {
     try {
       const data = JSON.parse(saved);
-      const char = CHARACTERS.find(c => c.id === data.id);
+      const char = CHARACTERS.find((c) => c.id === data.id);
       if (char) return char;
     } catch {
       // Invalid JSON in localStorage - fall through to default
@@ -158,11 +161,14 @@ export function getSelectedCharacter() {
 
 // Save selected character to localStorage
 export function setSelectedCharacter(char) {
-  localStorage.setItem('selectedCharacter', JSON.stringify({
-    id: char.id,
-    name: char.name,
-    role: char.role,
-  }));
+  localStorage.setItem(
+    'selectedCharacter',
+    JSON.stringify({
+      id: char.id,
+      name: char.name,
+      role: char.role,
+    })
+  );
 }
 
 // Future: NPC definitions

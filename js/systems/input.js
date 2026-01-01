@@ -30,7 +30,7 @@ export function setThrowCallback(callback) {
 export function initInput() {
   // D-pad buttons
   const dpadButtons = document.querySelectorAll('.dpad-btn[data-dir]');
-  dpadButtons.forEach(btn => {
+  dpadButtons.forEach((btn) => {
     const dir = btn.dataset.dir;
 
     // Mouse events
@@ -111,7 +111,7 @@ export function initInput() {
   }
 
   // Prevent context menu on long press
-  document.querySelectorAll('.dpad-btn, .action-btn').forEach(btn => {
+  document.querySelectorAll('.dpad-btn, .action-btn').forEach((btn) => {
     btn.addEventListener('contextmenu', (e) => e.preventDefault());
   });
 }

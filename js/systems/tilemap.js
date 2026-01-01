@@ -11,7 +11,7 @@ import { GAME_CONFIG } from '../config.js';
 const TILE_SIZE = 16;
 
 // Scale factor for rendering (to match game world scale)
-const TILE_SCALE = 1.5;  // 16 * 1.5 = 24px (matches GAME_CONFIG.tileSize)
+const TILE_SCALE = 1.5; // 16 * 1.5 = 24px (matches GAME_CONFIG.tileSize)
 
 // Z-levels for each layer
 const LAYER_Z = {

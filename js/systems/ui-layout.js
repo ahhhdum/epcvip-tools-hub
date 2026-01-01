@@ -130,7 +130,7 @@ export function getCharSelectLayout() {
     numRows,
 
     // Sprite scale within card - larger for better visibility
-    spriteScale: Math.max(2.0, finalCardW / 135 * 1.8),
+    spriteScale: Math.max(2.0, (finalCardW / 135) * 1.8),
 
     // Text sizes - minimum sizes for readability
     nameSize: Math.max(14, Math.round(14 * (finalCardW / 135))),
@@ -150,7 +150,7 @@ export function getLoadingLayout() {
   const W = width();
   const H = height();
 
-  const barWidth = Math.min(300 * S, W * 0.6);  // 60% of width max
+  const barWidth = Math.min(300 * S, W * 0.6); // 60% of width max
   const barHeight = 24 * S;
 
   return {

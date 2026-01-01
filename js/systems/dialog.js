@@ -5,7 +5,8 @@
  * Uses the HTML dialog box element for better text rendering.
  */
 
-export const WELCOME_MESSAGE = 'Welcome to the Innovation Lab! Arrow keys to move, ENTER to interact, SPACE to throw.';
+export const WELCOME_MESSAGE =
+  'Welcome to the Innovation Lab! Arrow keys to move, ENTER to interact, SPACE to throw.';
 
 let dialogElement = null;
 

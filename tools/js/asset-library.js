@@ -14,33 +14,28 @@
 export const COLLISION_PRESETS = {
   // Small house (96x128): Triangle roof + rectangular body
   house1: [
-    { type: 'polygon', points: [[0.5, 0], [0.05, 0.35], [0.95, 0.35]] },
-    { type: 'rect', x: 0.10, y: 0.35, w: 0.80, h: 0.50 },
+    {
+      type: 'polygon',
+      points: [
+        [0.5, 0],
+        [0.05, 0.35],
+        [0.95, 0.35],
+      ],
+    },
+    { type: 'rect', x: 0.1, y: 0.35, w: 0.8, h: 0.5 },
   ],
   // Medium/large house (144x128): Simple inset rectangle
-  house2: [
-    { type: 'rect', x: 0.08, y: 0.25, w: 0.84, h: 0.55 },
-  ],
+  house2: [{ type: 'rect', x: 0.08, y: 0.25, w: 0.84, h: 0.55 }],
   // Inn (240x192): Large building, similar proportions
-  inn: [
-    { type: 'rect', x: 0.05, y: 0.20, w: 0.90, h: 0.65 },
-  ],
+  inn: [{ type: 'rect', x: 0.05, y: 0.2, w: 0.9, h: 0.65 }],
   // Barn (128x144): Tall building with gambrel roof
-  barn: [
-    { type: 'rect', x: 0.08, y: 0.30, w: 0.84, h: 0.55 },
-  ],
+  barn: [{ type: 'rect', x: 0.08, y: 0.3, w: 0.84, h: 0.55 }],
   // Blacksmith (160x128): Wide building
-  blacksmith: [
-    { type: 'rect', x: 0.06, y: 0.25, w: 0.88, h: 0.60 },
-  ],
+  blacksmith: [{ type: 'rect', x: 0.06, y: 0.25, w: 0.88, h: 0.6 }],
   // Greenhouse (96x128): Similar to small house
-  greenhouse: [
-    { type: 'rect', x: 0.08, y: 0.30, w: 0.84, h: 0.55 },
-  ],
+  greenhouse: [{ type: 'rect', x: 0.08, y: 0.3, w: 0.84, h: 0.55 }],
   // Windmill (128x112): Circular base
-  windmill: [
-    { type: 'rect', x: 0.15, y: 0.40, w: 0.70, h: 0.50 },
-  ],
+  windmill: [{ type: 'rect', x: 0.15, y: 0.4, w: 0.7, h: 0.5 }],
 };
 
 export const ASSET_LIBRARY = {
@@ -208,7 +203,15 @@ export const ASSET_LIBRARY = {
       collisionShapes: COLLISION_PRESETS.greenhouse,
       pieces: [
         { id: 'full', name: 'Full', col: 0, width: 96, height: 128, tileWidth: 6, tileHeight: 8 },
-        { id: 'glass', name: 'Glass Only', col: 1, width: 96, height: 128, tileWidth: 6, tileHeight: 8 },
+        {
+          id: 'glass',
+          name: 'Glass Only',
+          col: 1,
+          width: 96,
+          height: 128,
+          tileWidth: 6,
+          tileHeight: 8,
+        },
         { id: 'floor', name: 'Floor', col: 2, width: 96, height: 128, tileWidth: 6, tileHeight: 8 },
         { id: 'frame', name: 'Frame', col: 3, width: 96, height: 128, tileWidth: 6, tileHeight: 8 },
       ],
@@ -224,7 +227,15 @@ export const ASSET_LIBRARY = {
       collisionShapes: COLLISION_PRESETS.greenhouse,
       pieces: [
         { id: 'full', name: 'Full', col: 0, width: 96, height: 128, tileWidth: 6, tileHeight: 8 },
-        { id: 'glass', name: 'Glass Only', col: 1, width: 96, height: 128, tileWidth: 6, tileHeight: 8 },
+        {
+          id: 'glass',
+          name: 'Glass Only',
+          col: 1,
+          width: 96,
+          height: 128,
+          tileWidth: 6,
+          tileHeight: 8,
+        },
         { id: 'floor', name: 'Floor', col: 2, width: 96, height: 128, tileWidth: 6, tileHeight: 8 },
         { id: 'frame', name: 'Frame', col: 3, width: 96, height: 128, tileWidth: 6, tileHeight: 8 },
       ],
@@ -240,7 +251,15 @@ export const ASSET_LIBRARY = {
       collisionShapes: COLLISION_PRESETS.greenhouse,
       pieces: [
         { id: 'full', name: 'Full', col: 0, width: 96, height: 128, tileWidth: 6, tileHeight: 8 },
-        { id: 'glass', name: 'Glass Only', col: 1, width: 96, height: 128, tileWidth: 6, tileHeight: 8 },
+        {
+          id: 'glass',
+          name: 'Glass Only',
+          col: 1,
+          width: 96,
+          height: 128,
+          tileWidth: 6,
+          tileHeight: 8,
+        },
         { id: 'floor', name: 'Floor', col: 2, width: 96, height: 128, tileWidth: 6, tileHeight: 8 },
         { id: 'frame', name: 'Frame', col: 3, width: 96, height: 128, tileWidth: 6, tileHeight: 8 },
       ],
@@ -255,8 +274,24 @@ export const ASSET_LIBRARY = {
       spriteName: 'building-windmill',
       collisionShapes: COLLISION_PRESETS.windmill,
       pieces: [
-        { id: 'building', name: 'Windmill Building', col: 0, width: 64, height: 112, tileWidth: 4, tileHeight: 7 },
-        { id: 'blades', name: 'Windmill Blades', col: 1, width: 64, height: 112, tileWidth: 4, tileHeight: 7 },
+        {
+          id: 'building',
+          name: 'Windmill Building',
+          col: 0,
+          width: 64,
+          height: 112,
+          tileWidth: 4,
+          tileHeight: 7,
+        },
+        {
+          id: 'blades',
+          name: 'Windmill Blades',
+          col: 1,
+          width: 64,
+          height: 112,
+          tileWidth: 4,
+          tileHeight: 7,
+        },
       ],
     },
   ],
@@ -297,8 +332,24 @@ export const ASSET_LIBRARY = {
       spriteName: 'decoration-benches',
       collisionShapes: [{ type: 'rect', x: 0.1, y: 0.3, w: 0.8, h: 0.6 }],
       pieces: [
-        { id: 'bench_wood', name: 'Wooden Bench', col: 0, width: 32, height: 32, tileWidth: 2, tileHeight: 2 },
-        { id: 'bench_stone', name: 'Stone Bench', col: 1, width: 32, height: 32, tileWidth: 2, tileHeight: 2 },
+        {
+          id: 'bench_wood',
+          name: 'Wooden Bench',
+          col: 0,
+          width: 32,
+          height: 32,
+          tileWidth: 2,
+          tileHeight: 2,
+        },
+        {
+          id: 'bench_stone',
+          name: 'Stone Bench',
+          col: 1,
+          width: 32,
+          height: 32,
+          tileWidth: 2,
+          tileHeight: 2,
+        },
       ],
     },
     {
@@ -311,9 +362,33 @@ export const ASSET_LIBRARY = {
       spriteName: 'decoration-barrels',
       collisionShapes: [{ type: 'rect', x: 0.1, y: 0.3, w: 0.8, h: 0.6 }],
       pieces: [
-        { id: 'barrel_single', name: 'Single Barrel', col: 0, width: 16, height: 32, tileWidth: 1, tileHeight: 2 },
-        { id: 'barrel_double', name: 'Double Barrel', col: 1, width: 32, height: 32, tileWidth: 2, tileHeight: 2 },
-        { id: 'barrel_triple', name: 'Triple Barrel', col: 2, width: 48, height: 32, tileWidth: 3, tileHeight: 2 },
+        {
+          id: 'barrel_single',
+          name: 'Single Barrel',
+          col: 0,
+          width: 16,
+          height: 32,
+          tileWidth: 1,
+          tileHeight: 2,
+        },
+        {
+          id: 'barrel_double',
+          name: 'Double Barrel',
+          col: 1,
+          width: 32,
+          height: 32,
+          tileWidth: 2,
+          tileHeight: 2,
+        },
+        {
+          id: 'barrel_triple',
+          name: 'Triple Barrel',
+          col: 2,
+          width: 48,
+          height: 32,
+          tileWidth: 3,
+          tileHeight: 2,
+        },
       ],
     },
     {
@@ -326,9 +401,33 @@ export const ASSET_LIBRARY = {
       spriteName: 'decoration-hay',
       collisionShapes: [{ type: 'rect', x: 0.1, y: 0.2, w: 0.8, h: 0.7 }],
       pieces: [
-        { id: 'hay_single', name: 'Single Hay', col: 0, width: 16, height: 16, tileWidth: 1, tileHeight: 1 },
-        { id: 'hay_double', name: 'Double Hay', col: 1, width: 16, height: 16, tileWidth: 1, tileHeight: 1 },
-        { id: 'hay_triple', name: 'Stacked Hay', col: 2, width: 16, height: 16, tileWidth: 1, tileHeight: 1 },
+        {
+          id: 'hay_single',
+          name: 'Single Hay',
+          col: 0,
+          width: 16,
+          height: 16,
+          tileWidth: 1,
+          tileHeight: 1,
+        },
+        {
+          id: 'hay_double',
+          name: 'Double Hay',
+          col: 1,
+          width: 16,
+          height: 16,
+          tileWidth: 1,
+          tileHeight: 1,
+        },
+        {
+          id: 'hay_triple',
+          name: 'Stacked Hay',
+          col: 2,
+          width: 16,
+          height: 16,
+          tileWidth: 1,
+          tileHeight: 1,
+        },
       ],
     },
     {
@@ -341,11 +440,51 @@ export const ASSET_LIBRARY = {
       spriteName: 'decoration-scarecrows',
       collisionShapes: [{ type: 'rect', x: 0.2, y: 0.5, w: 0.6, h: 0.4 }],
       pieces: [
-        { id: 'scarecrow_1', name: 'Scarecrow 1', col: 0, width: 32, height: 32, tileWidth: 2, tileHeight: 2 },
-        { id: 'scarecrow_2', name: 'Scarecrow 2', col: 1, width: 32, height: 32, tileWidth: 2, tileHeight: 2 },
-        { id: 'scarecrow_3', name: 'Scarecrow 3', col: 2, width: 32, height: 32, tileWidth: 2, tileHeight: 2 },
-        { id: 'scarecrow_4', name: 'Scarecrow 4', col: 3, width: 32, height: 32, tileWidth: 2, tileHeight: 2 },
-        { id: 'scarecrow_5', name: 'Scarecrow 5', col: 4, width: 32, height: 32, tileWidth: 2, tileHeight: 2 },
+        {
+          id: 'scarecrow_1',
+          name: 'Scarecrow 1',
+          col: 0,
+          width: 32,
+          height: 32,
+          tileWidth: 2,
+          tileHeight: 2,
+        },
+        {
+          id: 'scarecrow_2',
+          name: 'Scarecrow 2',
+          col: 1,
+          width: 32,
+          height: 32,
+          tileWidth: 2,
+          tileHeight: 2,
+        },
+        {
+          id: 'scarecrow_3',
+          name: 'Scarecrow 3',
+          col: 2,
+          width: 32,
+          height: 32,
+          tileWidth: 2,
+          tileHeight: 2,
+        },
+        {
+          id: 'scarecrow_4',
+          name: 'Scarecrow 4',
+          col: 3,
+          width: 32,
+          height: 32,
+          tileWidth: 2,
+          tileHeight: 2,
+        },
+        {
+          id: 'scarecrow_5',
+          name: 'Scarecrow 5',
+          col: 4,
+          width: 32,
+          height: 32,
+          tileWidth: 2,
+          tileHeight: 2,
+        },
       ],
     },
   ],
@@ -362,8 +501,33 @@ export const ASSET_LIBRARY = {
       spriteName: 'tree-big-oak',
       collisionShapes: [{ type: 'rect', x: 0.35, y: 0.7, w: 0.3, h: 0.25 }],
       pieces: [
-        { id: 'oak_big_1', name: 'Big Oak 1', col: 0, width: 96, height: 80, tileWidth: 6, tileHeight: 5 },
-        { id: 'oak_big_2', name: 'Big Oak 2', col: 1, width: 96, height: 80, tileWidth: 6, tileHeight: 5 },
+        {
+          id: 'big_oak_stump',
+          name: 'Big Oak Stump',
+          x: 0,
+          width: 64,
+          height: 80,
+          tileWidth: 4,
+          tileHeight: 5,
+        },
+        {
+          id: 'big_oak_1',
+          name: 'Big Oak 1',
+          x: 64,
+          width: 64,
+          height: 80,
+          tileWidth: 4,
+          tileHeight: 5,
+        },
+        {
+          id: 'big_oak_2',
+          name: 'Big Oak 2',
+          x: 128,
+          width: 64,
+          height: 80,
+          tileWidth: 4,
+          tileHeight: 5,
+        },
       ],
     },
     {
@@ -376,9 +540,33 @@ export const ASSET_LIBRARY = {
       spriteName: 'tree-medium-oak',
       collisionShapes: [{ type: 'rect', x: 0.35, y: 0.6, w: 0.3, h: 0.3 }],
       pieces: [
-        { id: 'oak_med_1', name: 'Medium Oak 1', col: 0, width: 32, height: 48, tileWidth: 2, tileHeight: 3 },
-        { id: 'oak_med_2', name: 'Medium Oak 2', col: 1, width: 32, height: 48, tileWidth: 2, tileHeight: 3 },
-        { id: 'oak_med_3', name: 'Medium Oak 3', col: 2, width: 32, height: 48, tileWidth: 2, tileHeight: 3 },
+        {
+          id: 'oak_med_1',
+          name: 'Medium Oak 1',
+          col: 0,
+          width: 32,
+          height: 48,
+          tileWidth: 2,
+          tileHeight: 3,
+        },
+        {
+          id: 'oak_med_2',
+          name: 'Medium Oak 2',
+          col: 1,
+          width: 32,
+          height: 48,
+          tileWidth: 2,
+          tileHeight: 3,
+        },
+        {
+          id: 'oak_med_3',
+          name: 'Medium Oak 3',
+          col: 2,
+          width: 32,
+          height: 48,
+          tileWidth: 2,
+          tileHeight: 3,
+        },
       ],
     },
     {
@@ -391,9 +579,33 @@ export const ASSET_LIBRARY = {
       spriteName: 'tree-small-oak',
       collisionShapes: [{ type: 'rect', x: 0.3, y: 0.6, w: 0.4, h: 0.3 }],
       pieces: [
-        { id: 'oak_small_1', name: 'Small Oak 1', col: 0, width: 32, height: 64, tileWidth: 2, tileHeight: 4 },
-        { id: 'oak_small_2', name: 'Small Oak 2', col: 1, width: 32, height: 64, tileWidth: 2, tileHeight: 4 },
-        { id: 'oak_small_3', name: 'Small Oak 3', col: 2, width: 32, height: 64, tileWidth: 2, tileHeight: 4 },
+        {
+          id: 'oak_small_1',
+          name: 'Small Oak 1',
+          col: 0,
+          width: 32,
+          height: 64,
+          tileWidth: 2,
+          tileHeight: 4,
+        },
+        {
+          id: 'oak_small_2',
+          name: 'Small Oak 2',
+          col: 1,
+          width: 32,
+          height: 64,
+          tileWidth: 2,
+          tileHeight: 4,
+        },
+        {
+          id: 'oak_small_3',
+          name: 'Small Oak 3',
+          col: 2,
+          width: 32,
+          height: 64,
+          tileWidth: 2,
+          tileHeight: 4,
+        },
       ],
     },
     {
@@ -406,8 +618,33 @@ export const ASSET_LIBRARY = {
       spriteName: 'tree-big-fruit',
       collisionShapes: [{ type: 'rect', x: 0.35, y: 0.65, w: 0.3, h: 0.3 }],
       pieces: [
-        { id: 'fruit_1', name: 'Apple Tree', col: 0, width: 48, height: 64, tileWidth: 3, tileHeight: 4 },
-        { id: 'fruit_2', name: 'Orange Tree', col: 1, width: 48, height: 64, tileWidth: 3, tileHeight: 4 },
+        {
+          id: 'apple_tree_stump',
+          name: 'Apple Tree Stump',
+          x: 0,
+          width: 32,
+          height: 64,
+          tileWidth: 2,
+          tileHeight: 4,
+        },
+        {
+          id: 'apple_tree_1',
+          name: 'Apple Tree 1',
+          x: 32,
+          width: 32,
+          height: 64,
+          tileWidth: 2,
+          tileHeight: 4,
+        },
+        {
+          id: 'apple_tree_2',
+          name: 'Apple Tree 2',
+          x: 64,
+          width: 32,
+          height: 64,
+          tileWidth: 2,
+          tileHeight: 4,
+        },
       ],
     },
     {
@@ -420,9 +657,33 @@ export const ASSET_LIBRARY = {
       spriteName: 'tree-small-spruce',
       collisionShapes: [{ type: 'rect', x: 0.35, y: 0.7, w: 0.3, h: 0.25 }],
       pieces: [
-        { id: 'spruce_1', name: 'Spruce 1', col: 0, width: 32, height: 64, tileWidth: 2, tileHeight: 4 },
-        { id: 'spruce_2', name: 'Spruce 2', col: 1, width: 32, height: 64, tileWidth: 2, tileHeight: 4 },
-        { id: 'spruce_3', name: 'Spruce 3', col: 2, width: 32, height: 64, tileWidth: 2, tileHeight: 4 },
+        {
+          id: 'spruce_1',
+          name: 'Spruce 1',
+          col: 0,
+          width: 32,
+          height: 64,
+          tileWidth: 2,
+          tileHeight: 4,
+        },
+        {
+          id: 'spruce_2',
+          name: 'Spruce 2',
+          col: 1,
+          width: 32,
+          height: 64,
+          tileWidth: 2,
+          tileHeight: 4,
+        },
+        {
+          id: 'spruce_3',
+          name: 'Spruce 3',
+          col: 2,
+          width: 32,
+          height: 64,
+          tileWidth: 2,
+          tileHeight: 4,
+        },
       ],
     },
   ],
@@ -487,20 +748,20 @@ export function getAssetsByType(type) {
 // Get asset by ID
 export function getAssetById(type, id) {
   const assets = ASSET_LIBRARY[type] || [];
-  return assets.find(a => a.id === id);
+  return assets.find((a) => a.id === id);
 }
 
 // Get assets by category
 export function getAssetsByCategory(type, category) {
   const assets = ASSET_LIBRARY[type] || [];
-  return assets.filter(a => a.category === category);
+  return assets.filter((a) => a.category === category);
 }
 
 // Get unique categories for a type
 export function getCategoriesForType(type) {
   const assets = ASSET_LIBRARY[type] || [];
-  const cats = [...new Set(assets.map(a => a.category))];
-  return cats.map(c => ({
+  const cats = [...new Set(assets.map((a) => a.category))];
+  return cats.map((c) => ({
     id: c,
     label: CATEGORIES[type]?.[c] || c,
   }));

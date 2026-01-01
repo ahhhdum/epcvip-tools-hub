@@ -71,7 +71,6 @@ export function connectToServer(playerName = 'Player') {
           resolve(false);
         }
       }, 3000);
-
     } catch (e) {
       console.error('Connection error:', e);
       resolve(false);
@@ -91,13 +90,15 @@ function handleMessage(msg, initResolve) {
 
       // Send our character selection to server
       const selectedChar = getSelectedCharacter();
-      socket.send(JSON.stringify({
-        type: 'setAppearance',
-        appearance: { characterId: selectedChar.id }
-      }));
+      socket.send(
+        JSON.stringify({
+          type: 'setAppearance',
+          appearance: { characterId: selectedChar.id },
+        })
+      );
 
       // Spawn existing players
-      msg.players.forEach(p => spawnOtherPlayer(p));
+      msg.players.forEach((p) => spawnOtherPlayer(p));
 
       // Note: We don't spawn server fritelles here - let local system handle it
       // This keeps single-player and multiplayer consistent
@@ -185,7 +186,7 @@ function spawnOtherPlayer(playerData) {
     sprite(charId, { anim: `idle-${animDir}` }),
     pos(playerData.x, playerData.y),
     anchor('center'),
-    scale(2.4),  // Larger for 4K visibility
+    scale(2.4), // Larger for 4K visibility
     z(10),
     'other-player',
   ]);

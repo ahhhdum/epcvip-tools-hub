@@ -21,9 +21,11 @@ const DECORATION_TYPES = ['decorations', 'trees'];
  * Get asset from any entity type
  */
 function getAnyAssetById(assetId) {
-  return getAssetById('buildings', assetId) ||
-         getAssetById('decorations', assetId) ||
-         getAssetById('trees', assetId);
+  return (
+    getAssetById('buildings', assetId) ||
+    getAssetById('decorations', assetId) ||
+    getAssetById('trees', assetId)
+  );
 }
 
 /**
@@ -36,14 +38,14 @@ export function loadEntities(mapData) {
   const entities = mapData.entities || [];
 
   return entities
-    .map(entity => {
+    .map((entity) => {
       const gameEntity = createEntityFromMapData(entity);
       if (!gameEntity) {
         console.warn(`Failed to create entity: ${entity.id} (type: ${entity.type})`);
       }
       return gameEntity;
     })
-    .filter(Boolean);  // Remove nulls from failed creations
+    .filter(Boolean); // Remove nulls from failed creations
 }
 
 /**
@@ -84,7 +86,7 @@ function createBuildingFromAsset(entity, asset) {
   let pieceData = null;
 
   if (entity.pieceId && asset.pieces) {
-    const piece = asset.pieces.find(p => p.id === entity.pieceId);
+    const piece = asset.pieces.find((p) => p.id === entity.pieceId);
     if (piece) {
       width = piece.width;
       height = piece.height;
@@ -104,16 +106,14 @@ function createBuildingFromAsset(entity, asset) {
     sprite: asset.spriteName,
     spriteWidth: width,
     spriteHeight: height,
-    collisionShapes: asset.collisionShapes || [
-      { type: 'rect', x: 0, y: 0, w: 1, h: 1 }
-    ],
+    collisionShapes: asset.collisionShapes || [{ type: 'rect', x: 0, y: 0, w: 1, h: 1 }],
     live: entity.properties?.interactive ?? true,
 
     // Extended properties for sprite sheet support
     pieceId: entity.pieceId || null,
     pieceData: pieceData,
     assetId: entity.assetId,
-    fullAsset: asset,  // Pass full asset for piece rendering
+    fullAsset: asset, // Pass full asset for piece rendering
   };
 
   return createBuilding(tool);

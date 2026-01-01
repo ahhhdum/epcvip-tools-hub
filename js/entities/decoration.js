@@ -55,18 +55,8 @@ function drawProceduralGround() {
   for (let x = 0; x < MAP_W; x++) {
     for (let y = 0; y < MAP_H; y++) {
       if ((x + y) % 2 === 0) {
-        add([
-          rect(3, 3),
-          pos(x * TILE + 6, y * TILE + 6),
-          color(...COLORS.grassDark),
-          z(0),
-        ]);
-        add([
-          rect(3, 3),
-          pos(x * TILE + 15, y * TILE + 15),
-          color(...COLORS.grassDark),
-          z(0),
-        ]);
+        add([rect(3, 3), pos(x * TILE + 6, y * TILE + 6), color(...COLORS.grassDark), z(0)]);
+        add([rect(3, 3), pos(x * TILE + 15, y * TILE + 15), color(...COLORS.grassDark), z(0)]);
       }
     }
   }
@@ -80,54 +70,24 @@ function drawPath() {
   const pathDarkColor = [200, 160, 80];
 
   // Main horizontal path at y=10 (spans most of the width)
-  add([
-    rect((MAP_W - 4) * TILE, 2 * TILE),
-    pos(2 * TILE, 10 * TILE),
-    color(...pathColor),
-    z(1),
-  ]);
+  add([rect((MAP_W - 4) * TILE, 2 * TILE), pos(2 * TILE, 10 * TILE), color(...pathColor), z(1)]);
 
   // Second horizontal path at y=24 (spans most of the width)
-  add([
-    rect((MAP_W - 4) * TILE, 2 * TILE),
-    pos(2 * TILE, 24 * TILE),
-    color(...pathColor),
-    z(1),
-  ]);
+  add([rect((MAP_W - 4) * TILE, 2 * TILE), pos(2 * TILE, 24 * TILE), color(...pathColor), z(1)]);
 
   // Vertical path connecting the two horizontal paths
-  add([
-    rect(2 * TILE, 16 * TILE),
-    pos(19 * TILE, 10 * TILE),
-    color(...pathColor),
-    z(1),
-  ]);
+  add([rect(2 * TILE, 16 * TILE), pos(19 * TILE, 10 * TILE), color(...pathColor), z(1)]);
 
   // Additional vertical paths
-  add([
-    rect(2 * TILE, 16 * TILE),
-    pos(10 * TILE, 10 * TILE),
-    color(...pathColor),
-    z(1),
-  ]);
+  add([rect(2 * TILE, 16 * TILE), pos(10 * TILE, 10 * TILE), color(...pathColor), z(1)]);
 
-  add([
-    rect(2 * TILE, 16 * TILE),
-    pos(28 * TILE, 10 * TILE),
-    color(...pathColor),
-    z(1),
-  ]);
+  add([rect(2 * TILE, 16 * TILE), pos(28 * TILE, 10 * TILE), color(...pathColor), z(1)]);
 
   // Path texture for horizontal paths
   for (let x = 2; x < MAP_W - 2; x++) {
     for (const y of [10, 11, 24, 25]) {
       if ((x + y) % 3 === 0) {
-        add([
-          rect(4, 4),
-          pos(x * TILE + 9, y * TILE + 9),
-          color(...pathDarkColor),
-          z(2),
-        ]);
+        add([rect(4, 4), pos(x * TILE + 9, y * TILE + 9), color(...pathDarkColor), z(2)]);
       }
     }
   }
@@ -136,12 +96,7 @@ function drawPath() {
   for (const x of [10, 11, 19, 20, 28, 29]) {
     for (let y = 10; y < 26; y++) {
       if ((x + y) % 3 === 0) {
-        add([
-          rect(4, 4),
-          pos(x * TILE + 9, y * TILE + 9),
-          color(...pathDarkColor),
-          z(2),
-        ]);
+        add([rect(4, 4), pos(x * TILE + 9, y * TILE + 9), color(...pathDarkColor), z(2)]);
       }
     }
   }
@@ -163,45 +118,25 @@ export function createTree(tileX, tileY) {
   ]);
 
   // Trunk
-  add([
-    rect(8, 12),
-    pos(x + 8, y + 12),
-    color(90, 61, 26),
-    z(4),
-  ]);
+  add([rect(8, 12), pos(x + 8, y + 12), color(90, 61, 26), z(4)]);
 
   // Foliage (multiple circles as layered rects for simplicity)
-  add([
-    circle(12),
-    pos(x + 12, y + 10),
-    color(26, 90, 26),
-    z(5),
-  ]);
+  add([circle(12), pos(x + 12, y + 10), color(26, 90, 26), z(5)]);
 
-  add([
-    circle(8),
-    pos(x + 10, y + 7),
-    color(45, 122, 45),
-    z(6),
-  ]);
+  add([circle(8), pos(x + 10, y + 7), color(45, 122, 45), z(6)]);
 
-  add([
-    circle(6),
-    pos(x + 14, y + 6),
-    color(61, 154, 61),
-    z(7),
-  ]);
+  add([circle(6), pos(x + 14, y + 6), color(61, 154, 61), z(7)]);
 
   return tree;
 }
 
 export function createFlower(tileX, tileY) {
   const flowerColors = [
-    [255, 107, 107],  // red
-    [255, 217, 61],   // yellow
-    [107, 203, 119],  // green
-    [77, 150, 255],   // blue
-    [255, 133, 161],  // pink
+    [255, 107, 107], // red
+    [255, 217, 61], // yellow
+    [107, 203, 119], // green
+    [77, 150, 255], // blue
+    [255, 133, 161], // pink
   ];
 
   const x = tileX * TILE + 8 + Math.random() * 8;
@@ -209,26 +144,11 @@ export function createFlower(tileX, tileY) {
   const colorIdx = Math.floor(Math.random() * flowerColors.length);
 
   // Stem
-  add([
-    rect(2, 6),
-    pos(x - 1, y),
-    color(45, 90, 29),
-    z(2),
-  ]);
+  add([rect(2, 6), pos(x - 1, y), color(45, 90, 29), z(2)]);
 
   // Flower head
-  add([
-    circle(4),
-    pos(x, y),
-    color(...flowerColors[colorIdx]),
-    z(3),
-  ]);
+  add([circle(4), pos(x, y), color(...flowerColors[colorIdx]), z(3)]);
 
   // Center
-  add([
-    circle(2),
-    pos(x, y),
-    color(255, 241, 118),
-    z(4),
-  ]);
+  add([circle(2), pos(x, y), color(255, 241, 118), z(4)]);
 }

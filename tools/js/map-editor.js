@@ -1,4 +1,10 @@
-import { ASSET_LIBRARY, getAssetsByType, getAssetById, getAssetsByCategory, getCategoriesForType } from './asset-library.js';
+import {
+  ASSET_LIBRARY,
+  getAssetsByType,
+  getAssetById,
+  getAssetsByCategory,
+  getCategoriesForType,
+} from './asset-library.js';
 
 // ===================
 // EDITOR CONFIGURATION
@@ -47,10 +53,10 @@ function showNotification(message, type = 'info') {
 // ===================
 const TILE_SIZE = 16;
 let zoom = 2;
-let currentMode = 'tiles';  // 'tiles' or 'entities'
+let currentMode = 'tiles'; // 'tiles' or 'entities'
 let currentLayer = 'ground';
 let isEraser = false;
-let eraserSize = 1;  // Independent eraser size (1-8)
+let eraserSize = 1; // Independent eraser size (1-8)
 let isFillMode = false;
 let tilesetImage = null;
 let tilesetCols = 16;
@@ -62,7 +68,7 @@ let selectedBrush = {
   height: 1,
   tiles: [[0]],
   startCol: 0,
-  startRow: 0
+  startRow: 0,
 };
 
 // Tileset drag selection state
@@ -76,10 +82,10 @@ let hoverTileY = -1;
 
 // Entity state
 let selectedAsset = null;
-let selectedEntity = null;  // Currently selected entity on map
-let entityImages = {};  // Cache loaded entity images
+let selectedEntity = null; // Currently selected entity on map
+const entityImages = {}; // Cache loaded entity images
 let entityIdCounter = 0;
-let selectableAssetsCache = [];  // Expanded assets (sprite sheet pieces)
+let selectableAssetsCache = []; // Expanded assets (sprite sheet pieces)
 
 // Piece overrides stored in localStorage (initialized early for getSelectableAssets)
 // Format: { 'assetId': { pieces: [...], replaceOriginal: true } }
@@ -111,12 +117,12 @@ function getEffectivePieces(assetId, originalPieces) {
 // ===================
 // Each tile stores [tilesetIndex, tileIndex] instead of just a number.
 // This allows mixing tiles from different tilesets on the same map.
-let loadedTilesets = {};      // { 'Grass_Tiles_1': Image, ... } - Runtime cache
-let currentTilesetName = '';  // Currently selected tileset for painting
+const loadedTilesets = {}; // { 'Grass_Tiles_1': Image, ... } - Runtime cache
+let currentTilesetName = ''; // Currently selected tileset for painting
 
 // Virtual tileset definitions (stored in localStorage)
 // Allows combining multiple source PNGs into one logical tileset
-let tilesetDefinitions = {};  // { 'Grass': { sources: ['Grass_Tiles_1', 'Grass_Tiles_2'] }, ... }
+let tilesetDefinitions = {}; // { 'Grass': { sources: ['Grass_Tiles_1', 'Grass_Tiles_2'] }, ... }
 
 // Load tileset definitions from localStorage
 function loadTilesetDefinitions() {
@@ -151,7 +157,7 @@ function saveTilesetDefinitions() {
 async function loadVirtualTileset(name) {
   const def = tilesetDefinitions[name];
   if (!def || !def.sources || def.sources.length === 0) {
-    return null;  // Not a virtual tileset
+    return null; // Not a virtual tileset
   }
 
   // Load all source images
@@ -174,7 +180,7 @@ async function loadVirtualTileset(name) {
   if (images.length === 0) return null;
 
   // Calculate combined dimensions (stack vertically, use max width)
-  const width = Math.max(...images.map(img => img.width));
+  const width = Math.max(...images.map((img) => img.width));
   const height = images.reduce((sum, img) => sum + img.height, 0);
 
   // Create combined canvas
@@ -206,8 +212,14 @@ function isVirtualTileset(name) {
  */
 function getRawTilesets() {
   return [
-    'Grass_Tiles_1', 'Grass_Tiles_2', 'Grass_Tiles_3', 'Grass_Tiles_4',
-    'Cobble_Road_1', 'Cobble_Road_2', 'Pavement_Tiles', 'Hedge_Tiles'
+    'Grass_Tiles_1',
+    'Grass_Tiles_2',
+    'Grass_Tiles_3',
+    'Grass_Tiles_4',
+    'Cobble_Road_1',
+    'Cobble_Road_2',
+    'Pavement_Tiles',
+    'Hedge_Tiles',
   ];
 }
 
@@ -238,7 +250,7 @@ function parseTile(tile) {
   return {
     empty: false,
     tilesetName: mapData.tilesets[tsIdx],
-    tileIndex: tileIdx
+    tileIndex: tileIdx,
   };
 }
 
@@ -272,7 +284,7 @@ function migrateMapData(data) {
     }
   }
 
-  delete data.tileset;  // Remove old single-tileset field
+  delete data.tileset; // Remove old single-tileset field
   return data;
 }
 
@@ -291,13 +303,13 @@ let mapData = {
   width: 50,
   height: 45,
   tileSize: TILE_SIZE,
-  tilesets: ['Grass_Tiles_1'],  // Array of tileset names used in this map
+  tilesets: ['Grass_Tiles_1'], // Array of tileset names used in this map
   tileLayers: {
     ground: [],
     paths: [],
-    decorations: []
+    decorations: [],
   },
-  entities: []
+  entities: [],
 };
 
 // ===================
@@ -337,7 +349,7 @@ function resizeMapCanvas() {
 // ASSET LIBRARY
 // ===================
 
-let currentEntityType = 'buildings';  // Track current entity type
+let currentEntityType = 'buildings'; // Track current entity type
 
 function loadAssetLibrary() {
   // Load all entity types: buildings, decorations, trees
@@ -345,7 +357,7 @@ function loadAssetLibrary() {
 
   for (const type of entityTypes) {
     const assets = getAssetsByType(type);
-    assets.forEach(asset => {
+    assets.forEach((asset) => {
       const img = new Image();
       img.src = asset.file;
       img.onload = () => {
@@ -363,10 +375,13 @@ function loadAssetLibrary() {
 function updateCategorySelect() {
   const categorySelect = document.getElementById('categorySelect');
   const assets = getAssetsByType(currentEntityType);
-  const categories = [...new Set(assets.map(a => a.category))];
+  const categories = [...new Set(assets.map((a) => a.category))];
 
-  categorySelect.innerHTML = '<option value="all">All</option>' +
-    categories.map(cat => `<option value="${cat}">${cat.charAt(0).toUpperCase() + cat.slice(1)}</option>`).join('');
+  categorySelect.innerHTML =
+    '<option value="all">All</option>' +
+    categories
+      .map((cat) => `<option value="${cat}">${cat.charAt(0).toUpperCase() + cat.slice(1)}</option>`)
+      .join('');
 }
 
 // Entity type selector
@@ -394,20 +409,20 @@ function getSelectableAssets() {
         result.push({
           ...asset,
           id: `${asset.id}__${piece.id}`,
-          name: piece.name,  // Use just piece name for brevity
+          name: piece.name, // Use just piece name for brevity
           pieceIndex: i,
           piece: piece,
           tileWidth: piece.tileWidth,
           tileHeight: piece.tileHeight,
           isSpritePiece: true,
           parentAssetId: asset.id,
-          entityType: currentEntityType
+          entityType: currentEntityType,
         });
       }
     } else {
       result.push({
         ...asset,
-        entityType: currentEntityType
+        entityType: currentEntityType,
       });
     }
   }
@@ -421,17 +436,21 @@ function renderAssetGrid() {
 
   let assets = selectableAssetsCache;
   if (category !== 'all') {
-    assets = assets.filter(a => a.category === category);
+    assets = assets.filter((a) => a.category === category);
   }
 
-  grid.innerHTML = assets.map(asset => `
+  grid.innerHTML = assets
+    .map(
+      (asset) => `
     <div class="asset-item ${selectedAsset?.id === asset.id ? 'selected' : ''}"
          data-asset-id="${asset.id}">
       <canvas class="asset-preview" width="80" height="60"
               data-asset-id="${asset.id}"></canvas>
       <div class="name">${asset.name}</div>
     </div>
-  `).join('');
+  `
+    )
+    .join('');
 
   // Draw previews on canvases
   for (const asset of assets) {
@@ -439,7 +458,7 @@ function renderAssetGrid() {
   }
 
   // Add click handlers
-  grid.querySelectorAll('.asset-item').forEach(item => {
+  grid.querySelectorAll('.asset-item').forEach((item) => {
     item.addEventListener('click', () => selectAsset(item.dataset.assetId));
   });
 }
@@ -456,7 +475,10 @@ function drawAssetPreview(asset) {
   if (!img) return;
 
   // Calculate source region
-  let sx = 0, sy = 0, sw = img.width, sh = img.height;
+  let sx = 0,
+    sy = 0,
+    sw = img.width,
+    sh = img.height;
   if (asset.isSpritePiece && asset.piece) {
     // Support both x property (variable widths) and col property (equal widths)
     sx = asset.piece.x !== undefined ? asset.piece.x : asset.piece.col * asset.piece.width;
@@ -466,20 +488,22 @@ function drawAssetPreview(asset) {
 
   // Scale to fit preview
   const scale = Math.min(80 / sw, 60 / sh);
-  const dw = sw * scale, dh = sh * scale;
-  const dx = (80 - dw) / 2, dy = (60 - dh) / 2;
+  const dw = sw * scale,
+    dh = sh * scale;
+  const dx = (80 - dw) / 2,
+    dy = (60 - dh) / 2;
 
   ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
 }
 
 function selectAsset(assetId) {
   // Find in expanded selectable assets
-  selectedAsset = selectableAssetsCache.find(a => a.id === assetId);
+  selectedAsset = selectableAssetsCache.find((a) => a.id === assetId);
   if (!selectedAsset) {
     // Fallback to base asset lookup in current type
     selectedAsset = getAssetById(currentEntityType, assetId);
   }
-  selectedEntity = null;  // Deselect any map entity
+  selectedEntity = null; // Deselect any map entity
   updatePropertiesPanel();
   renderAssetGrid();
   updateSelectedAssetPreview();
@@ -487,9 +511,11 @@ function selectAsset(assetId) {
 
 // Get asset from any entity type
 function getAnyAssetById(assetId) {
-  return getAssetById('buildings', assetId) ||
-         getAssetById('decorations', assetId) ||
-         getAssetById('trees', assetId);
+  return (
+    getAssetById('buildings', assetId) ||
+    getAssetById('decorations', assetId) ||
+    getAssetById('trees', assetId)
+  );
 }
 
 function updateSelectedAssetPreview() {
@@ -511,16 +537,23 @@ function updateSelectedAssetPreview() {
   }
 
   // Calculate source region for sprite pieces
-  let sx = 0, sy = 0, sw = img.width, sh = img.height;
+  let sx = 0,
+    sy = 0,
+    sw = img.width,
+    sh = img.height;
   if (selectedAsset.isSpritePiece && selectedAsset.piece) {
     // Support both x property (variable widths) and col property (equal widths)
-    sx = selectedAsset.piece.x !== undefined ? selectedAsset.piece.x : selectedAsset.piece.col * selectedAsset.piece.width;
+    sx =
+      selectedAsset.piece.x !== undefined
+        ? selectedAsset.piece.x
+        : selectedAsset.piece.col * selectedAsset.piece.width;
     sw = selectedAsset.piece.width;
     sh = selectedAsset.piece.height;
   }
 
   const scale = Math.min(48 / sw, 48 / sh);
-  const dw = sw * scale, dh = sh * scale;
+  const dw = sw * scale,
+    dh = sh * scale;
   selectedAssetCtx.drawImage(img, sx, sy, sw, sh, (48 - dw) / 2, (48 - dh) / 2, dw, dh);
 
   document.getElementById('selectedAssetName').textContent = selectedAsset.name;
@@ -627,7 +660,7 @@ document.getElementById('tilesetInput').addEventListener('change', (e) => {
         tilesetCanvas.width = img.width;
         tilesetCanvas.height = img.height;
 
-        document.getElementById('tilesetSelect').value = '';  // Deselect built-in
+        document.getElementById('tilesetSelect').value = ''; // Deselect built-in
         renderTileset();
         updateSelectedPreview();
         renderMap();
@@ -698,9 +731,10 @@ function updateSelectedPreview() {
   selectedCtx.drawImage(tilesetImage, sx, sy, sw, sh, dx, dy, dw, dh);
 
   // Update label
-  const label = selectedBrush.width === 1 && selectedBrush.height === 1
-    ? `Tile ${selectedBrush.tiles[0][0]}`
-    : `${selectedBrush.width}x${selectedBrush.height}`;
+  const label =
+    selectedBrush.width === 1 && selectedBrush.height === 1
+      ? `Tile ${selectedBrush.tiles[0][0]}`
+      : `${selectedBrush.width}x${selectedBrush.height}`;
   document.getElementById('selectedIndex').textContent = label;
 }
 
@@ -726,10 +760,14 @@ tilesetCanvas.addEventListener('mousedown', (e) => {
 tilesetCanvas.addEventListener('mousemove', (e) => {
   if (!isTilesetDragging || !tilesetImage) return;
   const rect = tilesetCanvas.getBoundingClientRect();
-  const col = Math.min(tilesetCols - 1, Math.max(0,
-    Math.floor((e.clientX - rect.left) / TILE_SIZE)));
-  const row = Math.min(tilesetRows - 1, Math.max(0,
-    Math.floor((e.clientY - rect.top) / TILE_SIZE)));
+  const col = Math.min(
+    tilesetCols - 1,
+    Math.max(0, Math.floor((e.clientX - rect.left) / TILE_SIZE))
+  );
+  const row = Math.min(
+    tilesetRows - 1,
+    Math.max(0, Math.floor((e.clientY - rect.top) / TILE_SIZE))
+  );
 
   tilesetDragEnd = { col, row };
   updateBrushFromDrag();
@@ -799,7 +837,7 @@ function renderMap() {
   const layerOrder = ['ground', 'paths', 'decorations'];
   for (const layerName of layerOrder) {
     const layer = mapData.tileLayers[layerName];
-    const opacity = (currentMode === 'tiles' && layerName === currentLayer) ? 1 : 0.5;
+    const opacity = currentMode === 'tiles' && layerName === currentLayer ? 1 : 0.5;
     mapCtx.globalAlpha = currentMode === 'entities' ? 0.3 : opacity;
 
     for (let y = 0; y < mapData.height; y++) {
@@ -819,9 +857,14 @@ function renderMap() {
 
         mapCtx.drawImage(
           tilesetImg,
-          sx, sy, TILE_SIZE, TILE_SIZE,
-          x * TILE_SIZE * zoom, y * TILE_SIZE * zoom,
-          TILE_SIZE * zoom, TILE_SIZE * zoom
+          sx,
+          sy,
+          TILE_SIZE,
+          TILE_SIZE,
+          x * TILE_SIZE * zoom,
+          y * TILE_SIZE * zoom,
+          TILE_SIZE * zoom,
+          TILE_SIZE * zoom
         );
       }
     }
@@ -858,8 +901,7 @@ function drawBrushPreview(tileX, tileY) {
       const mapX = tileX + dx;
       const mapY = tileY + dy;
 
-      if (mapX < 0 || mapX >= mapData.width ||
-          mapY < 0 || mapY >= mapData.height) continue;
+      if (mapX < 0 || mapX >= mapData.width || mapY < 0 || mapY >= mapData.height) continue;
 
       const px = mapX * TILE_SIZE * zoom;
       const py = mapY * TILE_SIZE * zoom;
@@ -885,8 +927,7 @@ function drawBrushPreview(tileX, tileY) {
         const sy = Math.floor(tileIndex / tilesetCols) * TILE_SIZE;
 
         mapCtx.globalAlpha = EDITOR_CONFIG.TILE_PREVIEW_OPACITY;
-        mapCtx.drawImage(tilesetImage, sx, sy, TILE_SIZE, TILE_SIZE,
-                         px, py, size, size);
+        mapCtx.drawImage(tilesetImage, sx, sy, TILE_SIZE, TILE_SIZE, px, py, size, size);
         mapCtx.globalAlpha = 1;
 
         // Border
@@ -904,18 +945,21 @@ function renderEntity(entity) {
   if (!asset) return;
 
   // Calculate source region and tile dimensions
-  let sx = 0, sy = 0, sw = img?.width || 0, sh = img?.height || 0;
+  let sx = 0,
+    sy = 0,
+    sw = img?.width || 0,
+    sh = img?.height || 0;
   let tw = asset.tileWidth || 4;
   let th = asset.tileHeight || 4;
 
   // Handle sprite sheet pieces
   if (entity.pieceId) {
     const piecesToUse = getEffectivePieces(entity.assetId, asset.pieces);
-    const piece = piecesToUse?.find(p => p.id === entity.pieceId);
+    const piece = piecesToUse?.find((p) => p.id === entity.pieceId);
     if (piece) {
       // Support both x property (variable widths) and col property (equal widths)
       sx = piece.x !== undefined ? piece.x : piece.col * piece.width;
-      sy = 0;  // All pieces are in one row
+      sy = 0; // All pieces are in one row
       sw = piece.width;
       sh = piece.height;
       tw = piece.tileWidth;
@@ -1052,7 +1096,7 @@ mapCanvas.addEventListener('mousemove', (e) => {
     // Use piece dimensions for sprite sheet pieces
     if (dragEntity.pieceId) {
       const piecesToUse = getEffectivePieces(dragEntity.assetId, asset?.pieces);
-      const piece = piecesToUse?.find(p => p.id === dragEntity.pieceId);
+      const piece = piecesToUse?.find((p) => p.id === dragEntity.pieceId);
       if (piece) {
         tw = piece.tileWidth;
         th = piece.tileHeight;
@@ -1095,18 +1139,22 @@ mapCanvas.addEventListener('mouseleave', () => {
 mapCanvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
 // Mouse wheel to adjust brush size
-mapCanvas.addEventListener('wheel', (e) => {
-  if (currentMode !== 'tiles') return;
+mapCanvas.addEventListener(
+  'wheel',
+  (e) => {
+    if (currentMode !== 'tiles') return;
 
-  // Only adjust size for eraser or single-tile brush
-  if (!isEraser && (selectedBrush.width > 1 || selectedBrush.height > 1)) {
-    return;  // Don't resize multi-tile paint brushes
-  }
+    // Only adjust size for eraser or single-tile brush
+    if (!isEraser && (selectedBrush.width > 1 || selectedBrush.height > 1)) {
+      return; // Don't resize multi-tile paint brushes
+    }
 
-  e.preventDefault();
-  const delta = e.deltaY < 0 ? 1 : -1;  // Scroll up = increase, down = decrease
-  adjustBrushSize(delta);
-}, { passive: false });
+    e.preventDefault();
+    const delta = e.deltaY < 0 ? 1 : -1; // Scroll up = increase, down = decrease
+    adjustBrushSize(delta);
+  },
+  { passive: false }
+);
 
 // Adjust brush/eraser size (square only)
 function adjustBrushSize(delta) {
@@ -1140,7 +1188,7 @@ function adjustBrushSize(delta) {
       height: newSize,
       tiles: tiles,
       startCol: selectedBrush.startCol,
-      startRow: selectedBrush.startRow
+      startRow: selectedBrush.startRow,
     };
 
     updateSelectedPreview();
@@ -1171,8 +1219,7 @@ function paintTile(x, y) {
       for (let dx = 0; dx < eraserSize; dx++) {
         const mapX = x + dx;
         const mapY = y + dy;
-        if (mapX >= 0 && mapX < mapData.width &&
-            mapY >= 0 && mapY < mapData.height) {
+        if (mapX >= 0 && mapX < mapData.width && mapY >= 0 && mapY < mapData.height) {
           layer[mapY][mapX] = 0;
         }
       }
@@ -1185,8 +1232,7 @@ function paintTile(x, y) {
       for (let dx = 0; dx < selectedBrush.width; dx++) {
         const mapX = x + dx;
         const mapY = y + dy;
-        if (mapX >= 0 && mapX < mapData.width &&
-            mapY >= 0 && mapY < mapData.height) {
+        if (mapX >= 0 && mapX < mapData.width && mapY >= 0 && mapY < mapData.height) {
           layer[mapY][mapX] = [tsIdx, selectedBrush.tiles[dy][dx]];
         }
       }
@@ -1242,15 +1288,14 @@ function findEntityAt(tileX, tileY) {
     // Use piece dimensions for sprite sheet pieces
     if (e.pieceId) {
       const piecesToUse = getEffectivePieces(e.assetId, asset?.pieces);
-      const piece = piecesToUse?.find(p => p.id === e.pieceId);
+      const piece = piecesToUse?.find((p) => p.id === e.pieceId);
       if (piece) {
         tw = piece.tileWidth;
         th = piece.tileHeight;
       }
     }
 
-    if (tileX >= e.x && tileX < e.x + tw &&
-        tileY >= e.y && tileY < e.y + th) {
+    if (tileX >= e.x && tileX < e.x + tw && tileY >= e.y && tileY < e.y + th) {
       return e;
     }
   }
@@ -1259,7 +1304,7 @@ function findEntityAt(tileX, tileY) {
 
 function selectEntity(entity) {
   selectedEntity = entity;
-  selectedAsset = null;  // Deselect palette asset
+  selectedAsset = null; // Deselect palette asset
   renderAssetGrid();
   updateSelectedAssetPreview();
   updatePropertiesPanel();
@@ -1274,15 +1319,15 @@ function placeEntity(tileX, tileY) {
 
   const entity = {
     id: `entity-${++entityIdCounter}`,
-    type: entityType,  // 'buildings', 'decorations', or 'trees'
+    type: entityType, // 'buildings', 'decorations', or 'trees'
     assetId: selectedAsset.parentAssetId || selectedAsset.id,
     x: tileX,
     y: tileY,
     properties: {
       name: selectedAsset.name,
       url: '',
-      interactive: entityType === 'buildings'  // Only buildings are interactive by default
-    }
+      interactive: entityType === 'buildings', // Only buildings are interactive by default
+    },
   };
 
   // Store piece info for sprite sheet pieces
@@ -1298,7 +1343,7 @@ function placeEntity(tileX, tileY) {
 
 function deleteSelectedEntity() {
   if (!selectedEntity) return;
-  mapData.entities = mapData.entities.filter(e => e.id !== selectedEntity.id);
+  mapData.entities = mapData.entities.filter((e) => e.id !== selectedEntity.id);
   selectedEntity = null;
   updatePropertiesPanel();
   renderMap();
@@ -1311,8 +1356,10 @@ function updatePropertiesPanel() {
     panel.classList.remove('hidden');
     document.getElementById('propName').value = selectedEntity.properties?.name || '';
     document.getElementById('propUrl').value = selectedEntity.properties?.url || '';
-    document.getElementById('propInteractive').checked = selectedEntity.properties?.interactive || false;
-    document.getElementById('propPosition').textContent = `${selectedEntity.x}, ${selectedEntity.y}`;
+    document.getElementById('propInteractive').checked =
+      selectedEntity.properties?.interactive || false;
+    document.getElementById('propPosition').textContent =
+      `${selectedEntity.x}, ${selectedEntity.y}`;
   } else {
     panel.classList.add('hidden');
   }
@@ -1361,9 +1408,9 @@ document.getElementById('editSpriteBtn').addEventListener('click', () => {
 // ===================
 // MODE SWITCHING
 // ===================
-document.querySelectorAll('.mode-tab').forEach(tab => {
+document.querySelectorAll('.mode-tab').forEach((tab) => {
   tab.addEventListener('click', () => {
-    document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.mode-tab').forEach((t) => t.classList.remove('active'));
     tab.classList.add('active');
     currentMode = tab.dataset.mode;
 
@@ -1380,9 +1427,9 @@ document.getElementById('categorySelect').addEventListener('change', renderAsset
 // ===================
 // LAYER BUTTONS
 // ===================
-document.querySelectorAll('.layer-btn').forEach(btn => {
+document.querySelectorAll('.layer-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.layer-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.layer-btn').forEach((b) => b.classList.remove('active'));
     btn.classList.add('active');
     currentLayer = btn.dataset.layer;
     renderMap();
@@ -1442,7 +1489,7 @@ document.getElementById('resizeBtn').addEventListener('click', () => {
   }
 
   // Keep entities within bounds
-  mapData.entities = oldEntities.filter(e => e.x < newWidth && e.y < newHeight);
+  mapData.entities = oldEntities.filter((e) => e.x < newWidth && e.y < newHeight);
 
   resizeMapCanvas();
   renderMap();
@@ -1494,7 +1541,7 @@ document.getElementById('fileInput').addEventListener('change', (e) => {
           tileSize: data.tileSize || TILE_SIZE,
           tilesets: data.tilesets || ['Grass_Tiles_1'],
           tileLayers: data.tileLayers || { ground: [], paths: [], decorations: [] },
-          entities: data.entities || []
+          entities: data.entities || [],
         };
 
         // Update entity ID counter
@@ -1506,7 +1553,7 @@ document.getElementById('fileInput').addEventListener('change', (e) => {
         // Load all tilesets used by this map
         for (const tsName of mapData.tilesets) {
           try {
-            await loadTilesetByName(tsName, false);  // Don't switch UI yet
+            await loadTilesetByName(tsName, false); // Don't switch UI yet
           } catch (err) {
             console.warn(`Could not load tileset: ${tsName}`, err);
           }
@@ -1549,8 +1596,8 @@ document.getElementById('saveJsonBtn').addEventListener('click', () => {
 // ===================
 // TILESET BUILDER
 // ===================
-let editingTilesetName = null;  // Name of tileset being edited (null = creating new)
-let editSources = [];  // Sources currently selected in edit view
+let editingTilesetName = null; // Name of tileset being edited (null = creating new)
+let editSources = []; // Sources currently selected in edit view
 
 // Initialize tileset definitions on load
 loadTilesetDefinitions();
@@ -1585,9 +1632,10 @@ function showTilesetListView() {
 // Show edit view
 function showTilesetEditView(tilesetName = null) {
   editingTilesetName = tilesetName;
-  editSources = tilesetName && tilesetDefinitions[tilesetName]
-    ? [...tilesetDefinitions[tilesetName].sources]
-    : [];
+  editSources =
+    tilesetName && tilesetDefinitions[tilesetName]
+      ? [...tilesetDefinitions[tilesetName].sources]
+      : [];
 
   document.getElementById('tilesetListView').classList.add('hidden');
   document.getElementById('tilesetEditView').classList.remove('hidden');
@@ -1605,13 +1653,15 @@ function renderVirtualTilesetList() {
   const names = Object.keys(tilesetDefinitions);
 
   if (names.length === 0) {
-    container.innerHTML = '<div style="color: #666; text-align: center; padding: 20px;">No virtual tilesets yet. Create one to combine multiple tilesets.</div>';
+    container.innerHTML =
+      '<div style="color: #666; text-align: center; padding: 20px;">No virtual tilesets yet. Create one to combine multiple tilesets.</div>';
     return;
   }
 
-  container.innerHTML = names.map(name => {
-    const def = tilesetDefinitions[name];
-    return `
+  container.innerHTML = names
+    .map((name) => {
+      const def = tilesetDefinitions[name];
+      return `
       <div class="virtual-tileset-item">
         <div class="virtual-tileset-header">
           <span class="virtual-tileset-name">${name}</span>
@@ -1621,11 +1671,12 @@ function renderVirtualTilesetList() {
           </div>
         </div>
         <div class="virtual-tileset-sources">
-          ${def.sources.map(s => `<div>└ ${s}</div>`).join('')}
+          ${def.sources.map((s) => `<div>└ ${s}</div>`).join('')}
         </div>
       </div>
     `;
-  }).join('');
+    })
+    .join('');
 }
 
 // Global functions for onclick handlers
@@ -1633,7 +1684,7 @@ window.editVirtualTileset = (name) => showTilesetEditView(name);
 window.deleteVirtualTileset = (name) => {
   if (confirm(`Delete virtual tileset "${name}"?`)) {
     delete tilesetDefinitions[name];
-    delete loadedTilesets[name];  // Remove from cache
+    delete loadedTilesets[name]; // Remove from cache
     saveTilesetDefinitions();
     updateVirtualTilesetDropdown();
     renderVirtualTilesetList();
@@ -1644,11 +1695,14 @@ window.deleteVirtualTileset = (name) => {
 function renderEditSources() {
   const container = document.getElementById('selectedSources');
   if (editSources.length === 0) {
-    container.innerHTML = '<div style="color: #666; text-align: center; padding: 20px;">Click sources below to add them</div>';
+    container.innerHTML =
+      '<div style="color: #666; text-align: center; padding: 20px;">Click sources below to add them</div>';
     return;
   }
 
-  container.innerHTML = editSources.map((source, idx) => `
+  container.innerHTML = editSources
+    .map(
+      (source, idx) => `
     <div class="source-item">
       <span>${source}</span>
       <div>
@@ -1657,18 +1711,20 @@ function renderEditSources() {
         <button class="btn-small btn-danger" onclick="removeSource(${idx})">×</button>
       </div>
     </div>
-  `).join('');
+  `
+    )
+    .join('');
 }
 
 // Render available sources
 function renderAvailableSources() {
   const container = document.getElementById('availableSources');
   const rawTilesets = getRawTilesets();
-  const available = rawTilesets.filter(t => !editSources.includes(t));
+  const available = rawTilesets.filter((t) => !editSources.includes(t));
 
-  container.innerHTML = available.map(name =>
-    `<button onclick="addSource('${name}')">${name}</button>`
-  ).join('');
+  container.innerHTML = available
+    .map((name) => `<button onclick="addSource('${name}')">${name}</button>`)
+    .join('');
 }
 
 // Source manipulation functions
@@ -1791,7 +1847,7 @@ document.getElementById('importDefinitionsInput').addEventListener('change', (e)
     }
   };
   reader.readAsText(file);
-  e.target.value = '';  // Reset for re-import
+  e.target.value = ''; // Reset for re-import
 });
 
 // Update dropdown with virtual tilesets
@@ -1802,9 +1858,7 @@ function updateVirtualTilesetDropdown() {
   if (names.length === 0) {
     group.innerHTML = '<option disabled>No virtual tilesets</option>';
   } else {
-    group.innerHTML = names.map(name =>
-      `<option value="${name}">⚡ ${name}</option>`
-    ).join('');
+    group.innerHTML = names.map((name) => `<option value="${name}">⚡ ${name}</option>`).join('');
   }
 }
 
@@ -1828,10 +1882,10 @@ document.getElementById('tilesetSelect').addEventListener('change', async (e) =>
 // ===================
 let slicerImage = null;
 let slicerImagePath = '';
-let slicerAssetId = '';  // Currently selected asset ID
-let slicerAssetType = '';  // Entity type (buildings, decorations, trees)
-let slicerSplits = [];  // Array of x-positions for vertical splits
-let slicerPieceNames = [];  // Names for each piece
+let slicerAssetId = ''; // Currently selected asset ID
+let slicerAssetType = ''; // Entity type (buildings, decorations, trees)
+let slicerSplits = []; // Array of x-positions for vertical splits
+let slicerPieceNames = []; // Names for each piece
 let slicerZoom = 2;
 let slicerGridSize = 16;
 const slicerCanvas = document.getElementById('slicerCanvas');
@@ -1928,11 +1982,13 @@ document.getElementById('slicerFileSelect').addEventListener('change', async (e)
       const pieceX = piece.x !== undefined ? piece.x : piece.col * piece.width;
       slicerSplits.push(pieceX + piece.width);
     }
-    slicerPieceNames = piecesToUse.map(p => p.name);
+    slicerPieceNames = piecesToUse.map((p) => p.name);
   }
 
   // Update replace checkbox based on existing override
-  document.getElementById('slicerReplaceOriginal').checked = override ? override.replaceOriginal : true;
+  document.getElementById('slicerReplaceOriginal').checked = override
+    ? override.replaceOriginal
+    : true;
 
   renderSlicerCanvas();
   updateSlicerPieces();
@@ -2050,9 +2106,7 @@ slicerCanvas.addEventListener('click', (e) => {
 
   // Check if clicking near existing split (within 8px tolerance)
   const tolerance = 8;
-  const existingIdx = slicerSplits.findIndex(s =>
-    Math.abs(s * slicerZoom - clickX) < tolerance
-  );
+  const existingIdx = slicerSplits.findIndex((s) => Math.abs(s * slicerZoom - clickX) < tolerance);
 
   if (existingIdx !== -1) {
     // Remove existing split
@@ -2080,7 +2134,8 @@ function updateSlicerPieces() {
   const container = document.getElementById('slicerPieces');
 
   if (!slicerImage) {
-    container.innerHTML = '<div style="color: #666; padding: 20px; text-align: center; width: 100%;">Select a sprite and add splits to define pieces</div>';
+    container.innerHTML =
+      '<div style="color: #666; padding: 20px; text-align: center; width: 100%;">Select a sprite and add splits to define pieces</div>';
     return;
   }
 
@@ -2095,23 +2150,25 @@ function updateSlicerPieces() {
       x: startX,
       width: width,
       height: slicerImage.height,
-      name: slicerPieceNames[i] || `Piece ${i + 1}`
+      name: slicerPieceNames[i] || `Piece ${i + 1}`,
     });
   }
 
-  container.innerHTML = pieces.map(piece => {
-    const previewScale = Math.min(60 / piece.width, 50 / piece.height, 2);
-    const pw = Math.ceil(piece.width * previewScale);
-    const ph = Math.ceil(piece.height * previewScale);
+  container.innerHTML = pieces
+    .map((piece) => {
+      const previewScale = Math.min(60 / piece.width, 50 / piece.height, 2);
+      const pw = Math.ceil(piece.width * previewScale);
+      const ph = Math.ceil(piece.height * previewScale);
 
-    return `
+      return `
       <div class="slicer-piece">
         <canvas width="${pw}" height="${ph}" data-piece-idx="${piece.index}"></canvas>
         <input type="text" value="${piece.name}" data-name-idx="${piece.index}" placeholder="Name">
         <div class="piece-info">x:${piece.x} w:${piece.width}</div>
       </div>
     `;
-  }).join('');
+    })
+    .join('');
 
   // Draw piece previews
   for (const piece of pieces) {
@@ -2131,7 +2188,7 @@ function updateSlicerPieces() {
   }
 
   // Add name change handlers
-  container.querySelectorAll('input[data-name-idx]').forEach(input => {
+  container.querySelectorAll('input[data-name-idx]').forEach((input) => {
     input.addEventListener('input', (e) => {
       const idx = parseInt(e.target.dataset.nameIdx);
       slicerPieceNames[idx] = e.target.value;
@@ -2164,7 +2221,10 @@ function generateSlicerOutput() {
     const startX = splits[i];
     const width = splits[i + 1] - startX;
     const name = slicerPieceNames[i] || `Piece ${i + 1}`;
-    const id = name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+    const id = name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_|_$/g, '');
 
     pieces.push({
       id: id || `piece_${i + 1}`,
@@ -2178,8 +2238,9 @@ function generateSlicerOutput() {
   }
 
   // Generate code
-  const lines = pieces.map(p =>
-    `  { id: '${p.id}', name: '${p.name}', x: ${p.x}, width: ${p.width}, height: ${p.height}, tileWidth: ${p.tileWidth}, tileHeight: ${p.tileHeight} },`
+  const lines = pieces.map(
+    (p) =>
+      `  { id: '${p.id}', name: '${p.name}', x: ${p.x}, width: ${p.width}, height: ${p.height}, tileWidth: ${p.tileWidth}, tileHeight: ${p.tileHeight} },`
   );
 
   return `pieces: [\n${lines.join('\n')}\n],`;
@@ -2188,15 +2249,18 @@ function generateSlicerOutput() {
 // Copy output to clipboard
 document.getElementById('copySlicerOutput').addEventListener('click', () => {
   const code = generateSlicerOutput();
-  navigator.clipboard.writeText(code).then(() => {
-    const btn = document.getElementById('copySlicerOutput');
-    const original = btn.textContent;
-    btn.textContent = 'Copied!';
-    setTimeout(() => btn.textContent = original, EDITOR_CONFIG.BUTTON_FEEDBACK_MS);
-  }).catch(err => {
-    console.error('Failed to copy:', err);
-    alert('Failed to copy to clipboard');
-  });
+  navigator.clipboard
+    .writeText(code)
+    .then(() => {
+      const btn = document.getElementById('copySlicerOutput');
+      const original = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(() => (btn.textContent = original), EDITOR_CONFIG.BUTTON_FEEDBACK_MS);
+    })
+    .catch((err) => {
+      console.error('Failed to copy:', err);
+      alert('Failed to copy to clipboard');
+    });
 });
 
 // Apply piece definitions to localStorage override
@@ -2213,7 +2277,7 @@ document.getElementById('applySlicerOutput').addEventListener('click', () => {
   pieceOverrides[slicerAssetId] = {
     pieces: pieces,
     replaceOriginal: replaceOriginal,
-    assetType: slicerAssetType
+    assetType: slicerAssetType,
   };
   savePieceOverrides();
 
@@ -2243,7 +2307,10 @@ function generateSlicerPieces() {
     const startX = splits[i];
     const width = splits[i + 1] - startX;
     const name = slicerPieceNames[i] || `Piece ${i + 1}`;
-    const id = name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+    const id = name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_|_$/g, '');
 
     pieces.push({
       id: id || `piece_${i + 1}`,
@@ -2269,16 +2336,18 @@ function renderOverridesList() {
     return;
   }
 
-  container.innerHTML = overrideKeys.map(assetId => {
-    const override = pieceOverrides[assetId];
-    const pieceCount = override.pieces.length;
-    return `
+  container.innerHTML = overrideKeys
+    .map((assetId) => {
+      const override = pieceOverrides[assetId];
+      const pieceCount = override.pieces.length;
+      return `
       <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; background: #0f3460; border-radius: 4px; margin-bottom: 4px;">
         <span style="cursor: pointer; flex: 1;" onclick="loadOverrideForEditing('${assetId}')" title="Click to edit">${assetId} (${pieceCount} pieces)</span>
         <button class="btn-small btn-danger" onclick="removeOverride('${assetId}')" style="margin-left: 8px;">Remove</button>
       </div>
     `;
-  }).join('');
+    })
+    .join('');
 }
 
 // Load an override for editing (click handler)
@@ -2309,6 +2378,53 @@ document.getElementById('openSlicerBtn').addEventListener('click', () => {
   renderOverridesList();
 });
 
+// Export overrides as JSON (for baking into asset-library.js)
+document.getElementById('exportOverridesBtn').addEventListener('click', () => {
+  const overrideKeys = Object.keys(pieceOverrides);
+
+  if (overrideKeys.length === 0) {
+    showNotification('No overrides to export', 'warning');
+    return;
+  }
+
+  const json = JSON.stringify(pieceOverrides, null, 2);
+  console.log('=== PIECE OVERRIDES ===');
+  console.log(json);
+
+  // Copy to clipboard
+  navigator.clipboard
+    .writeText(json)
+    .then(() => {
+      showNotification(`Exported ${overrideKeys.length} override(s) to clipboard!`, 'info');
+    })
+    .catch(() => {
+      // Fallback: show in alert if clipboard fails
+      alert('Copy this JSON:\n\n' + json);
+    });
+});
+
+// Clear all localStorage overrides
+document.getElementById('clearOverridesBtn').addEventListener('click', () => {
+  const count = Object.keys(pieceOverrides).length;
+
+  if (count === 0) {
+    showNotification('No overrides to clear', 'warning');
+    return;
+  }
+
+  if (
+    confirm(
+      `Clear all ${count} localStorage override(s)?\n\nUse this after baking overrides into asset-library.js.`
+    )
+  ) {
+    pieceOverrides = {};
+    savePieceOverrides();
+    renderAssetGrid();
+    renderOverridesList();
+    showNotification('All overrides cleared', 'info');
+  }
+});
+
 // ===================
 // KEYBOARD SHORTCUTS
 // ===================
@@ -2330,12 +2446,18 @@ document.addEventListener('keydown', (e) => {
   if (e.key === '3') document.querySelectorAll('.layer-btn')[2].click();
   // Brush size adjustment
   if (e.key === '[') {
-    if (currentMode === 'tiles' && (isEraser || (selectedBrush.width === 1 && selectedBrush.height === 1))) {
+    if (
+      currentMode === 'tiles' &&
+      (isEraser || (selectedBrush.width === 1 && selectedBrush.height === 1))
+    ) {
       adjustBrushSize(-1);
     }
   }
   if (e.key === ']') {
-    if (currentMode === 'tiles' && (isEraser || (selectedBrush.width === 1 && selectedBrush.height === 1))) {
+    if (
+      currentMode === 'tiles' &&
+      (isEraser || (selectedBrush.width === 1 && selectedBrush.height === 1))
+    ) {
       adjustBrushSize(1);
     }
   }
@@ -2352,7 +2474,7 @@ document.addEventListener('keydown', (e) => {
     let th = asset?.tileHeight || 1;
     if (selectedEntity.pieceId) {
       const piecesToUse = getEffectivePieces(selectedEntity.assetId, asset?.pieces);
-      const piece = piecesToUse?.find(p => p.id === selectedEntity.pieceId);
+      const piece = piecesToUse?.find((p) => p.id === selectedEntity.pieceId);
       if (piece) {
         tw = piece.tileWidth;
         th = piece.tileHeight;

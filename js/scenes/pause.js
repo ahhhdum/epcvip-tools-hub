@@ -5,7 +5,14 @@
  * Triggered by ESC key.
  */
 
-import { GAME_CONFIG, COLORS, TOOLS, CHARACTERS, getSelectedCharacter, setSelectedCharacter } from '../config.js';
+import {
+  GAME_CONFIG,
+  COLORS,
+  TOOLS,
+  CHARACTERS,
+  getSelectedCharacter,
+  setSelectedCharacter,
+} from '../config.js';
 import { isMuted, toggleMute } from '../systems/audio.js';
 import { getPauseLayout, getCharSelectLayout } from '../systems/ui-layout.js';
 
@@ -15,16 +22,10 @@ export function pauseScene() {
   const S = layout.scale;
 
   let isSelectingCharacter = false;
-  let selectedCharIndex = CHARACTERS.findIndex(c => c.id === getSelectedCharacter().id);
+  let selectedCharIndex = CHARACTERS.findIndex((c) => c.id === getSelectedCharacter().id);
 
   // Semi-transparent dark overlay
-  add([
-    rect(width(), height()),
-    pos(0, 0),
-    color(0, 0, 0),
-    opacity(0.85),
-    fixed(),
-  ]);
+  add([rect(width(), height()), pos(0, 0), color(0, 0, 0), opacity(0.85), fixed()]);
 
   // Decorative border
   add([
@@ -100,13 +101,13 @@ export function pauseScene() {
     fixed(),
   ]);
 
-  const liveTools = TOOLS.filter(t => t.live);
+  const liveTools = TOOLS.filter((t) => t.live);
   liveTools.forEach((tool, i) => {
     const linkText = add([
       text(`${i + 1}. ${tool.name}`, { size: 12 * S }),
       pos(layout.leftCol.x + 30 * S, layout.linksY + 25 * S + i * 22 * S),
       color(...COLORS.white),
-      area(),  // Makes text clickable
+      area(), // Makes text clickable
       fixed(),
       'tool-link',
     ]);
@@ -150,7 +151,10 @@ export function pauseScene() {
   const currentChar = getSelectedCharacter();
   const charPreview = add([
     sprite(currentChar.id, { anim: 'idle-down' }),
-    pos(layout.rightCol.x + 10 * S + previewBoxW * 0.25, layout.contentStartY + 30 * S + previewBoxH * 0.45),
+    pos(
+      layout.rightCol.x + 10 * S + previewBoxW * 0.25,
+      layout.contentStartY + 30 * S + previewBoxH * 0.45
+    ),
     anchor('center'),
     scale(Math.min(1.6 * S, previewBoxW / 90)),
     fixed(),
@@ -160,7 +164,10 @@ export function pauseScene() {
   // Character name - right side of preview box
   const charNameText = add([
     text(currentChar.name, { size: 14 * S }),
-    pos(layout.rightCol.x + 10 * S + previewBoxW * 0.65, layout.contentStartY + 30 * S + previewBoxH * 0.4),
+    pos(
+      layout.rightCol.x + 10 * S + previewBoxW * 0.65,
+      layout.contentStartY + 30 * S + previewBoxH * 0.4
+    ),
     anchor('center'),
     color(...COLORS.white),
     fixed(),
@@ -170,7 +177,10 @@ export function pauseScene() {
   // Character role
   const charRoleText = add([
     text(currentChar.role, { size: 11 * S }),
-    pos(layout.rightCol.x + 10 * S + previewBoxW * 0.65, layout.contentStartY + 30 * S + previewBoxH * 0.6),
+    pos(
+      layout.rightCol.x + 10 * S + previewBoxW * 0.65,
+      layout.contentStartY + 30 * S + previewBoxH * 0.6
+    ),
     anchor('center'),
     color(150, 150, 150),
     fixed(),
@@ -186,7 +196,7 @@ export function pauseScene() {
     outline(2, rgb(...COLORS.gold)),
     area(),
     fixed(),
-    z(50),  // Ensure button is above other elements for click detection
+    z(50), // Ensure button is above other elements for click detection
     'change-btn',
   ]);
 
@@ -196,7 +206,7 @@ export function pauseScene() {
     anchor('center'),
     color(...COLORS.gold),
     fixed(),
-    z(51),  // Text above button background
+    z(51), // Text above button background
   ]);
 
   // === BOTTOM BUTTONS (below border, in black area) ===
@@ -244,31 +254,28 @@ export function pauseScene() {
 
   // === CHARACTER SELECTION MODAL ===
   const modalObjects = [];
-  let modalKeyHandlers = [];  // Track keyboard handlers for cleanup
+  let modalKeyHandlers = []; // Track keyboard handlers for cleanup
 
   function showCharacterSelect() {
     isSelectingCharacter = true;
     const charLayout = getCharSelectLayout();
 
     // Modal background
-    modalObjects.push(add([
-      rect(width(), height()),
-      pos(0, 0),
-      color(0, 0, 0),
-      opacity(0.95),
-      fixed(),
-      z(100),
-    ]));
+    modalObjects.push(
+      add([rect(width(), height()), pos(0, 0), color(0, 0, 0), opacity(0.95), fixed(), z(100)])
+    );
 
     // Modal title
-    modalObjects.push(add([
-      text('SELECT CHARACTER', { size: 24 * charLayout.scale }),
-      pos(width() / 2, 70 * charLayout.scale),
-      anchor('center'),
-      color(...COLORS.gold),
-      fixed(),
-      z(101),
-    ]));
+    modalObjects.push(
+      add([
+        text('SELECT CHARACTER', { size: 24 * charLayout.scale }),
+        pos(width() / 2, 70 * charLayout.scale),
+        anchor('center'),
+        color(...COLORS.gold),
+        fixed(),
+        z(101),
+      ])
+    );
 
     // Character grid using calculated layout
     CHARACTERS.forEach((char, i) => {
@@ -305,24 +312,28 @@ export function pauseScene() {
       modalObjects.push(charSprite);
 
       // Character name
-      modalObjects.push(add([
-        text(char.name, { size: charLayout.nameSize }),
-        pos(x + charLayout.cardW / 2, y + charLayout.cardH * 0.75),
-        anchor('center'),
-        color(...COLORS.white),
-        fixed(),
-        z(102),
-      ]));
+      modalObjects.push(
+        add([
+          text(char.name, { size: charLayout.nameSize }),
+          pos(x + charLayout.cardW / 2, y + charLayout.cardH * 0.75),
+          anchor('center'),
+          color(...COLORS.white),
+          fixed(),
+          z(102),
+        ])
+      );
 
       // Character role
-      modalObjects.push(add([
-        text(char.role, { size: charLayout.roleSize }),
-        pos(x + charLayout.cardW / 2, y + charLayout.cardH * 0.9),
-        anchor('center'),
-        color(120, 120, 120),
-        fixed(),
-        z(102),
-      ]));
+      modalObjects.push(
+        add([
+          text(char.role, { size: charLayout.roleSize }),
+          pos(x + charLayout.cardW / 2, y + charLayout.cardH * 0.9),
+          anchor('center'),
+          color(120, 120, 120),
+          fixed(),
+          z(102),
+        ])
+      );
 
       // Click handler
       card.onClick(() => {
@@ -344,14 +355,16 @@ export function pauseScene() {
     ]);
     modalObjects.push(confirmBtn);
 
-    modalObjects.push(add([
-      text('Confirm', { size: 14 * charLayout.scale }),
-      pos(width() / 2 - 70 * charLayout.scale, charLayout.buttonY),
-      anchor('center'),
-      color(...COLORS.dark),
-      fixed(),
-      z(102),
-    ]));
+    modalObjects.push(
+      add([
+        text('Confirm', { size: 14 * charLayout.scale }),
+        pos(width() / 2 - 70 * charLayout.scale, charLayout.buttonY),
+        anchor('center'),
+        color(...COLORS.dark),
+        fixed(),
+        z(102),
+      ])
+    );
 
     // Cancel button
     const cancelBtn = add([
@@ -367,14 +380,16 @@ export function pauseScene() {
     ]);
     modalObjects.push(cancelBtn);
 
-    modalObjects.push(add([
-      text('Cancel', { size: 14 * charLayout.scale }),
-      pos(width() / 2 + 70 * charLayout.scale, charLayout.buttonY),
-      anchor('center'),
-      color(150, 150, 150),
-      fixed(),
-      z(102),
-    ]));
+    modalObjects.push(
+      add([
+        text('Cancel', { size: 14 * charLayout.scale }),
+        pos(width() / 2 + 70 * charLayout.scale, charLayout.buttonY),
+        anchor('center'),
+        color(150, 150, 150),
+        fixed(),
+        z(102),
+      ])
+    );
 
     confirmBtn.onClick(() => {
       const char = CHARACTERS[selectedCharIndex];
@@ -384,55 +399,63 @@ export function pauseScene() {
     });
 
     cancelBtn.onClick(() => {
-      selectedCharIndex = CHARACTERS.findIndex(c => c.id === getSelectedCharacter().id);
+      selectedCharIndex = CHARACTERS.findIndex((c) => c.id === getSelectedCharacter().id);
       hideCharacterSelect();
     });
 
     // Arrow key navigation for character selection
-    const numCols = charLayout.numCols;  // 4 columns
+    const numCols = charLayout.numCols; // 4 columns
 
-    modalKeyHandlers.push(onKeyPress('left', () => {
-      if (selectedCharIndex > 0) {
-        selectedCharIndex--;
-        updateCardSelection();
-      }
-    }));
+    modalKeyHandlers.push(
+      onKeyPress('left', () => {
+        if (selectedCharIndex > 0) {
+          selectedCharIndex--;
+          updateCardSelection();
+        }
+      })
+    );
 
-    modalKeyHandlers.push(onKeyPress('right', () => {
-      if (selectedCharIndex < CHARACTERS.length - 1) {
-        selectedCharIndex++;
-        updateCardSelection();
-      }
-    }));
+    modalKeyHandlers.push(
+      onKeyPress('right', () => {
+        if (selectedCharIndex < CHARACTERS.length - 1) {
+          selectedCharIndex++;
+          updateCardSelection();
+        }
+      })
+    );
 
-    modalKeyHandlers.push(onKeyPress('up', () => {
-      const newIndex = selectedCharIndex - numCols;
-      if (newIndex >= 0) {
-        selectedCharIndex = newIndex;
-        updateCardSelection();
-      }
-    }));
+    modalKeyHandlers.push(
+      onKeyPress('up', () => {
+        const newIndex = selectedCharIndex - numCols;
+        if (newIndex >= 0) {
+          selectedCharIndex = newIndex;
+          updateCardSelection();
+        }
+      })
+    );
 
-    modalKeyHandlers.push(onKeyPress('down', () => {
-      const newIndex = selectedCharIndex + numCols;
-      if (newIndex < CHARACTERS.length) {
-        selectedCharIndex = newIndex;
-        updateCardSelection();
-      }
-    }));
+    modalKeyHandlers.push(
+      onKeyPress('down', () => {
+        const newIndex = selectedCharIndex + numCols;
+        if (newIndex < CHARACTERS.length) {
+          selectedCharIndex = newIndex;
+          updateCardSelection();
+        }
+      })
+    );
   }
 
   function hideCharacterSelect() {
     isSelectingCharacter = false;
-    modalObjects.forEach(obj => destroy(obj));
+    modalObjects.forEach((obj) => destroy(obj));
     modalObjects.length = 0;
     // Clean up keyboard handlers
-    modalKeyHandlers.forEach(handler => handler.cancel());
+    modalKeyHandlers.forEach((handler) => handler.cancel());
     modalKeyHandlers = [];
   }
 
   function updateCardSelection() {
-    get('char-card').forEach(card => {
+    get('char-card').forEach((card) => {
       const isSelected = card.charIndex === selectedCharIndex;
       card.color = isSelected ? rgb(40, 35, 20) : rgb(20, 20, 20);
       card.outline.color = isSelected ? rgb(...COLORS.gold) : rgb(60, 60, 60);
@@ -464,7 +487,7 @@ export function pauseScene() {
 
   onKeyPress('escape', () => {
     if (isSelectingCharacter) {
-      selectedCharIndex = CHARACTERS.findIndex(c => c.id === getSelectedCharacter().id);
+      selectedCharIndex = CHARACTERS.findIndex((c) => c.id === getSelectedCharacter().id);
       hideCharacterSelect();
     } else {
       go('overworld');

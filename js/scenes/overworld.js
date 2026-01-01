@@ -21,10 +21,10 @@ export async function overworldScene() {
   await drawGround();
 
   // Create decorations
-  TREES.forEach(t => createTree(t.x, t.y));
+  TREES.forEach((t) => createTree(t.x, t.y));
 
   // Create flowers from config
-  FLOWERS.forEach(f => createFlower(f.x, f.y));
+  FLOWERS.forEach((f) => createFlower(f.x, f.y));
 
   // Load buildings from map JSON (primary) or fall back to TOOLS config
   let buildings = [];
@@ -36,12 +36,12 @@ export async function overworldScene() {
     } else {
       // Map has no entities yet, use legacy TOOLS array
       console.log('Map has no entities, using TOOLS config');
-      buildings = TOOLS.map(tool => createBuilding(tool));
+      buildings = TOOLS.map((tool) => createBuilding(tool));
     }
   } catch (error) {
     // Map loading failed, use legacy TOOLS array
     console.warn('Failed to load map, using TOOLS config:', error);
-    buildings = TOOLS.map(tool => createBuilding(tool));
+    buildings = TOOLS.map((tool) => createBuilding(tool));
   }
 
   // Create player (start in center-ish area of world)
@@ -65,7 +65,7 @@ export async function overworldScene() {
   // Proximity detection for dialog hints
   onUpdate(() => {
     // Check if near a building
-    const nearbyBuilding = buildings.find(b => {
+    const nearbyBuilding = buildings.find((b) => {
       const dist = player.pos.dist(b.pos.add(vec2(b.buildingWidth / 2, b.buildingHeight)));
       return dist < 60;
     });
@@ -87,7 +87,7 @@ function setupMobileControls(player) {
   const dpadBtns = document.querySelectorAll('.dpad-btn[data-dir]');
   let moveInterval = null;
 
-  dpadBtns.forEach(btn => {
+  dpadBtns.forEach((btn) => {
     const startMove = () => {
       const dir = btn.dataset.dir;
       player.startMoving(dir);

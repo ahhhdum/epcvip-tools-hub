@@ -24,12 +24,7 @@ export function spriteTestScene() {
   const maxScrollY = Math.max(0, gridHeight - height() + 100);
 
   // Dark background
-  add([
-    rect(width(), height()),
-    pos(0, 0),
-    color(20, 20, 30),
-    fixed(),
-  ]);
+  add([rect(width(), height()), pos(0, 0), color(20, 20, 30), fixed()]);
 
   // Title
   add([
@@ -67,9 +62,7 @@ export function spriteTestScene() {
   ];
 
   // Container for scrollable content
-  const container = add([
-    pos(60, 70),
-  ]);
+  const container = add([pos(60, 70)]);
 
   // Create frame displays
   for (let row = 0; row < ROWS; row++) {

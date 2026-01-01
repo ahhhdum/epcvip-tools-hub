@@ -12,12 +12,12 @@ import { getAllBuildingSprites } from '../systems/entity-loader.js';
 
 // Standard animation config (same for all characters - first 6 rows)
 const ANIM_CONFIG = {
-  'idle-down':  { from: 0, to: 5, loop: true, speed: 6 },
+  'idle-down': { from: 0, to: 5, loop: true, speed: 6 },
   'idle-right': { from: 6, to: 11, loop: true, speed: 6 },
-  'idle-up':    { from: 12, to: 17, loop: true, speed: 6 },
-  'walk-down':  { from: 18, to: 23, loop: true, speed: 10 },
+  'idle-up': { from: 12, to: 17, loop: true, speed: 6 },
+  'walk-down': { from: 18, to: 23, loop: true, speed: 10 },
   'walk-right': { from: 24, to: 29, loop: true, speed: 10 },
-  'walk-up':    { from: 30, to: 35, loop: true, speed: 10 },
+  'walk-up': { from: 30, to: 35, loop: true, speed: 10 },
 };
 
 export function loadingScene() {
@@ -25,7 +25,7 @@ export function loadingScene() {
   loadSounds();
 
   // Load all character sprites
-  CHARACTERS.forEach(char => {
+  CHARACTERS.forEach((char) => {
     loadSprite(char.id, `assets/sprites/${char.id}.png`, {
       sliceX: char.cols,
       sliceY: char.rows,
@@ -52,11 +52,7 @@ export function loadingScene() {
   const S = layout.scale;
 
   // Background - full viewport
-  add([
-    rect(width(), height()),
-    pos(0, 0),
-    color(...COLORS.grass),
-  ]);
+  add([rect(width(), height()), pos(0, 0), color(...COLORS.grass)]);
 
   // Title - centered using layout
   add([
@@ -107,11 +103,11 @@ export function loadingScene() {
 
   // Fun loading messages
   const messages = [
-    "Warming up the pixels...",
-    "Polishing the buildings...",
-    "Watering the flowers...",
-    "Training the player...",
-    "Almost there...",
+    'Warming up the pixels...',
+    'Polishing the buildings...',
+    'Watering the flowers...',
+    'Training the player...',
+    'Almost there...',
   ];
 
   const msgText = add([
@@ -140,10 +136,7 @@ export function loadingScene() {
     percentText.text = Math.floor(progress) + '%';
 
     // Update message based on progress
-    const msgIndex = Math.min(
-      Math.floor(progress / 20),
-      messages.length - 1
-    );
+    const msgIndex = Math.min(Math.floor(progress / 20), messages.length - 1);
     msgText.text = messages[msgIndex];
   });
 }

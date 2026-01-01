@@ -21,7 +21,7 @@ export function createPlayer(startPos) {
   const player = add([
     sprite(selectedChar.id, { anim: 'idle-down' }),
     pos(startPos.x, startPos.y),
-    area({ shape: new Rect(vec2(-5, -2), 10, 14) }),  // Stable: no offset needed
+    area({ shape: new Rect(vec2(-5, -2), 10, 14) }), // Stable: no offset needed
     body(),
     anchor('center'),
     scale(2.4), // 64 * 2.4 = 154px - larger for 4K visibility
@@ -43,7 +43,7 @@ export function createPlayer(startPos) {
 
       interact() {
         const buildings = get('interactable');
-        const nearby = buildings.find(b => {
+        const nearby = buildings.find((b) => {
           const dist = this.pos.dist(b.pos.add(vec2(b.buildingWidth / 2, b.buildingHeight)));
           return dist < 60;
         });
@@ -85,9 +85,18 @@ export function createPlayer(startPos) {
   player.onUpdate(() => {
     // Check if any movement input is active
     const isMovingNow =
-      isKeyDown('left') || isKeyDown('right') || isKeyDown('up') || isKeyDown('down') ||
-      isKeyDown('a') || isKeyDown('d') || isKeyDown('w') || isKeyDown('s') ||
-      virtualInput.left || virtualInput.right || virtualInput.up || virtualInput.down;
+      isKeyDown('left') ||
+      isKeyDown('right') ||
+      isKeyDown('up') ||
+      isKeyDown('down') ||
+      isKeyDown('a') ||
+      isKeyDown('d') ||
+      isKeyDown('w') ||
+      isKeyDown('s') ||
+      virtualInput.left ||
+      virtualInput.right ||
+      virtualInput.up ||
+      virtualInput.down;
 
     player.isMoving = isMovingNow;
 
@@ -121,10 +130,22 @@ export function createPlayer(startPos) {
   });
 
   // WASD support
-  onKeyDown('a', () => { player.direction = 'left'; player.move(-speed, 0); });
-  onKeyDown('d', () => { player.direction = 'right'; player.move(speed, 0); });
-  onKeyDown('w', () => { player.direction = 'up'; player.move(0, -speed); });
-  onKeyDown('s', () => { player.direction = 'down'; player.move(0, speed); });
+  onKeyDown('a', () => {
+    player.direction = 'left';
+    player.move(-speed, 0);
+  });
+  onKeyDown('d', () => {
+    player.direction = 'right';
+    player.move(speed, 0);
+  });
+  onKeyDown('w', () => {
+    player.direction = 'up';
+    player.move(0, -speed);
+  });
+  onKeyDown('s', () => {
+    player.direction = 'down';
+    player.move(0, speed);
+  });
 
   // Interaction (Enter or A button only - Space is for throwing)
   onKeyPress('enter', () => player.interact());
@@ -137,7 +158,8 @@ export function createPlayer(startPos) {
 
   // Helper to get throw direction based on current key states (supports diagonal)
   function getThrowDirection() {
-    let dx = 0, dy = 0;
+    let dx = 0,
+      dy = 0;
 
     // Check all movement keys
     if (isKeyDown('left') || isKeyDown('a') || virtualInput.left) dx -= 1;

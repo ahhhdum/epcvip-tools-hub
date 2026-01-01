@@ -7,7 +7,14 @@
 
 import { GAME_CONFIG, TOOLS, TREES } from '../config.js';
 import { playSound } from '../systems/audio.js';
-import { sendCollect, sendThrow, sendHit, getLocalPlayerId, useServerFritelles, isMultiplayerConnected } from '../systems/multiplayer.js';
+import {
+  sendCollect,
+  sendThrow,
+  sendHit,
+  getLocalPlayerId,
+  useServerFritelles,
+  isMultiplayerConnected,
+} from '../systems/multiplayer.js';
 
 // Track collected fritelles (persists across scene transitions)
 let fritelleCount = 0;
@@ -188,13 +195,7 @@ export function initFritelleSystem(player) {
   loadSprite('fritelle', 'assets/sprites/fritelle-v2.png');
 
   // Create HUD (fixed position, doesn't scroll with camera)
-  hudIcon = add([
-    sprite('fritelle'),
-    pos(20, 20),
-    scale(1),
-    fixed(),
-    z(100),
-  ]);
+  hudIcon = add([sprite('fritelle'), pos(20, 20), scale(1), fixed(), z(100)]);
 
   hudText = add([
     text(`x ${fritelleCount}`, { size: 14 }),
@@ -265,7 +266,7 @@ export function initFritelleSystem(player) {
   // Magnet effect - at 15+ fritelles, nearby ones drift toward player
   onUpdate(() => {
     if (fritelleCount >= 15) {
-      get('fritelle').forEach(f => {
+      get('fritelle').forEach((f) => {
         const dist = player.pos.dist(f.pos);
         if (dist < 100 && dist > 10) {
           f.pos = f.pos.lerp(player.pos, 0.03);
@@ -284,7 +285,7 @@ function updateHUD() {
   }
   // Update shadow too
   const shadows = get('hud-shadow');
-  shadows.forEach(s => {
+  shadows.forEach((s) => {
     s.text = `x ${fritelleCount}`;
   });
 }
@@ -319,12 +320,13 @@ export function throwFritelle(playerPos, direction) {
   // Support both vec2 (diagonal) and string (cardinal)
   let dirVec;
   if (typeof direction === 'string') {
-    dirVec = {
-      up: vec2(0, -1),
-      down: vec2(0, 1),
-      left: vec2(-1, 0),
-      right: vec2(1, 0),
-    }[direction] || vec2(0, 1);
+    dirVec =
+      {
+        up: vec2(0, -1),
+        down: vec2(0, 1),
+        left: vec2(-1, 0),
+        right: vec2(1, 0),
+      }[direction] || vec2(0, 1);
   } else {
     dirVec = direction; // Already a vec2
   }

@@ -16,8 +16,8 @@ export function createBuilding(tool) {
   const isActive = tool.live;
 
   // Building dimensions - use actual sprite size from config, scaled 40%
-  const spriteScale = 1.4;  // Increased for larger canvas
-  const baseWidth = tool.spriteWidth || 144;   // Fallback for tools without dimensions
+  const spriteScale = 1.4; // Increased for larger canvas
+  const baseWidth = tool.spriteWidth || 144; // Fallback for tools without dimensions
   const baseHeight = tool.spriteHeight || 128;
   const bWidth = baseWidth * spriteScale;
   const bHeight = baseHeight * spriteScale;
@@ -32,9 +32,9 @@ export function createBuilding(tool) {
   const signBg = add([
     rect(bWidth - 20, signHeight),
     pos(x + 10, signY),
-    color(139, 69, 19),  // Wood brown #8b4513
-    outline(3, rgb(93, 58, 26)),  // Darker wood border
-    area(),  // Makes sign clickable
+    color(139, 69, 19), // Wood brown #8b4513
+    outline(3, rgb(93, 58, 26)), // Darker wood border
+    area(), // Makes sign clickable
     z(5),
     'building-sign',
   ]);
@@ -51,7 +51,7 @@ export function createBuilding(tool) {
     text(tool.name, { size: signTextSize }),
     pos(x + bWidth / 2 + 1, signY + signHeight / 2 + 1),
     anchor('center'),
-    color(0, 0, 0),  // Shadow
+    color(0, 0, 0), // Shadow
     z(6),
   ]);
 
@@ -76,9 +76,9 @@ export function createBuilding(tool) {
       // Support both x property (variable widths) and col property (equal widths)
       const pieceX = piece.x !== undefined ? piece.x : piece.col * piece.width;
       const qx = pieceX / fullWidth;
-      const qy = 0;  // All pieces are in a single row
+      const qy = 0; // All pieces are in a single row
       const qw = piece.width / fullWidth;
-      const qh = 1;  // Full height
+      const qh = 1; // Full height
 
       add([
         sprite(tool.sprite, {
@@ -90,12 +90,7 @@ export function createBuilding(tool) {
       ]);
     } else {
       // Regular full sprite
-      add([
-        sprite(tool.sprite),
-        pos(x, y),
-        scale(spriteScale),
-        z(4),
-      ]);
+      add([sprite(tool.sprite), pos(x, y), scale(spriteScale), z(4)]);
     }
   } else {
     // Fallback procedural building for tools without sprites
@@ -111,7 +106,7 @@ export function createBuilding(tool) {
   // Create compound collision shapes from config
   // Shapes use normalized coordinates (0-1), scaled to actual building size
   const shapes = tool.collisionShapes || [
-    { type: 'rect', x: 0, y: 0, w: 1, h: 1 }  // Fallback: full rect
+    { type: 'rect', x: 0, y: 0, w: 1, h: 1 }, // Fallback: full rect
   ];
 
   shapes.forEach((shape, index) => {
@@ -127,9 +122,7 @@ export function createBuilding(tool) {
       ]);
     } else if (shape.type === 'polygon') {
       // Convert normalized points to actual coordinates
-      const points = shape.points.map(([px, py]) =>
-        vec2(px * bWidth, py * bHeight)
-      );
+      const points = shape.points.map(([px, py]) => vec2(px * bWidth, py * bHeight));
       add([
         polygon(points),
         pos(x, y),
@@ -181,11 +174,11 @@ export function createBuilding(tool) {
 
   // Hover effect on sign - highlight on mouseover
   signBg.onHover(() => {
-    signBg.color = rgb(170, 90, 30);  // Lighter wood
+    signBg.color = rgb(170, 90, 30); // Lighter wood
   });
 
   signBg.onHoverEnd(() => {
-    signBg.color = rgb(139, 69, 19);  // Original wood
+    signBg.color = rgb(139, 69, 19); // Original wood
   });
 
   return building;
