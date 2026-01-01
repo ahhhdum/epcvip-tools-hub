@@ -173,6 +173,12 @@ Allow player to walk "behind" buildings and trees for proper 2D depth illusion.
 - Toast notifications for milestones
 - First collection, 10 collected, golden catch, etc.
 
+### Custom Voice Sounds
+- Let each team member record their own sounds
+- Fritelle hit reactions, voice lines, etc.
+- Could use Web Audio API for recording
+- Store in localStorage or server-side per player
+
 ---
 
 ---

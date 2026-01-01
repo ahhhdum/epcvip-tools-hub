@@ -11,14 +11,18 @@ import { Socket } from 'net';
 import express from 'express';
 import path from 'path';
 import { createProxyMiddleware } from 'http-proxy-middleware';
+import { WordleRoomManager } from './rooms/wordle-room';
 
 const app = express();
 const port = Number(process.env.PORT) || 2567;
 
 // Proxy targets - use public URLs (move to same Railway project for internal networking)
-const PING_TREE_TARGET = process.env.PING_TREE_URL || 'https://ping-tree-compare-production.up.railway.app';
-const ATHENA_TARGET = process.env.ATHENA_URL || 'https://epcvip-athena-usage-monitor.up.railway.app';
-const VALIDATOR_TARGET = process.env.VALIDATOR_URL || 'https://streamlit-validator-production.up.railway.app';
+const PING_TREE_TARGET =
+  process.env.PING_TREE_URL || 'https://ping-tree-compare-production.up.railway.app';
+const ATHENA_TARGET =
+  process.env.ATHENA_URL || 'https://epcvip-athena-usage-monitor.up.railway.app';
+const VALIDATOR_TARGET =
+  process.env.VALIDATOR_URL || 'https://streamlit-validator-production.up.railway.app';
 
 // Proxy configuration for ping-tree (FastAPI)
 const pingTreeProxy = createProxyMiddleware({
@@ -39,7 +43,7 @@ const pingTreeProxy = createProxyMiddleware({
 const athenaProxy = createProxyMiddleware({
   target: ATHENA_TARGET,
   changeOrigin: true,
-  pathRewrite: { '^/athena': '' },  // Strip /athena prefix, target serves at root
+  pathRewrite: { '^/athena': '' }, // Strip /athena prefix, target serves at root
   ws: true,
   on: {
     error: (err, req, res) => {
@@ -77,9 +81,9 @@ const staticPath = path.join(__dirname, '../public');
 app.use(express.static(staticPath));
 
 // Health check - enhanced with proxy status
-app.get("/health", (req, res) => {
+app.get('/health', (req, res) => {
   res.json({
-    status: "ok",
+    status: 'ok',
     players: players.size,
     proxies: {
       pingTree: PING_TREE_TARGET,
@@ -94,13 +98,22 @@ const server = createServer(app);
 // WebSocket server for game - noServer mode for manual upgrade handling
 const wss = new WebSocketServer({ noServer: true });
 
-// Handle WebSocket upgrades manually to route between game and proxied services
+// WebSocket server for Wordle Battle
+const wordleWss = new WebSocketServer({ noServer: true });
+const wordleManager = new WordleRoomManager();
+
+// Handle WebSocket upgrades manually to route between game, wordle, and proxied services
 server.on('upgrade', (req, socket, head) => {
   const url = req.url || '';
 
   if (url.startsWith('/athena')) {
     // Streamlit WebSocket - proxy to athena service
     athenaProxy.upgrade(req, socket as Socket, head);
+  } else if (url.startsWith('/wordle')) {
+    // Wordle Battle WebSocket - handle locally
+    wordleWss.handleUpgrade(req, socket as Socket, head, (ws) => {
+      wordleWss.emit('connection', ws, req);
+    });
   } else {
     // Game WebSocket - handle locally
     wss.handleUpgrade(req, socket as Socket, head, (ws) => {
@@ -201,7 +214,7 @@ wss.on('connection', (ws) => {
     x: 400 + Math.random() * 100,
     y: 400 + Math.random() * 100,
     direction: 'down',
-    appearance: { characterId: 'Farmer_Bob' },  // Default character
+    appearance: { characterId: 'Farmer_Bob' }, // Default character
     fritelleCount: 0,
   };
 
@@ -215,7 +228,7 @@ wss.on('connection', (ws) => {
     type: 'init',
     playerId,
     player,
-    players: Array.from(players.values()).filter(p => p.id !== playerId),
+    players: Array.from(players.values()).filter((p) => p.id !== playerId),
     fritelles: Array.from(fritelles.values()),
   });
 
@@ -234,7 +247,10 @@ wss.on('connection', (ws) => {
             p.x = msg.x;
             p.y = msg.y;
             p.direction = msg.direction || p.direction;
-            broadcast({ type: 'playerMoved', playerId, x: msg.x, y: msg.y, direction: p.direction }, playerId);
+            broadcast(
+              { type: 'playerMoved', playerId, x: msg.x, y: msg.y, direction: p.direction },
+              playerId
+            );
           }
           break;
         }
@@ -260,10 +276,13 @@ wss.on('connection', (ws) => {
             });
 
             // Respawn after delay
-            setTimeout(() => {
-              const newFritelle = spawnFritelle();
-              broadcast({ type: 'fritelleSpawned', fritelle: newFritelle });
-            }, 3000 + Math.random() * 5000);
+            setTimeout(
+              () => {
+                const newFritelle = spawnFritelle();
+                broadcast({ type: 'fritelleSpawned', fritelle: newFritelle });
+              },
+              3000 + Math.random() * 5000
+            );
           }
           break;
         }
@@ -333,6 +352,23 @@ wss.on('connection', (ws) => {
   });
 });
 
+// Wordle Battle WebSocket connections
+wordleWss.on('connection', (ws) => {
+  console.log('[Wordle] New connection');
+
+  ws.on('message', (data) => {
+    wordleManager.handleMessage(ws, data.toString());
+  });
+
+  ws.on('close', () => {
+    wordleManager.handleDisconnect(ws);
+  });
+
+  ws.on('error', (err) => {
+    console.error('[Wordle] Socket error:', err);
+  });
+});
+
 // Initialize game
 spawnInitialFritelles();
 
@@ -342,7 +378,8 @@ server.listen(port, '0.0.0.0', () => {
 ╔════════════════════════════════════════════════════════╗
 ║  EPCVIP Tools Hub - Multiplayer Server                 ║
 ╠════════════════════════════════════════════════════════╣
-║  WebSocket:  ws://0.0.0.0:${port}                        ║
+║  Game WS:    ws://0.0.0.0:${port}/                        ║
+║  Wordle WS:  ws://0.0.0.0:${port}/wordle                  ║
 ║  Health:     http://0.0.0.0:${port}/health               ║
 ║  Protocol:   Native WebSocket + JSON                   ║
 ╚════════════════════════════════════════════════════════╝
