@@ -37,7 +37,16 @@ export function renderTileMap(mapData, tileset = DEFAULT_TILESET) {
     decorations: [],
   };
 
-  const { width, height, layers } = mapData;
+  const { width, height } = mapData;
+  // Support both 'layers' and 'tileLayers' (map editor uses tileLayers)
+  const layers = mapData.layers || mapData.tileLayers;
+  // Tileset names array from map data (e.g., ["Grass_Plain", "Grass_Tiles_4"])
+  const tilesets = mapData.tilesets || [];
+
+  if (!layers) {
+    console.warn('No layers found in map data');
+    return tileEntities;
+  }
 
   // Render each layer
   for (const [layerName, tiles] of Object.entries(layers)) {
@@ -46,14 +55,29 @@ export function renderTileMap(mapData, tileset = DEFAULT_TILESET) {
     for (let y = 0; y < height && y < tiles.length; y++) {
       const row = tiles[y];
       for (let x = 0; x < width && x < row.length; x++) {
-        const tileIndex = row[x];
+        const rawTileIndex = row[x];
 
-        // Skip empty tiles (index 0)
-        if (tileIndex <= 0) continue;
+        // Handle [tilesetIndex, tileIndex] array format from map editor
+        let tilesetName = tileset;
+        let tileIndex;
+        if (Array.isArray(rawTileIndex)) {
+          const tilesetIdx = rawTileIndex[0];
+          tileIndex = rawTileIndex[1];
+          // Look up tileset name from map's tilesets array, fallback to numbered
+          const tsName = tilesets[tilesetIdx];
+          tilesetName = tsName ? `tileset-${tsName}` : `tileset-${tilesetIdx}`;
+        } else {
+          tileIndex = rawTileIndex;
+        }
+
+        // Skip negative tiles (truly empty)
+        // For ground layer, 0 is valid (plain grass); for other layers, 0 means empty
+        if (tileIndex < 0) continue;
+        if (layerName !== 'ground' && tileIndex === 0) continue;
 
         // Create tile entity
         const tile = add([
-          sprite(tileset, { frame: tileIndex }),
+          sprite(tilesetName, { frame: tileIndex }),
           pos(x * TILE_SIZE * TILE_SCALE, y * TILE_SIZE * TILE_SCALE),
           scale(TILE_SCALE),
           z(zLevel),

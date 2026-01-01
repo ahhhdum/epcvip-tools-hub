@@ -20,11 +20,10 @@ export async function overworldScene() {
   // Draw ground (grass + paths) - may use tilemap if enabled
   await drawGround();
 
-  // Create decorations
-  TREES.forEach((t) => createTree(t.x, t.y));
-
-  // Create flowers from config
-  FLOWERS.forEach((f) => createFlower(f.x, f.y));
+  // Trees and decorations now come from map entities (placed in map editor)
+  // Legacy hardcoded decorations disabled:
+  // TREES.forEach((t) => createTree(t.x, t.y));
+  // FLOWERS.forEach((f) => createFlower(f.x, f.y));
 
   // Load buildings from map JSON (primary) or fall back to TOOLS config
   let buildings = [];

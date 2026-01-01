@@ -14,8 +14,7 @@ const MAP_W = Math.floor(GAME_CONFIG.worldWidth / TILE);
 const MAP_H = Math.floor(GAME_CONFIG.worldHeight / TILE);
 
 // Set to true to use tilemap-based terrain (requires tileset assets)
-// Currently disabled - tileset tiles 1-3 are hedges, not grass
-const USE_TILEMAP = false;
+const USE_TILEMAP = true;
 
 // Store tile entities for potential cleanup
 let currentTileEntities = null;

@@ -103,6 +103,27 @@ Start with localStorage for name/colors. Add SSO later when there's enough value
 
 ## Future Ideas (Icebox)
 
+### Map Editor Improvements
+
+**Rotate Entities**
+- Rotate placed entities with mouse drag or 'R' key
+- Support 90° increments or free rotation
+- Visual rotation handle on selected entity
+
+**Clone Selection**
+- Select a region of tiles/entities
+- Copy to clipboard/palette
+- Paste elsewhere on map
+- Useful for repeating patterns (fences, paths, room layouts)
+
+**Map Management from UI**
+- Load/save maps without manual file copying
+- List available maps in editor
+- Create new map from template
+- Delete/rename maps
+- Auto-save to server or localStorage
+- **Choose save location** - Pick folder for local map saves (File System Access API)
+
 ### Hub Landing Page Visual Improvements
 - Replace green grass background with something more fitting (gradient, pattern, or themed graphic)
 - Current grass color feels out of place for a tools hub landing page

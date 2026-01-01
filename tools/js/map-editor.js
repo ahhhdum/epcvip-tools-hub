@@ -212,6 +212,7 @@ function isVirtualTileset(name) {
  */
 function getRawTilesets() {
   return [
+    'Grass_Plain',
     'Grass_Tiles_1',
     'Grass_Tiles_2',
     'Grass_Tiles_3',

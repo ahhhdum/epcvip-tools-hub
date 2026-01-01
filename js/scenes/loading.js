@@ -323,7 +323,30 @@ function loadAssets() {
     loadSprite(spriteInfo.spriteName, gamePath);
   }
 
-  // Load tileset
+  // Load tilesets (map editor uses indices into this array)
+  // Grass_Plain is a single 16x16 tile - perfect for clean grass
+  loadSprite('tileset-Grass_Plain', 'assets/tiles/Grass_Plain.png', {
+    sliceX: 1,
+    sliceY: 1,
+  });
+  loadSprite('tileset-Grass_Tiles_1', 'assets/tiles/Grass_Tiles_1.png', {
+    sliceX: 16,
+    sliceY: 10,
+  });
+  loadSprite('tileset-Grass_Tiles_4', 'assets/tiles/Grass_Tiles_4.png', {
+    sliceX: 16,
+    sliceY: 10,
+  });
+  // Legacy numbered names for maps that use index-based tileset references
+  loadSprite('tileset-0', 'assets/tiles/Grass_Tiles_1.png', {
+    sliceX: 16,
+    sliceY: 10,
+  });
+  loadSprite('tileset-1', 'assets/tiles/Grass_Tiles_4.png', {
+    sliceX: 16,
+    sliceY: 10,
+  });
+  // Keep legacy name for backwards compatibility
   loadSprite('tileset-grass', 'assets/tiles/Grass_Tiles_1.png', {
     sliceX: 16,
     sliceY: 10,
