@@ -12,31 +12,50 @@
 - [x] Player name input (entry modal, localStorage, server sync, display above character)
 - [x] Tilemap system with multi-tileset support
 - [x] Plain grass tile for cleaner maps
+- [x] Wordle Battle MVP (rooms, multiplayer, opponent visibility)
 
 **Live at:** https://epcvip-tools-hub-production.up.railway.app
 
 ---
 
+## Priority 1: Auth & Persistence
+
+### Simple Login System
+Basic auth for the overworld to enable data persistence.
+
+**Purpose:**
+- Persist character selection across sessions/devices
+- Track Wordle stats and performance over time
+- Foundation for future features (achievements, unlockables)
+
+**Requirements:**
+- Super simple - minimal friction to play
+- Persist: player name, character, game stats
+- Options: Supabase, simple SQLite, or JSON file storage
+
+**Implementation Options:**
+1. **Supabase** - Free tier, easy setup, built-in auth
+2. **SQLite + simple API** - No external deps, self-contained
+3. **JSON file per user** - Simplest, no DB needed
+
+### Wordle Stats Tracking
+Track performance metrics over time (requires auth above).
+
+**Metrics:**
+- Win rate (overall and vs specific opponents)
+- Average solve time
+- Average guesses per game
+- Head-to-head matchup history
+- Streak tracking (consecutive wins)
+
+**Display:**
+- Stats page accessible from Wordle lobby
+- Personal dashboard with charts/graphs
+- Leaderboard across all players
+
+---
+
 ## Priority 2: Major Features
-
-### Wordle Room
-A collaborative/competitive Wordle experience for the team.
-
-**Concept:**
-- All players join a shared Wordle room
-- Everyone plays the same word simultaneously
-- Don't show what letters others have used
-- Show real-time progress:
-  - How many guesses each player has made
-  - How many correct letters (green) they have
-  - Completion time when they finish
-- Leaderboard at end showing solve times
-
-**Implementation:**
-- New scene: `wordle.js`
-- Server-side word selection (same for all players)
-- WebSocket messages: `wordleGuess`, `wordleProgress`, `wordleComplete`
-- Daily word rotation (optional)
 
 ### Character Customization
 Let players personalize their character appearance.
@@ -46,31 +65,10 @@ Let players personalize their character appearance.
 - Choose on first join or from pause menu
 - Could evolve into a "store" with unlockables
 
-**Implementation Approaches:**
-1. **localStorage only** - Simple, no backend, resets if cleared
-2. **Server-persisted** - Requires identity (see SSO below)
-3. **Hybrid** - localStorage + optional sync when logged in
-
 **Visual:**
 - Color tinting or palette swaps (simplest)
 - Separate sprite sheets per color (more work, better control)
 - Accessory layers (hats, items) drawn on top
-
----
-
-## Consideration: Persistence & SSO
-
-**The Problem:**
-Many features benefit from persistence (customization, stats, achievements), but requiring per-game login is friction. SSO across all tools hub apps would be ideal.
-
-**Options:**
-1. **No persistence** - localStorage only, resets on clear
-2. **Game-only login** - Simple auth just for this game
-3. **Tools Hub SSO** - Single sign-on across all tools (ideal but more work)
-4. **EPCVIP SSO integration** - If company has existing SSO
-
-**Recommendation:**
-Start with localStorage for name/colors. Add SSO later when there's enough value to justify it. Keep the data model ready for server sync.
 
 ---
 
