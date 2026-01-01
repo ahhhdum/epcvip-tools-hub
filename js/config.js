@@ -72,7 +72,7 @@ export const TOOLS = [
     url: 'https://ping-tree-compare-production.up.railway.app', // Direct link (proxy has no auth issues)
     position: { x: 3, y: 3 },
     color: [72, 168, 104],
-    sprite: 'building-house-1',
+    sprite: 'building-house-1-stone-red',
     spriteWidth: 96, // Actual sprite dimensions
     spriteHeight: 128,
     collisionShapes: COLLISION_SHAPES.house1,
@@ -85,7 +85,7 @@ export const TOOLS = [
     url: 'https://epcvip-athena-usage-monitor.up.railway.app', // Direct link (Streamlit auth breaks proxy)
     position: { x: 17, y: 3 },
     color: [88, 120, 168],
-    sprite: 'building-house-2',
+    sprite: 'building-house-2-stone-blue',
     spriteWidth: 144,
     spriteHeight: 128,
     collisionShapes: COLLISION_SHAPES.house2,
@@ -98,7 +98,7 @@ export const TOOLS = [
     url: 'https://streamlit-validator-production.up.railway.app', // Direct link (Streamlit auth breaks proxy)
     position: { x: 31, y: 3 },
     color: [240, 192, 0],
-    sprite: 'building-house-3',
+    sprite: 'building-house-3-stone-black',
     spriteWidth: 144,
     spriteHeight: 128,
     collisionShapes: COLLISION_SHAPES.house3,
@@ -111,7 +111,7 @@ export const TOOLS = [
     url: null,
     position: { x: 7, y: 17 },
     color: [128, 128, 128],
-    sprite: 'building-house-1', // Placeholder
+    sprite: 'building-house-1-stone-red', // Placeholder
     spriteWidth: 96,
     spriteHeight: 128,
     collisionShapes: COLLISION_SHAPES.house1,
@@ -124,7 +124,7 @@ export const TOOLS = [
     url: null,
     position: { x: 25, y: 17 },
     color: [128, 128, 128],
-    sprite: 'building-house-2', // Placeholder
+    sprite: 'building-house-2-stone-blue', // Placeholder
     spriteWidth: 144,
     spriteHeight: 128,
     collisionShapes: COLLISION_SHAPES.house2,
