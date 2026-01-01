@@ -78,6 +78,28 @@ export function createPlayer(startPos) {
     },
   ]);
 
+  // Create name label above player
+  const playerName = localStorage.getItem('epcvip_playerName') || 'Player';
+  const nameLabel = add([
+    text(playerName, { size: 12 }),
+    pos(player.pos.x, player.pos.y - 70),
+    anchor('center'),
+    color(255, 255, 255),
+    z(11),
+    'player-name',
+  ]);
+
+  // Add shadow text for visibility on grass
+  const nameShadow = add([
+    text(playerName, { size: 12 }),
+    pos(player.pos.x + 1, player.pos.y - 69),
+    anchor('center'),
+    color(0, 0, 0),
+    opacity(0.5),
+    z(10.9),
+    'player-name-shadow',
+  ]);
+
   // Update animation when moving or direction changes
   let wasMoving = false;
   let lastDir = 'down';
@@ -212,6 +234,10 @@ export function createPlayer(startPos) {
 
     // Update camera to follow player
     updateCamera(player.pos);
+
+    // Update name label position to follow player
+    nameLabel.pos = vec2(player.pos.x, player.pos.y - 70);
+    nameShadow.pos = vec2(player.pos.x + 1, player.pos.y - 69);
   });
 
   // Multiplayer: Send position updates (throttled to 20 times/sec)
