@@ -1,0 +1,6 @@
+# Run lint-staged on staged files only (fast!)
+npx lint-staged
+
+# TypeScript check for server
+echo "Checking TypeScript..."
+cd server && npx tsc --noEmit

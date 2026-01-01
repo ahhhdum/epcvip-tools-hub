@@ -7,11 +7,27 @@
     "lint": "eslint js/ tools/js/ --ext .js",
     "lint:fix": "eslint js/ tools/js/ --ext .js --fix",
     "format": "prettier --write \"js/**/*.js\" \"tools/js/**/*.js\"",
-    "format:check": "prettier --check \"js/**/*.js\" \"tools/js/**/*.js\""
+    "format:check": "prettier --check \"js/**/*.js\" \"tools/js/**/*.js\"",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "js/**/*.js": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "tools/js/**/*.js": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "server/src/**/*.ts": [
+      "prettier --write"
+    ]
   },
   "devDependencies": {
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
     "prettier": "^3.2.0"
   }
 }
