@@ -15,6 +15,7 @@ import {
 } from '../config.js';
 import { loadSounds } from '../systems/audio.js';
 import { getAllBuildingSprites } from '../systems/entity-loader.js';
+import { initAuth, getSavedCharacter, saveCharacterSelection } from '../systems/auth.js';
 
 // localStorage keys
 const STORAGE_KEY_NAME = 'epcvip_playerName';
@@ -83,8 +84,8 @@ export function loadingScene() {
     opacity(0.7),
   ]);
 
-  // Get live tools only
-  const liveTools = TOOLS.filter((t) => t.live && t.url);
+  // Get live tools only (exclude Wordle - access via overworld or pause menu)
+  const liveTools = TOOLS.filter((t) => t.live && t.url && t.id !== 'wordle');
 
   // Tool cards - 2-column grid layout
   const cardWidth = 260 * S;
@@ -306,6 +307,17 @@ export function loadingScene() {
 // Load all game assets (non-blocking)
 function loadAssets() {
   loadSounds();
+
+  // Initialize auth system (checks for existing session)
+  initAuth().then((user) => {
+    if (user) {
+      console.log('[Auth] Logged in as:', user.email);
+      // Load character from profile if logged in
+      const savedChar = getSavedCharacter();
+      const char = CHARACTERS.find((c) => c.id === savedChar);
+      if (char) setSelectedCharacter(char);
+    }
+  });
 
   // Load character sprites
   CHARACTERS.forEach((char) => {
@@ -680,7 +692,13 @@ function showCharacterModal() {
     // Save selections
     const finalName = useName && playerName.trim() ? playerName.trim() : 'Player';
     savePlayerName(finalName);
-    setSelectedCharacter(CHARACTERS[selectedCharIndex]);
+    const selectedChar = CHARACTERS[selectedCharIndex];
+    setSelectedCharacter(selectedChar);
+
+    // Persist character to Supabase if logged in
+    saveCharacterSelection(selectedChar.id).catch((e) => {
+      console.error('[Auth] Failed to save character:', e);
+    });
 
     // Enter the game
     go('overworld');

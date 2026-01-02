@@ -15,6 +15,14 @@ import {
 } from '../config.js';
 import { isMuted, toggleMute } from '../systems/audio.js';
 import { getPauseLayout, getCharSelectLayout } from '../systems/ui-layout.js';
+import {
+  isLoggedIn,
+  getProfile,
+  signOut,
+  signIn,
+  signUp,
+  saveCharacterSelection,
+} from '../systems/auth.js';
 
 export function pauseScene() {
   // Get responsive layout
@@ -212,10 +220,10 @@ export function pauseScene() {
   // === BOTTOM BUTTONS (below border, in black area) ===
   const btnY = height() - 19;
 
-  // Resume button
+  // Resume button (left)
   const resumeBtn = add([
     rect(130 * S, 32 * S),
-    pos(width() / 2 - 75 * S, btnY),
+    pos(width() / 2 - 130 * S, btnY),
     anchor('center'),
     color(...COLORS.gold),
     area(),
@@ -225,16 +233,16 @@ export function pauseScene() {
 
   add([
     text('RESUME', { size: 15 * S }),
-    pos(width() / 2 - 75 * S, btnY),
+    pos(width() / 2 - 130 * S, btnY),
     anchor('center'),
     color(...COLORS.dark),
     fixed(),
   ]);
 
-  // Sound toggle button
+  // Sound toggle button (center)
   const soundBtn = add([
-    rect(110 * S, 32 * S),
-    pos(width() / 2 + 75 * S, btnY),
+    rect(100 * S, 32 * S),
+    pos(width() / 2, btnY),
     anchor('center'),
     color(40, 40, 40),
     outline(2, rgb(...COLORS.gold)),
@@ -244,13 +252,48 @@ export function pauseScene() {
   ]);
 
   const soundText = add([
-    text(isMuted() ? 'Sound: OFF' : 'Sound: ON', { size: 13 * S }),
-    pos(width() / 2 + 75 * S, btnY),
+    text(isMuted() ? 'Sound: OFF' : 'Sound: ON', { size: 12 * S }),
+    pos(width() / 2, btnY),
     anchor('center'),
     color(...COLORS.gold),
     fixed(),
     'sound-text',
   ]);
+
+  // Login/Logout button (right)
+  const loggedIn = isLoggedIn();
+  const profile = getProfile();
+
+  const authBtn = add([
+    rect(90 * S, 32 * S),
+    pos(width() / 2 + 130 * S, btnY),
+    anchor('center'),
+    color(loggedIn ? 60 : 40, loggedIn ? 40 : 40, loggedIn ? 40 : 60),
+    outline(2, rgb(loggedIn ? 150 : 100, loggedIn ? 100 : 150, loggedIn ? 100 : 200)),
+    area(),
+    fixed(),
+    'auth-btn',
+  ]);
+
+  const authText = add([
+    text(loggedIn ? 'Logout' : 'Login', { size: 12 * S }),
+    pos(width() / 2 + 130 * S, btnY),
+    anchor('center'),
+    color(loggedIn ? 255 : 150, loggedIn ? 150 : 150, loggedIn ? 150 : 255),
+    fixed(),
+    'auth-text',
+  ]);
+
+  // Show username if logged in
+  if (loggedIn && profile) {
+    add([
+      text(profile.display_name || 'Player', { size: 10 * S }),
+      pos(width() / 2 + 130 * S, btnY - 22 * S),
+      anchor('center'),
+      color(150, 200, 150),
+      fixed(),
+    ]);
+  }
 
   // === CHARACTER SELECTION MODAL ===
   const modalObjects = [];
@@ -394,6 +437,9 @@ export function pauseScene() {
     confirmBtn.onClick(() => {
       const char = CHARACTERS[selectedCharIndex];
       setSelectedCharacter(char);
+      saveCharacterSelection(char.id).catch((e) => {
+        console.error('[Auth] Failed to save character:', e);
+      });
       hideCharacterSelect();
       updateMainPreview(char);
     });
@@ -478,6 +524,17 @@ export function pauseScene() {
     soundText.text = nowMuted ? 'Sound: OFF' : 'Sound: ON';
   });
 
+  authBtn.onClick(async () => {
+    if (isLoggedIn()) {
+      // Logout
+      await signOut();
+      go('pause'); // Refresh the pause scene
+    } else {
+      // Show login modal
+      showLoginModal();
+    }
+  });
+
   onKeyPress('m', () => {
     if (!isSelectingCharacter) {
       const nowMuted = toggleMute();
@@ -500,6 +557,9 @@ export function pauseScene() {
       // Confirm selection
       const char = CHARACTERS[selectedCharIndex];
       setSelectedCharacter(char);
+      saveCharacterSelection(char.id).catch((e) => {
+        console.error('[Auth] Failed to save character:', e);
+      });
       hideCharacterSelect();
       updateMainPreview(char);
     } else {
@@ -529,4 +589,402 @@ export function pauseScene() {
   onKeyPress('c', () => {
     if (!isSelectingCharacter) showCharacterSelect();
   });
+
+  // === LOGIN MODAL ===
+  let isLoggingIn = false;
+  const loginModalObjects = [];
+  let loginKeyHandler = null;
+
+  function showLoginModal() {
+    isLoggingIn = true;
+
+    // Modal state
+    let mode = 'login'; // 'login' or 'signup'
+    let email = '';
+    let password = '';
+    let displayName = '';
+    const errorMessage = '';
+    let activeField = 'email';
+
+    // Modal background
+    loginModalObjects.push(
+      add([rect(width(), height()), pos(0, 0), color(0, 0, 0), opacity(0.95), fixed(), z(200)])
+    );
+
+    // Modal box
+    const modalW = 320 * S;
+    const modalH = 280 * S;
+    const modalX = width() / 2 - modalW / 2;
+    const modalY = height() / 2 - modalH / 2;
+
+    loginModalObjects.push(
+      add([
+        rect(modalW, modalH, { radius: 8 }),
+        pos(modalX, modalY),
+        color(22, 33, 62),
+        outline(3, rgb(100, 150, 255)),
+        fixed(),
+        z(201),
+      ])
+    );
+
+    // Title
+    const titleText = add([
+      text('Login', { size: 18 * S }),
+      pos(width() / 2, modalY + 30 * S),
+      anchor('center'),
+      color(100, 150, 255),
+      fixed(),
+      z(202),
+    ]);
+    loginModalObjects.push(titleText);
+
+    // Toggle link
+    const toggleText = add([
+      text("Don't have an account? Sign up", { size: 10 * S }),
+      pos(width() / 2, modalY + 50 * S),
+      anchor('center'),
+      color(150, 150, 200),
+      area(),
+      fixed(),
+      z(202),
+      'auth-toggle',
+    ]);
+    loginModalObjects.push(toggleText);
+
+    // Email field
+    const emailLabelY = modalY + 80 * S;
+    loginModalObjects.push(
+      add([
+        text('Email:', { size: 10 * S }),
+        pos(modalX + 20 * S, emailLabelY),
+        color(150, 150, 150),
+        fixed(),
+        z(202),
+      ])
+    );
+
+    const emailInput = add([
+      rect(modalW - 40 * S, 28 * S, { radius: 4 }),
+      pos(modalX + 20 * S, emailLabelY + 14 * S),
+      color(
+        activeField === 'email' ? 25 : 15,
+        activeField === 'email' ? 25 : 15,
+        activeField === 'email' ? 35 : 25
+      ),
+      outline(
+        2,
+        rgb(
+          activeField === 'email' ? 100 : 60,
+          activeField === 'email' ? 150 : 60,
+          activeField === 'email' ? 255 : 60
+        )
+      ),
+      area(),
+      fixed(),
+      z(202),
+      'email-input',
+    ]);
+    loginModalObjects.push(emailInput);
+
+    const emailText = add([
+      text(email || '', { size: 11 * S }),
+      pos(modalX + 30 * S, emailLabelY + 28 * S),
+      anchor('left'),
+      color(255, 255, 255),
+      fixed(),
+      z(203),
+    ]);
+    loginModalObjects.push(emailText);
+
+    // Password field
+    const passLabelY = emailLabelY + 52 * S;
+    loginModalObjects.push(
+      add([
+        text('Password:', { size: 10 * S }),
+        pos(modalX + 20 * S, passLabelY),
+        color(150, 150, 150),
+        fixed(),
+        z(202),
+      ])
+    );
+
+    const passInput = add([
+      rect(modalW - 40 * S, 28 * S, { radius: 4 }),
+      pos(modalX + 20 * S, passLabelY + 14 * S),
+      color(
+        activeField === 'password' ? 25 : 15,
+        activeField === 'password' ? 25 : 15,
+        activeField === 'password' ? 35 : 25
+      ),
+      outline(
+        2,
+        rgb(
+          activeField === 'password' ? 100 : 60,
+          activeField === 'password' ? 150 : 60,
+          activeField === 'password' ? 255 : 60
+        )
+      ),
+      area(),
+      fixed(),
+      z(202),
+      'pass-input',
+    ]);
+    loginModalObjects.push(passInput);
+
+    const passText = add([
+      text('', { size: 11 * S }),
+      pos(modalX + 30 * S, passLabelY + 28 * S),
+      anchor('left'),
+      color(255, 255, 255),
+      fixed(),
+      z(203),
+    ]);
+    loginModalObjects.push(passText);
+
+    // Display name field (only for signup)
+    const nameLabelY = passLabelY + 52 * S;
+    let nameLabel, nameInput, nameText;
+
+    function updateMode() {
+      titleText.text = mode === 'login' ? 'Login' : 'Sign Up';
+      toggleText.text =
+        mode === 'login' ? "Don't have an account? Sign up" : 'Already have an account? Login';
+
+      if (mode === 'signup' && !nameLabel) {
+        nameLabel = add([
+          text('Display Name:', { size: 10 * S }),
+          pos(modalX + 20 * S, nameLabelY),
+          color(150, 150, 150),
+          fixed(),
+          z(202),
+        ]);
+        loginModalObjects.push(nameLabel);
+
+        nameInput = add([
+          rect(modalW - 40 * S, 28 * S, { radius: 4 }),
+          pos(modalX + 20 * S, nameLabelY + 14 * S),
+          color(15, 15, 25),
+          outline(2, rgb(60, 60, 60)),
+          area(),
+          fixed(),
+          z(202),
+          'name-input',
+        ]);
+        loginModalObjects.push(nameInput);
+
+        nameText = add([
+          text(displayName || '', { size: 11 * S }),
+          pos(modalX + 30 * S, nameLabelY + 28 * S),
+          anchor('left'),
+          color(255, 255, 255),
+          fixed(),
+          z(203),
+        ]);
+        loginModalObjects.push(nameText);
+      } else if (mode === 'login' && nameLabel) {
+        destroy(nameLabel);
+        destroy(nameInput);
+        destroy(nameText);
+        nameLabel = null;
+        nameInput = null;
+        nameText = null;
+      }
+    }
+
+    // Error message
+    const errorText = add([
+      text('', { size: 9 * S }),
+      pos(width() / 2, modalY + modalH - 70 * S),
+      anchor('center'),
+      color(255, 100, 100),
+      fixed(),
+      z(202),
+    ]);
+    loginModalObjects.push(errorText);
+
+    // Submit button
+    const submitY = modalY + modalH - 45 * S;
+    const submitBtn = add([
+      rect(100 * S, 32 * S, { radius: 4 }),
+      pos(width() / 2 - 60 * S, submitY),
+      anchor('center'),
+      color(80, 130, 200),
+      outline(2, rgb(100, 150, 255)),
+      area(),
+      fixed(),
+      z(202),
+      'submit-btn',
+    ]);
+    loginModalObjects.push(submitBtn);
+
+    loginModalObjects.push(
+      add([
+        text('Submit', { size: 12 * S }),
+        pos(width() / 2 - 60 * S, submitY),
+        anchor('center'),
+        color(255, 255, 255),
+        fixed(),
+        z(203),
+      ])
+    );
+
+    // Cancel button
+    const cancelBtn = add([
+      rect(80 * S, 32 * S, { radius: 4 }),
+      pos(width() / 2 + 50 * S, submitY),
+      anchor('center'),
+      color(60, 40, 40),
+      outline(2, rgb(150, 100, 100)),
+      area(),
+      fixed(),
+      z(202),
+      'cancel-auth-btn',
+    ]);
+    loginModalObjects.push(cancelBtn);
+
+    loginModalObjects.push(
+      add([
+        text('Cancel', { size: 12 * S }),
+        pos(width() / 2 + 50 * S, submitY),
+        anchor('center'),
+        color(200, 150, 150),
+        fixed(),
+        z(203),
+      ])
+    );
+
+    // Click handlers
+    onClick('auth-toggle', () => {
+      mode = mode === 'login' ? 'signup' : 'login';
+      errorText.text = '';
+      updateMode();
+    });
+
+    onClick('email-input', () => {
+      activeField = 'email';
+      emailInput.outline.color = rgb(100, 150, 255);
+      passInput.outline.color = rgb(60, 60, 60);
+      if (nameInput) nameInput.outline.color = rgb(60, 60, 60);
+    });
+
+    onClick('pass-input', () => {
+      activeField = 'password';
+      emailInput.outline.color = rgb(60, 60, 60);
+      passInput.outline.color = rgb(100, 150, 255);
+      if (nameInput) nameInput.outline.color = rgb(60, 60, 60);
+    });
+
+    onClick('name-input', () => {
+      if (mode === 'signup') {
+        activeField = 'name';
+        emailInput.outline.color = rgb(60, 60, 60);
+        passInput.outline.color = rgb(60, 60, 60);
+        if (nameInput) nameInput.outline.color = rgb(100, 150, 255);
+      }
+    });
+
+    onClick('submit-btn', async () => {
+      errorText.text = '';
+
+      if (!email || !password) {
+        errorText.text = 'Please fill in all fields';
+        return;
+      }
+
+      try {
+        if (mode === 'login') {
+          await signIn(email, password);
+        } else {
+          if (!displayName) {
+            errorText.text = 'Please enter a display name';
+            return;
+          }
+          await signUp(email, password, displayName);
+        }
+        hideLoginModal();
+        go('pause'); // Refresh pause scene
+      } catch (e) {
+        errorText.text = e.message || 'Authentication failed';
+      }
+    });
+
+    onClick('cancel-auth-btn', () => {
+      hideLoginModal();
+    });
+
+    // Keyboard input
+    loginKeyHandler = onKeyPress((key) => {
+      if (key === 'escape') {
+        hideLoginModal();
+        return;
+      }
+
+      if (key === 'tab') {
+        // Cycle through fields
+        if (mode === 'login') {
+          activeField = activeField === 'email' ? 'password' : 'email';
+        } else {
+          const fields = ['email', 'password', 'name'];
+          const idx = fields.indexOf(activeField);
+          activeField = fields[(idx + 1) % fields.length];
+        }
+        emailInput.outline.color = rgb(
+          activeField === 'email' ? 100 : 60,
+          activeField === 'email' ? 150 : 60,
+          activeField === 'email' ? 255 : 60
+        );
+        passInput.outline.color = rgb(
+          activeField === 'password' ? 100 : 60,
+          activeField === 'password' ? 150 : 60,
+          activeField === 'password' ? 255 : 60
+        );
+        if (nameInput)
+          nameInput.outline.color = rgb(
+            activeField === 'name' ? 100 : 60,
+            activeField === 'name' ? 150 : 60,
+            activeField === 'name' ? 255 : 60
+          );
+        return;
+      }
+
+      if (key === 'backspace') {
+        if (activeField === 'email') {
+          email = email.slice(0, -1);
+          emailText.text = email;
+        } else if (activeField === 'password') {
+          password = password.slice(0, -1);
+          passText.text = '*'.repeat(password.length);
+        } else if (activeField === 'name') {
+          displayName = displayName.slice(0, -1);
+          if (nameText) nameText.text = displayName;
+        }
+        return;
+      }
+
+      // Allow typing
+      if (key.length === 1) {
+        if (activeField === 'email' && email.length < 50) {
+          email += key;
+          emailText.text = email;
+        } else if (activeField === 'password' && password.length < 30) {
+          password += key;
+          passText.text = '*'.repeat(password.length);
+        } else if (activeField === 'name' && displayName.length < 20) {
+          displayName += key;
+          if (nameText) nameText.text = displayName;
+        }
+      }
+    });
+  }
+
+  function hideLoginModal() {
+    isLoggingIn = false;
+    loginModalObjects.forEach((obj) => destroy(obj));
+    loginModalObjects.length = 0;
+    if (loginKeyHandler) {
+      loginKeyHandler.cancel();
+      loginKeyHandler = null;
+    }
+  }
 }
