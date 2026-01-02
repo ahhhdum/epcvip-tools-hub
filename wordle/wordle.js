@@ -20,6 +20,21 @@ let targetWord = null;
 // Auth state (SSO from Tools Hub or direct login)
 let authUser = null; // { email, name, userId } if authenticated
 
+// Supabase client (initialized on first use)
+let supabase = null;
+
+function getSupabase() {
+  if (!supabase) {
+    const config = window.SUPABASE_CONFIG;
+    if (!config?.url || !config?.anonKey) {
+      console.warn('[Wordle Auth] Supabase not configured');
+      return null;
+    }
+    supabase = window.supabase.createClient(config.url, config.anonKey);
+  }
+  return supabase;
+}
+
 // DOM Elements
 const views = {
   lobby: document.getElementById('lobby'),
@@ -67,6 +82,30 @@ const elements = {
   statWinRate: document.getElementById('statWinRate'),
   statStreak: document.getElementById('statStreak'),
   statBestStreak: document.getElementById('statBestStreak'),
+
+  // Auth
+  authSection: document.getElementById('authSection'),
+  authPrompt: document.getElementById('authPrompt'),
+  authStatus: document.getElementById('authStatus'),
+  userEmail: document.getElementById('userEmail'),
+  loginBtn: document.getElementById('loginBtn'),
+  signupBtn: document.getElementById('signupBtn'),
+  playAsGuest: document.getElementById('playAsGuest'),
+  logoutBtn: document.getElementById('logoutBtn'),
+
+  // Auth Modal
+  authModal: document.getElementById('authModal'),
+  modalTitle: document.getElementById('modalTitle'),
+  authForm: document.getElementById('authForm'),
+  authEmail: document.getElementById('authEmail'),
+  authPassword: document.getElementById('authPassword'),
+  authDisplayName: document.getElementById('authDisplayName'),
+  displayNameGroup: document.getElementById('displayNameGroup'),
+  authError: document.getElementById('authError'),
+  authSubmit: document.getElementById('authSubmit'),
+  closeModal: document.getElementById('closeModal'),
+  authToggle: document.getElementById('authToggle'),
+  switchToSignup: document.getElementById('switchToSignup'),
 };
 
 // SSO Token Handling
@@ -140,13 +179,216 @@ function displayStats(stats) {
   elements.playerStats.classList.remove('hidden');
 }
 
-// Initialize
-async function init() {
-  // Check for SSO token from Tools Hub
-  authUser = await checkSSOToken();
+// Auth Functions
+let isSignupMode = false;
+
+async function login(email, password) {
+  const client = getSupabase();
+  if (!client) throw new Error('Auth not available');
+
+  const { data, error } = await client.auth.signInWithPassword({ email, password });
+  if (error) throw error;
+
+  return data.user;
+}
+
+async function signup(email, password, displayName) {
+  const client = getSupabase();
+  if (!client) throw new Error('Auth not available');
+
+  const { data, error } = await client.auth.signUp({
+    email,
+    password,
+    options: {
+      data: { display_name: displayName, user_type: 'external' },
+    },
+  });
+
+  if (error) throw error;
+
+  // Create players profile
+  if (data.user) {
+    const { error: profileError } = await client.from('players').upsert({
+      id: data.user.id,
+      display_name: displayName,
+      user_type: 'external',
+    });
+
+    if (profileError) {
+      console.error('[Wordle Auth] Profile creation error:', profileError);
+    }
+  }
+
+  return data.user;
+}
+
+async function logout() {
+  const client = getSupabase();
+  if (client) {
+    await client.auth.signOut();
+  }
+  authUser = null;
+  updateAuthUI();
+  elements.playerStats.classList.add('hidden');
+}
+
+async function checkExistingSession() {
+  const client = getSupabase();
+  if (!client) return null;
+
+  try {
+    const { data: { user } } = await client.auth.getUser();
+    if (user) {
+      // Get display name from profile or metadata
+      let displayName = user.user_metadata?.display_name || user.email.split('@')[0];
+
+      // Try to get from players table
+      const { data: profile } = await client.from('players').select('display_name').eq('id', user.id).single();
+      if (profile?.display_name) {
+        displayName = profile.display_name;
+      }
+
+      return {
+        email: user.email,
+        name: displayName,
+        userId: user.id,
+      };
+    }
+  } catch (e) {
+    console.warn('[Wordle Auth] Session check error:', e);
+  }
+  return null;
+}
+
+function updateAuthUI() {
+  if (!elements.authPrompt || !elements.authStatus) return;
 
   if (authUser) {
-    // SSO user - pre-fill name and save
+    // Logged in - show status, hide prompt
+    elements.authPrompt.classList.add('hidden');
+    elements.authStatus.classList.remove('hidden');
+    elements.userEmail.textContent = authUser.email;
+  } else {
+    // Not logged in - show prompt, hide status
+    elements.authPrompt.classList.remove('hidden');
+    elements.authStatus.classList.add('hidden');
+  }
+}
+
+function showAuthModal(signup = false) {
+  isSignupMode = signup;
+
+  elements.modalTitle.textContent = signup ? 'Sign Up' : 'Login';
+  elements.authSubmit.textContent = signup ? 'Sign Up' : 'Login';
+
+  if (signup) {
+    elements.displayNameGroup.classList.remove('hidden');
+    elements.authToggle.innerHTML = 'Already have an account? <a href="#" id="switchToLogin">Login</a>';
+  } else {
+    elements.displayNameGroup.classList.add('hidden');
+    elements.authToggle.innerHTML = 'Don\'t have an account? <a href="#" id="switchToSignup">Sign up</a>';
+  }
+
+  // Rebind toggle link
+  const toggleLink = elements.authToggle.querySelector('a');
+  toggleLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    showAuthModal(!isSignupMode);
+  });
+
+  elements.authError.classList.add('hidden');
+  elements.authForm.reset();
+  elements.authModal.classList.remove('hidden');
+}
+
+function hideAuthModal() {
+  elements.authModal.classList.add('hidden');
+  elements.authForm.reset();
+  elements.authError.classList.add('hidden');
+}
+
+async function handleAuthSubmit(e) {
+  e.preventDefault();
+
+  const email = elements.authEmail.value.trim();
+  const password = elements.authPassword.value;
+  const displayName = elements.authDisplayName.value.trim() || email.split('@')[0];
+
+  elements.authError.classList.add('hidden');
+  elements.authSubmit.disabled = true;
+  elements.authSubmit.textContent = isSignupMode ? 'Signing up...' : 'Logging in...';
+
+  try {
+    let user;
+    if (isSignupMode) {
+      user = await signup(email, password, displayName);
+      // Check if email confirmation is required
+      if (user && !user.confirmed_at) {
+        elements.authError.textContent = 'Check your email to confirm your account!';
+        elements.authError.style.color = 'var(--correct)';
+        elements.authError.classList.remove('hidden');
+        elements.authSubmit.disabled = false;
+        elements.authSubmit.textContent = 'Sign Up';
+        return;
+      }
+    } else {
+      user = await login(email, password);
+    }
+
+    if (user) {
+      // Get display name
+      let name = user.user_metadata?.display_name || displayName;
+      const client = getSupabase();
+      if (client) {
+        const { data: profile } = await client.from('players').select('display_name').eq('id', user.id).single();
+        if (profile?.display_name) {
+          name = profile.display_name;
+        }
+      }
+
+      authUser = {
+        email: user.email,
+        name: name,
+        userId: user.id,
+      };
+
+      // Update UI
+      elements.playerName.value = authUser.name;
+      localStorage.setItem('wordle_playerName', authUser.name);
+      updateAuthUI();
+      hideAuthModal();
+
+      // Fetch and display stats
+      const stats = await fetchPlayerStats(authUser.email);
+      if (stats) {
+        displayStats(stats);
+      }
+
+      console.log('[Wordle Auth] Logged in as:', authUser.email);
+    }
+  } catch (error) {
+    console.error('[Wordle Auth] Error:', error);
+    elements.authError.textContent = error.message || 'Authentication failed';
+    elements.authError.style.color = 'var(--danger)';
+    elements.authError.classList.remove('hidden');
+  }
+
+  elements.authSubmit.disabled = false;
+  elements.authSubmit.textContent = isSignupMode ? 'Sign Up' : 'Login';
+}
+
+// Initialize
+async function init() {
+  // Priority 1: Check for SSO token from Tools Hub
+  authUser = await checkSSOToken();
+
+  // Priority 2: Check for existing Supabase session
+  if (!authUser) {
+    authUser = await checkExistingSession();
+  }
+
+  if (authUser) {
+    // Authenticated user - pre-fill name and save
     elements.playerName.value = authUser.name;
     localStorage.setItem('wordle_playerName', authUser.name);
     console.log('[Wordle] Logged in as:', authUser.name);
@@ -163,6 +405,9 @@ async function init() {
       elements.playerName.value = savedName;
     }
   }
+
+  // Update auth UI
+  updateAuthUI();
 
   // Connect to WebSocket
   connect();
@@ -690,6 +935,49 @@ function setupEventListeners() {
     playerId = null;
     isCreator = false;
   });
+
+  // Auth events
+  if (elements.loginBtn) {
+    elements.loginBtn.addEventListener('click', () => showAuthModal(false));
+  }
+
+  if (elements.signupBtn) {
+    elements.signupBtn.addEventListener('click', () => showAuthModal(true));
+  }
+
+  if (elements.playAsGuest) {
+    elements.playAsGuest.addEventListener('click', (e) => {
+      e.preventDefault();
+      // Just hide the auth prompt - user can play as guest
+      elements.authSection.style.display = 'none';
+    });
+  }
+
+  if (elements.logoutBtn) {
+    elements.logoutBtn.addEventListener('click', logout);
+  }
+
+  if (elements.authForm) {
+    elements.authForm.addEventListener('submit', handleAuthSubmit);
+  }
+
+  if (elements.closeModal) {
+    elements.closeModal.addEventListener('click', hideAuthModal);
+  }
+
+  // Close modal on overlay click
+  const modalOverlay = document.querySelector('.modal-overlay');
+  if (modalOverlay) {
+    modalOverlay.addEventListener('click', hideAuthModal);
+  }
+
+  // Initial toggle link in modal
+  if (elements.switchToSignup) {
+    elements.switchToSignup.addEventListener('click', (e) => {
+      e.preventDefault();
+      showAuthModal(true);
+    });
+  }
 }
 
 // Start

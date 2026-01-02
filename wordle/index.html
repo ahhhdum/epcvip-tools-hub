@@ -17,6 +17,28 @@
     <!-- Lobby View -->
     <div id="lobby" class="view">
       <div class="lobby-content">
+        <!-- Auth Section -->
+        <div id="authSection" class="auth-section">
+          <!-- When NOT logged in -->
+          <div id="authPrompt" class="auth-prompt">
+            <p class="auth-message">
+              <strong>Login to save your stats!</strong><br>
+              <span class="auth-submessage">Track your wins, streaks, and compete on leaderboards.</span>
+            </p>
+            <div class="auth-buttons">
+              <button id="loginBtn" class="btn btn-primary">Login</button>
+              <button id="signupBtn" class="btn btn-secondary">Sign Up</button>
+            </div>
+            <p class="guest-option">or <a href="#" id="playAsGuest">play as guest</a></p>
+          </div>
+
+          <!-- When logged in -->
+          <div id="authStatus" class="auth-status hidden">
+            <span class="user-info">Logged in as: <strong id="userEmail"></strong></span>
+            <button id="logoutBtn" class="btn-link">Logout</button>
+          </div>
+        </div>
+
         <div class="name-input">
           <label for="playerName">Your Name</label>
           <input type="text" id="playerName" placeholder="Enter your name" maxlength="20" autocomplete="off">
@@ -175,22 +197,48 @@
 
     <!-- Error toast -->
     <div id="errorToast" class="toast hidden"></div>
+
+    <!-- Login/Signup Modal -->
+    <div id="authModal" class="modal hidden">
+      <div class="modal-overlay"></div>
+      <div class="modal-content">
+        <h2 id="modalTitle">Login</h2>
+        <form id="authForm">
+          <div class="form-group">
+            <input type="email" id="authEmail" placeholder="Email" required autocomplete="email">
+          </div>
+          <div class="form-group">
+            <input type="password" id="authPassword" placeholder="Password" required autocomplete="current-password">
+          </div>
+          <div class="form-group hidden" id="displayNameGroup">
+            <input type="text" id="authDisplayName" placeholder="Display Name" autocomplete="name">
+          </div>
+          <p id="authError" class="error-message hidden"></p>
+          <div class="modal-buttons">
+            <button type="submit" id="authSubmit" class="btn btn-primary">Login</button>
+            <button type="button" id="closeModal" class="btn btn-secondary">Cancel</button>
+          </div>
+        </form>
+        <p id="authToggle" class="auth-toggle">
+          Don't have an account? <a href="#" id="switchToSignup">Sign up</a>
+        </p>
+      </div>
+    </div>
   </div>
 
-  <!-- Wordle Supabase configuration -->
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Supabase configuration (shared with Tools Hub - epcvip-auth project) -->
   <script>
-    // Wordle-specific Supabase project (multiplayer-wordle)
-    // Separate from Tools Hub's epcvip-auth for security isolation
-    window.WORDLE_SUPABASE_CONFIG = {
-      url: '', // Set via environment or configure here: https://[project-ref].supabase.co
-      anonKey: '' // Get from Supabase dashboard: Project Settings > API
+    // Same Supabase project as Tools Hub for unified auth
+    window.SUPABASE_CONFIG = {
+      url: 'https://yuithqxycicgokkgmpzg.supabase.co',
+      anonKey: '' // Set via SUPABASE_ANON_KEY environment variable
     };
     // Allow override from environment (for Railway deployment)
-    if (typeof WORDLE_SUPABASE_URL !== 'undefined') {
-      window.WORDLE_SUPABASE_CONFIG.url = WORDLE_SUPABASE_URL;
-    }
-    if (typeof WORDLE_SUPABASE_ANON_KEY !== 'undefined') {
-      window.WORDLE_SUPABASE_CONFIG.anonKey = WORDLE_SUPABASE_ANON_KEY;
+    if (typeof SUPABASE_ANON_KEY !== 'undefined') {
+      window.SUPABASE_CONFIG.anonKey = SUPABASE_ANON_KEY;
     }
 
     // Multiplayer server (same origin)

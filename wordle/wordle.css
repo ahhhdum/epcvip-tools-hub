@@ -114,6 +114,179 @@ body {
   padding: 5px;
 }
 
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 0.9rem;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.btn-link:hover {
+  opacity: 0.8;
+}
+
+/* Auth Section */
+.auth-section {
+  margin-bottom: 24px;
+  padding: 20px;
+  background-color: var(--bg-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.auth-prompt {
+  text-align: center;
+}
+
+.auth-message {
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.auth-submessage {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.auth-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.auth-buttons .btn {
+  padding: 10px 24px;
+}
+
+.guest-option {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.guest-option a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.guest-option a:hover {
+  opacity: 0.8;
+}
+
+.auth-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.auth-status .user-info {
+  color: var(--text-secondary);
+}
+
+.auth-status .user-info strong {
+  color: var(--text-primary);
+}
+
+/* Modal */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal.hidden {
+  display: none;
+}
+
+.modal-overlay {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+}
+
+.modal-content {
+  position: relative;
+  background-color: var(--bg-secondary);
+  padding: 30px;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 400px;
+  border: 1px solid var(--border);
+}
+
+.modal-content h2 {
+  text-align: center;
+  margin-bottom: 24px;
+  font-size: 1.5rem;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group.hidden {
+  display: none;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px;
+  font-size: 1rem;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-primary);
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.error-message {
+  color: var(--danger);
+  font-size: 0.85rem;
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.error-message.hidden {
+  display: none;
+}
+
+.modal-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.modal-buttons .btn {
+  flex: 1;
+}
+
+.auth-toggle {
+  text-align: center;
+  margin-top: 20px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.auth-toggle a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.auth-toggle a:hover {
+  opacity: 0.8;
+}
+
 /* Lobby View */
 .lobby-content {
   max-width: 400px;
