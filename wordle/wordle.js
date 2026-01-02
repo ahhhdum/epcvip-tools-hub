@@ -17,6 +17,9 @@ let guessResults = [];
 let opponents = new Map();
 let targetWord = null;
 
+// Auth state (SSO from Tools Hub or direct login)
+let authUser = null; // { email, name, userId } if authenticated
+
 // DOM Elements
 const views = {
   lobby: document.getElementById('lobby'),
@@ -57,14 +60,108 @@ const elements = {
   // Status
   connectionStatus: document.getElementById('connectionStatus'),
   errorToast: document.getElementById('errorToast'),
+
+  // Stats
+  playerStats: document.getElementById('playerStats'),
+  statPlayed: document.getElementById('statPlayed'),
+  statWinRate: document.getElementById('statWinRate'),
+  statStreak: document.getElementById('statStreak'),
+  statBestStreak: document.getElementById('statBestStreak'),
 };
 
+// SSO Token Handling
+async function checkSSOToken() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const ssoToken = urlParams.get('sso_token');
+
+  if (!ssoToken) {
+    return null;
+  }
+
+  // Clean up URL (remove token from address bar)
+  const cleanUrl = window.location.pathname;
+  window.history.replaceState({}, '', cleanUrl);
+
+  try {
+    const response = await fetch('/api/wordle/sso-validate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: ssoToken }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      console.warn('[Wordle] SSO validation failed:', error.error);
+      return null;
+    }
+
+    const result = await response.json();
+    console.log('[Wordle] SSO login successful:', result.email);
+
+    return {
+      email: result.email,
+      name: result.name,
+      userId: result.userId,
+    };
+  } catch (e) {
+    console.warn('[Wordle] SSO validation error:', e);
+    return null;
+  }
+}
+
+// Fetch player stats
+async function fetchPlayerStats(email) {
+  try {
+    const response = await fetch(`/api/wordle/stats/${encodeURIComponent(email)}`);
+    if (!response.ok) {
+      console.warn('[Wordle] Stats fetch failed');
+      return null;
+    }
+    return await response.json();
+  } catch (e) {
+    console.warn('[Wordle] Stats fetch error:', e);
+    return null;
+  }
+}
+
+// Display player stats in lobby
+function displayStats(stats) {
+  if (!stats || !elements.playerStats) return;
+
+  elements.statPlayed.textContent = stats.games_played || 0;
+
+  const winRate =
+    stats.games_played > 0 ? Math.round((stats.games_won / stats.games_played) * 100) : 0;
+  elements.statWinRate.textContent = `${winRate}%`;
+
+  elements.statStreak.textContent = stats.current_streak || 0;
+  elements.statBestStreak.textContent = stats.best_streak || 0;
+
+  elements.playerStats.classList.remove('hidden');
+}
+
 // Initialize
-function init() {
-  // Load saved name
-  const savedName = localStorage.getItem('wordle_playerName');
-  if (savedName) {
-    elements.playerName.value = savedName;
+async function init() {
+  // Check for SSO token from Tools Hub
+  authUser = await checkSSOToken();
+
+  if (authUser) {
+    // SSO user - pre-fill name and save
+    elements.playerName.value = authUser.name;
+    localStorage.setItem('wordle_playerName', authUser.name);
+    console.log('[Wordle] Logged in as:', authUser.name);
+
+    // Fetch and display stats
+    const stats = await fetchPlayerStats(authUser.email);
+    if (stats) {
+      displayStats(stats);
+    }
+  } else {
+    // Guest or returning user - load saved name
+    const savedName = localStorage.getItem('wordle_playerName');
+    if (savedName) {
+      elements.playerName.value = savedName;
+    }
   }
 
   // Connect to WebSocket
@@ -498,7 +595,11 @@ function setupEventListeners() {
   elements.createRoom.addEventListener('click', () => {
     const name = getPlayerName();
     localStorage.setItem('wordle_playerName', name);
-    send({ type: 'createRoom', playerName: name });
+    send({
+      type: 'createRoom',
+      playerName: name,
+      playerEmail: authUser?.email || null,
+    });
   });
 
   elements.joinRoom.addEventListener('click', () => {
@@ -509,7 +610,12 @@ function setupEventListeners() {
       return;
     }
     localStorage.setItem('wordle_playerName', name);
-    send({ type: 'joinRoom', roomCode: code, playerName: name });
+    send({
+      type: 'joinRoom',
+      roomCode: code,
+      playerName: name,
+      playerEmail: authUser?.email || null,
+    });
   });
 
   elements.roomCodeInput.addEventListener('keypress', (e) => {

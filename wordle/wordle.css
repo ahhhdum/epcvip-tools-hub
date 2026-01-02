@@ -142,6 +142,42 @@ body {
   color: var(--text-primary);
 }
 
+/* Player Stats */
+.player-stats {
+  background-color: var(--bg-secondary);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.player-stats.hidden {
+  display: none;
+}
+
+.stats-row {
+  display: flex;
+  justify-content: space-around;
+  gap: 8px;
+}
+
+.stat {
+  text-align: center;
+}
+
+.stat-value {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: var(--text-primary);
+}
+
+.stat-label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
 .room-actions {
   display: flex;
   flex-direction: column;

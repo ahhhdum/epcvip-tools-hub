@@ -22,6 +22,28 @@
           <input type="text" id="playerName" placeholder="Enter your name" maxlength="20" autocomplete="off">
         </div>
 
+        <!-- Stats display (only for authenticated users) -->
+        <div id="playerStats" class="player-stats hidden">
+          <div class="stats-row">
+            <div class="stat">
+              <span class="stat-value" id="statPlayed">0</span>
+              <span class="stat-label">Played</span>
+            </div>
+            <div class="stat">
+              <span class="stat-value" id="statWinRate">0%</span>
+              <span class="stat-label">Win %</span>
+            </div>
+            <div class="stat">
+              <span class="stat-value" id="statStreak">0</span>
+              <span class="stat-label">Streak</span>
+            </div>
+            <div class="stat">
+              <span class="stat-value" id="statBestStreak">0</span>
+              <span class="stat-label">Best</span>
+            </div>
+          </div>
+        </div>
+
         <div class="room-actions">
           <button id="createRoom" class="btn btn-primary">Create Room</button>
 
@@ -154,6 +176,27 @@
     <!-- Error toast -->
     <div id="errorToast" class="toast hidden"></div>
   </div>
+
+  <!-- Wordle Supabase configuration -->
+  <script>
+    // Wordle-specific Supabase project (multiplayer-wordle)
+    // Separate from Tools Hub's epcvip-auth for security isolation
+    window.WORDLE_SUPABASE_CONFIG = {
+      url: '', // Set via environment or configure here: https://[project-ref].supabase.co
+      anonKey: '' // Get from Supabase dashboard: Project Settings > API
+    };
+    // Allow override from environment (for Railway deployment)
+    if (typeof WORDLE_SUPABASE_URL !== 'undefined') {
+      window.WORDLE_SUPABASE_CONFIG.url = WORDLE_SUPABASE_URL;
+    }
+    if (typeof WORDLE_SUPABASE_ANON_KEY !== 'undefined') {
+      window.WORDLE_SUPABASE_CONFIG.anonKey = WORDLE_SUPABASE_ANON_KEY;
+    }
+
+    // Multiplayer server (same origin)
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    window.MULTIPLAYER_SERVER = `${protocol}//${window.location.host}`;
+  </script>
 
   <script type="module" src="wordle.js"></script>
 </body>

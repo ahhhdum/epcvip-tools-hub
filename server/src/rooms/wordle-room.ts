@@ -5,8 +5,21 @@
  */
 
 import { WebSocket } from 'ws';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { generateUniqueRoomCode } from '../utils/room-codes';
 import { getRandomWord, isValidGuess } from '../utils/word-list';
+
+// Supabase client for stats persistence
+const SUPABASE_URL = process.env.SUPABASE_URL || '';
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || '';
+
+let supabase: SupabaseClient | null = null;
+function getSupabase(): SupabaseClient | null {
+  if (!supabase && SUPABASE_URL && SUPABASE_SERVICE_KEY) {
+    supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+  }
+  return supabase;
+}
 
 // Letter result types
 export type LetterResult = 'correct' | 'present' | 'absent';
@@ -21,6 +34,7 @@ export type GameState = 'waiting' | 'playing' | 'finished';
 interface WordlePlayer {
   id: string;
   name: string;
+  email: string | null; // Email from SSO (null for guests)
   socket: WebSocket;
   isCreator: boolean;
   isReady: boolean;
@@ -57,7 +71,11 @@ export class WordleRoomManager {
   /**
    * Create a new room
    */
-  createRoom(socket: WebSocket, playerName: string): { roomCode: string; playerId: string } | null {
+  createRoom(
+    socket: WebSocket,
+    playerName: string,
+    playerEmail?: string
+  ): { roomCode: string; playerId: string } | null {
     const existingCodes = new Set(this.rooms.keys());
     const roomCode = generateUniqueRoomCode(existingCodes);
 
@@ -71,6 +89,7 @@ export class WordleRoomManager {
     const player: WordlePlayer = {
       id: playerId,
       name: playerName || 'Player',
+      email: playerEmail || null,
       socket,
       isCreator: true,
       isReady: false,
@@ -109,7 +128,7 @@ export class WordleRoomManager {
   /**
    * Join an existing room
    */
-  joinRoom(socket: WebSocket, roomCode: string, playerName: string): boolean {
+  joinRoom(socket: WebSocket, roomCode: string, playerName: string, playerEmail?: string): boolean {
     const room = this.rooms.get(roomCode.toUpperCase());
 
     if (!room) {
@@ -132,6 +151,7 @@ export class WordleRoomManager {
     const player: WordlePlayer = {
       id: playerId,
       name: playerName || 'Player',
+      email: playerEmail || null,
       socket,
       isCreator: false,
       isReady: false,
@@ -429,14 +449,15 @@ export class WordleRoomManager {
   /**
    * End the game and show results
    */
-  private endGame(room: WordleRoom): void {
+  private async endGame(room: WordleRoom): Promise<void> {
     room.gameState = 'finished';
 
     // Build results
     const results = Array.from(room.players.values())
-      .map((p) => ({
+      .map((p, index) => ({
         playerId: p.id,
         name: p.name,
+        email: p.email,
         won: p.won,
         guesses: p.guesses.length,
         time: p.finishTime || 0,
@@ -449,14 +470,142 @@ export class WordleRoomManager {
         return a.time - b.time;
       });
 
+    // Add finish position after sorting
+    const resultsWithPosition = results.map((r, idx) => ({
+      ...r,
+      finishPosition: idx + 1,
+    }));
+
     this.broadcastToRoom(room.code, {
       type: 'gameEnded',
       word: room.word,
-      results,
+      results: resultsWithPosition,
       gameMode: room.gameMode,
     });
 
     console.log(`[Wordle] Game ended in room ${room.code}`);
+
+    // Save to database (async, don't block the response)
+    this.saveGameResults(room, resultsWithPosition).catch((err) => {
+      console.error('[Wordle] Failed to save game results:', err);
+    });
+  }
+
+  /**
+   * Save game results to database
+   */
+  private async saveGameResults(
+    room: WordleRoom,
+    results: Array<{
+      playerId: string;
+      name: string;
+      email: string | null;
+      won: boolean;
+      guesses: number;
+      time: number;
+      score: number;
+      finishPosition: number;
+    }>
+  ): Promise<void> {
+    const db = getSupabase();
+    if (!db) {
+      console.log('[Wordle] Database not configured, skipping stats save');
+      return;
+    }
+
+    try {
+      // Insert game record
+      const { data: game, error: gameError } = await db
+        .from('wordle_games')
+        .insert({
+          room_code: room.code,
+          word: room.word,
+          game_mode: room.gameMode,
+          started_at: room.startTime
+            ? new Date(room.startTime).toISOString()
+            : new Date().toISOString(),
+          ended_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (gameError) {
+        console.error('[Wordle] Failed to insert game:', gameError);
+        return;
+      }
+
+      // Insert player results
+      const resultRecords = results.map((r) => ({
+        game_id: game.id,
+        player_email: r.email,
+        player_name: r.name,
+        guesses: r.guesses,
+        solve_time_ms: r.time,
+        won: r.won,
+        score: r.score,
+        finish_position: r.finishPosition,
+      }));
+
+      const { error: resultsError } = await db.from('wordle_results').insert(resultRecords);
+
+      if (resultsError) {
+        console.error('[Wordle] Failed to insert results:', resultsError);
+      }
+
+      // Update stats for authenticated players
+      for (const r of results) {
+        if (r.email) {
+          await this.updatePlayerStats(db, r.email, r.won, r.guesses);
+        }
+      }
+
+      console.log(`[Wordle] Saved game ${game.id} with ${results.length} player results`);
+    } catch (err) {
+      console.error('[Wordle] Database error:', err);
+    }
+  }
+
+  /**
+   * Update aggregate stats for a player
+   */
+  private async updatePlayerStats(
+    db: SupabaseClient,
+    email: string,
+    won: boolean,
+    guesses: number
+  ): Promise<void> {
+    // Get existing stats or create new
+    const { data: existing } = await db
+      .from('wordle_stats')
+      .select('*')
+      .eq('player_email', email)
+      .single();
+
+    if (existing) {
+      // Update existing stats
+      const newStreak = won ? existing.current_streak + 1 : 0;
+      await db
+        .from('wordle_stats')
+        .update({
+          games_played: existing.games_played + 1,
+          games_won: existing.games_won + (won ? 1 : 0),
+          total_guesses: existing.total_guesses + guesses,
+          current_streak: newStreak,
+          best_streak: Math.max(existing.best_streak, newStreak),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('player_email', email);
+    } else {
+      // Create new stats record
+      await db.from('wordle_stats').insert({
+        player_email: email,
+        games_played: 1,
+        games_won: won ? 1 : 0,
+        total_guesses: guesses,
+        current_streak: won ? 1 : 0,
+        best_streak: won ? 1 : 0,
+      });
+    }
   }
 
   /**
@@ -499,10 +648,10 @@ export class WordleRoomManager {
 
       switch (msg.type) {
         case 'createRoom':
-          this.createRoom(socket, msg.playerName);
+          this.createRoom(socket, msg.playerName, msg.playerEmail);
           break;
         case 'joinRoom':
-          this.joinRoom(socket, msg.roomCode, msg.playerName);
+          this.joinRoom(socket, msg.roomCode, msg.playerName, msg.playerEmail);
           break;
         case 'setGameMode':
           this.setGameMode(socket, msg.mode);

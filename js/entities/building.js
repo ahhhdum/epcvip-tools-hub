@@ -8,6 +8,26 @@
  */
 
 import { GAME_CONFIG, COLORS } from '../config.js';
+import { isLoggedIn, generateSSOToken } from '../systems/auth.js';
+
+/**
+ * Open a tool URL, with SSO token for Wordle if user is logged in
+ */
+async function openToolUrl(toolId, toolUrl) {
+  let url = toolUrl;
+
+  // Special handling for Wordle - add SSO token if logged in
+  if (toolUrl?.includes('/wordle') && isLoggedIn()) {
+    try {
+      const ssoToken = await generateSSOToken('multiplayer-wordle');
+      url = `${toolUrl}?sso_token=${encodeURIComponent(ssoToken)}`;
+    } catch (e) {
+      console.warn('[Building] SSO token generation failed, opening as guest:', e);
+    }
+  }
+
+  window.open(url, '_blank');
+}
 
 export function createBuilding(tool) {
   const TILE = GAME_CONFIG.tileSize;
@@ -42,7 +62,7 @@ export function createBuilding(tool) {
   // Click sign to open tool
   signBg.onClick(() => {
     if (tool.url) {
-      window.open(tool.url, '_blank');
+      openToolUrl(tool.id, tool.url);
     }
   });
 
@@ -165,7 +185,7 @@ export function createBuilding(tool) {
           ]);
 
           wait(0.1, () => {
-            window.open(this.toolUrl, '_blank');
+            openToolUrl(this.toolId, this.toolUrl);
           });
         }
       },

@@ -109,11 +109,17 @@ Let players personalize their character appearance.
 
 **Map Management from UI**
 - Load/save maps without manual file copying
-- List available maps in editor
-- Create new map from template
+- Browse/select maps from a list in the editor UI
+- Create new map from template with custom name
 - Delete/rename maps
 - Auto-save to server or localStorage
 - **Choose save location** - Pick folder for local map saves (File System Access API)
+- **Map naming** - Enter custom filename when saving (not just download)
+
+**Entity List UX Fix**
+- Entity list panel should scroll independently
+- Currently scrolls the whole page when list is long
+- Fix: `overflow-y: auto` with fixed height on entity list container
 
 ### Hub Landing Page Visual Improvements
 - Replace green grass background with something more fitting (gradient, pattern, or themed graphic)

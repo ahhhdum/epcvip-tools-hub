@@ -11,7 +11,29 @@ import { Socket } from 'net';
 import express from 'express';
 import path from 'path';
 import { createProxyMiddleware } from 'http-proxy-middleware';
+import jwt from 'jsonwebtoken';
+import { createClient } from '@supabase/supabase-js';
 import { WordleRoomManager } from './rooms/wordle-room';
+
+// SSO Configuration
+const SSO_SHARED_SECRET = process.env.SSO_SHARED_SECRET || '';
+const SSO_TOKEN_EXPIRY = 300; // 5 minutes
+
+// Supabase Configuration (epcvip-auth - shared for Tools Hub and Wordle)
+const SUPABASE_URL = process.env.SUPABASE_URL || '';
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || '';
+
+// Initialize Supabase service client (for server-side writes)
+let supabaseAdmin: ReturnType<typeof createClient> | null = null;
+function getSupabaseAdmin() {
+  if (!supabaseAdmin && SUPABASE_URL && SUPABASE_SERVICE_KEY) {
+    supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+  }
+  return supabaseAdmin;
+}
+
+// Track used SSO tokens to prevent replay attacks (in production, use Redis)
+const usedSSOTokens = new Set<string>();
 
 const app = express();
 const port = Number(process.env.PORT) || 2567;
@@ -75,6 +97,157 @@ const validatorProxy = createProxyMiddleware({
 app.use('/ping-tree', pingTreeProxy);
 app.use('/athena', athenaProxy);
 app.use('/validator', validatorProxy);
+
+// Parse JSON bodies for API routes
+app.use(express.json());
+
+// ============================================================
+// SSO API Endpoints
+// ============================================================
+
+/**
+ * Sign an SSO token for cross-app authentication
+ * Called by Tools Hub when user clicks Wordle building
+ */
+app.post('/api/sso/sign-token', (req, res) => {
+  if (!SSO_SHARED_SECRET) {
+    return res.status(500).json({ error: 'SSO not configured' });
+  }
+
+  const { sub, name, aud } = req.body;
+
+  if (!sub || !aud) {
+    return res.status(400).json({ error: 'Missing required fields: sub, aud' });
+  }
+
+  const payload = {
+    sub, // User email
+    name: name || sub.split('@')[0],
+    iss: 'epcvip-tools-hub',
+    aud, // Target app (e.g., 'multiplayer-wordle')
+    iat: Math.floor(Date.now() / 1000),
+    exp: Math.floor(Date.now() / 1000) + SSO_TOKEN_EXPIRY,
+    jti: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+  };
+
+  try {
+    const token = jwt.sign(payload, SSO_SHARED_SECRET, { algorithm: 'HS256' });
+    res.json({ token });
+  } catch (e) {
+    console.error('[SSO] Token signing error:', e);
+    res.status(500).json({ error: 'Failed to sign token' });
+  }
+});
+
+/**
+ * Validate an SSO token for Wordle
+ * Called by Wordle when user arrives with sso_token in URL
+ */
+app.post('/api/wordle/sso-validate', async (req, res) => {
+  if (!SSO_SHARED_SECRET) {
+    return res.status(500).json({ error: 'SSO not configured' });
+  }
+
+  const { token } = req.body;
+  if (!token) {
+    return res.status(400).json({ error: 'Missing token' });
+  }
+
+  try {
+    // Verify JWT signature and claims
+    const payload = jwt.verify(token, SSO_SHARED_SECRET, {
+      algorithms: ['HS256'],
+      issuer: 'epcvip-tools-hub',
+      audience: 'multiplayer-wordle',
+    }) as {
+      sub: string;
+      name: string;
+      jti: string;
+      exp: number;
+    };
+
+    // Check single-use (prevent replay attacks)
+    if (usedSSOTokens.has(payload.jti)) {
+      return res.status(401).json({ error: 'Token already used' });
+    }
+    usedSSOTokens.add(payload.jti);
+
+    // Cleanup old tokens after 10 minutes
+    setTimeout(() => usedSSOTokens.delete(payload.jti), 10 * 60 * 1000);
+
+    // Return user info from token (no separate user table needed)
+    const user = {
+      email: payload.sub,
+      name: payload.name,
+      authSource: 'sso',
+    };
+
+    // Generate session token for Wordle (used for stats persistence)
+    const sessionToken = jwt.sign({ email: user.email, name: user.name }, SSO_SHARED_SECRET, {
+      expiresIn: '7d',
+    });
+
+    res.json({
+      email: user.email,
+      name: user.name,
+      userId: payload.jti,
+      session: { token: sessionToken },
+    });
+  } catch (e: any) {
+    console.error('[SSO] Validation error:', e);
+
+    if (e.name === 'JsonWebTokenError') {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+    if (e.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Token expired' });
+    }
+
+    return res.status(500).json({ error: 'SSO validation failed' });
+  }
+});
+
+/**
+ * Get Wordle stats for a player
+ */
+app.get('/api/wordle/stats/:email', async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) {
+    return res.status(500).json({ error: 'Database not configured' });
+  }
+
+  const email = decodeURIComponent(req.params.email);
+
+  try {
+    const { data, error } = await supabase
+      .from('wordle_stats')
+      .select('*')
+      .eq('player_email', email)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      // PGRST116 = not found, which is OK
+      console.error('[Wordle] Stats fetch error:', error);
+      return res.status(500).json({ error: 'Failed to fetch stats' });
+    }
+
+    res.json(
+      data || {
+        player_email: email,
+        games_played: 0,
+        games_won: 0,
+        total_guesses: 0,
+        current_streak: 0,
+        best_streak: 0,
+      }
+    );
+  } catch (e) {
+    console.error('[Wordle] Stats error:', e);
+    res.status(500).json({ error: 'Failed to fetch stats' });
+  }
+});
+
+// ============================================================
 
 // Serve static files from public directory (copied during build)
 const staticPath = path.join(__dirname, '../public');

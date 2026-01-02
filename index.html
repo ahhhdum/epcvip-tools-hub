@@ -46,6 +46,17 @@
         // Auto-detect: use same origin (works for both local and production)
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         window.MULTIPLAYER_SERVER = `${protocol}//${window.location.host}`;
+
+        // Supabase configuration (epcvip-auth project)
+        // Get your anon key from: https://supabase.com/dashboard/project/yuithqxycicgokkgmpzg/settings/api
+        window.SUPABASE_CONFIG = {
+            url: 'https://yuithqxycicgokkgmpzg.supabase.co',
+            anonKey: '' // Set via SUPABASE_ANON_KEY environment variable or configure here
+        };
+        // Allow override from environment (for Railway deployment)
+        if (typeof SUPABASE_ANON_KEY !== 'undefined') {
+            window.SUPABASE_CONFIG.anonKey = SUPABASE_ANON_KEY;
+        }
     </script>
 
     <script type="module" src="js/main.js"></script>
