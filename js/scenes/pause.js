@@ -217,8 +217,8 @@ export function pauseScene() {
     z(51), // Text above button background
   ]);
 
-  // === BOTTOM BUTTONS (below border, in black area) ===
-  const btnY = height() - 19;
+  // === BOTTOM BUTTONS (inside gold border, above bottom margin) ===
+  const btnY = layout.bottomButtons.y;
 
   // Resume button (left)
   const resumeBtn = add([

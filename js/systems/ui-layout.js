@@ -57,8 +57,8 @@ export function getPauseLayout() {
     // Content start Y (below title) - tightened spacing
     contentStartY: 95 * S,
 
-    // Links section Y
-    linksY: 320 * S,
+    // Links section Y (moved up to avoid overlapping bottom buttons)
+    linksY: 280 * S,
 
     // Bottom buttons region (at very bottom to avoid overlapping links)
     bottomButtons: {
