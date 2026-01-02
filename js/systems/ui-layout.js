@@ -58,7 +58,7 @@ export function getPauseLayout() {
     contentStartY: 95 * S,
 
     // Links section Y (moved up to avoid overlapping bottom buttons)
-    linksY: 280 * S,
+    linksY: 250 * S,
 
     // Bottom buttons region (at very bottom to avoid overlapping links)
     bottomButtons: {
