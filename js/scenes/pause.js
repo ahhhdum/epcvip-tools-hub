@@ -89,13 +89,13 @@ export function pauseScene() {
   controls.forEach(([key, action], i) => {
     add([
       text(key, { size: 12 * S }),
-      pos(layout.leftCol.x + 30 * S, layout.contentStartY + 30 * S + i * 24 * S),
+      pos(layout.leftCol.x + 30 * S, layout.contentStartY + 30 * S + i * 20 * S),
       color(...COLORS.white),
       fixed(),
     ]);
     add([
       text('- ' + action, { size: 12 * S }),
-      pos(layout.leftCol.x + 160 * S, layout.contentStartY + 30 * S + i * 24 * S),
+      pos(layout.leftCol.x + 160 * S, layout.contentStartY + 30 * S + i * 20 * S),
       color(150, 150, 150),
       fixed(),
     ]);
