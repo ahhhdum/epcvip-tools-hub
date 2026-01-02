@@ -20,7 +20,8 @@ const SSO_SHARED_SECRET = process.env.SSO_SHARED_SECRET || '';
 const SSO_TOKEN_EXPIRY = 300; // 5 minutes
 
 // Supabase Configuration (epcvip-auth - shared for Tools Hub and Wordle)
-const SUPABASE_URL = process.env.SUPABASE_URL || '';
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://yuithqxycicgokkgmpzg.supabase.co';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || '';
 
 // Initialize Supabase service client (for server-side writes)
@@ -100,6 +101,19 @@ app.use('/validator', validatorProxy);
 
 // Parse JSON bodies for API routes
 app.use(express.json());
+
+// ============================================================
+// Public Config Endpoint (for client-side Supabase initialization)
+// ============================================================
+
+app.get('/api/config', (req, res) => {
+  res.json({
+    supabase: {
+      url: SUPABASE_URL,
+      anonKey: SUPABASE_ANON_KEY,
+    },
+  });
+});
 
 // ============================================================
 // SSO API Endpoints

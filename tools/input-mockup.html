@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Name Input Style Mockup</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Courier New', monospace;
+      background: #1a1a2e;
+      color: #fff;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    h1 {
+      text-align: center;
+      color: #f0c000;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #888;
+      margin-bottom: 40px;
+      font-size: 14px;
+    }
+
+    .mockup-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 30px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .mockup-card {
+      background: #0f0f1a;
+      border: 3px solid #333;
+      border-radius: 8px;
+      padding: 20px;
+      transition: border-color 0.2s;
+    }
+
+    .mockup-card:hover {
+      border-color: #f0c000;
+    }
+
+    .mockup-card h2 {
+      color: #f0c000;
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+
+    .mockup-card .description {
+      color: #888;
+      font-size: 12px;
+      margin-bottom: 20px;
+      line-height: 1.4;
+    }
+
+    .demo-container {
+      background: rgba(0, 0, 0, 0.5);
+      border-radius: 4px;
+      padding: 30px 20px;
+      min-height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ============================================
+       STYLE A: Minimal Retro
+       ============================================ */
+    .style-a .modal {
+      background: #16213e;
+      border: 3px solid #f0c000;
+      border-radius: 8px;
+      padding: 24px;
+      width: 280px;
+      text-align: center;
+    }
+
+    .style-a label {
+      display: block;
+      color: #fff;
+      font-size: 14px;
+      margin-bottom: 12px;
+    }
+
+    .style-a input {
+      width: 100%;
+      padding: 10px 12px;
+      background: #0f0f1a;
+      border: 2px solid #444;
+      border-radius: 4px;
+      color: #fff;
+      font-family: inherit;
+      font-size: 16px;
+      margin-bottom: 16px;
+    }
+
+    .style-a input:focus {
+      outline: none;
+      border-color: #f0c000;
+    }
+
+    .style-a .btn {
+      background: #f0c000;
+      color: #1a1a2e;
+      border: none;
+      padding: 10px 32px;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: bold;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .style-a .btn:hover {
+      background: #ffd700;
+    }
+
+    /* ============================================
+       STYLE B: Character Preview
+       ============================================ */
+    .style-b .modal {
+      background: #16213e;
+      border: 3px solid #f0c000;
+      border-radius: 8px;
+      padding: 24px;
+      width: 300px;
+    }
+
+    .style-b .header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .style-b .avatar {
+      width: 64px;
+      height: 64px;
+      background: #0f0f1a;
+      border: 2px solid #f0c000;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+    }
+
+    .style-b .avatar-placeholder {
+      animation: bounce 0.6s ease-in-out infinite alternate;
+    }
+
+    @keyframes bounce {
+      from { transform: translateY(0); }
+      to { transform: translateY(-4px); }
+    }
+
+    .style-b .header-text {
+      flex: 1;
+    }
+
+    .style-b label {
+      color: #fff;
+      font-size: 14px;
+    }
+
+    .style-b input {
+      width: 100%;
+      padding: 10px 12px;
+      background: #0f0f1a;
+      border: 2px solid #444;
+      border-radius: 4px;
+      color: #fff;
+      font-family: inherit;
+      font-size: 16px;
+      margin-bottom: 16px;
+    }
+
+    .style-b input:focus {
+      outline: none;
+      border-color: #f0c000;
+    }
+
+    .style-b .buttons {
+      display: flex;
+      gap: 12px;
+    }
+
+    .style-b .btn-skip {
+      flex: 1;
+      background: transparent;
+      color: #888;
+      border: 2px solid #444;
+      padding: 10px;
+      font-family: inherit;
+      font-size: 14px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .style-b .btn-skip:hover {
+      border-color: #888;
+      color: #fff;
+    }
+
+    .style-b .btn-play {
+      flex: 1;
+      background: #f0c000;
+      color: #1a1a2e;
+      border: none;
+      padding: 10px;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: bold;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .style-b .btn-play:hover {
+      background: #ffd700;
+    }
+
+    /* ============================================
+       STYLE C: Typewriter
+       ============================================ */
+    .style-c .modal {
+      background: #16213e;
+      border: 3px solid #f0c000;
+      border-radius: 8px;
+      padding: 32px;
+      width: 320px;
+      text-align: center;
+    }
+
+    .style-c .question {
+      color: #f0c000;
+      font-size: 16px;
+      margin-bottom: 24px;
+    }
+
+    .style-c .typewriter-line {
+      font-size: 20px;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+
+    .style-c .prompt {
+      color: #48a868;
+    }
+
+    .style-c .cursor {
+      animation: blink 0.7s step-end infinite;
+      color: #f0c000;
+    }
+
+    @keyframes blink {
+      50% { opacity: 0; }
+    }
+
+    .style-c .underline {
+      color: #444;
+      letter-spacing: 2px;
+      font-size: 14px;
+      margin-bottom: 24px;
+    }
+
+    .style-c .hint {
+      color: #666;
+      font-size: 12px;
+    }
+
+    /* Hidden input for actual typing */
+    .style-c .hidden-input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* ============================================
+       STYLE D: Registration Card
+       ============================================ */
+    .style-d .modal {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      border: 4px double #f0c000;
+      border-radius: 4px;
+      padding: 24px;
+      width: 320px;
+      box-shadow: inset 0 0 20px rgba(240, 192, 0, 0.1);
+    }
+
+    .style-d .title {
+      text-align: center;
+      color: #f0c000;
+      font-size: 20px;
+      margin-bottom: 4px;
+      letter-spacing: 2px;
+    }
+
+    .style-d .divider {
+      border: none;
+      border-top: 2px solid #f0c000;
+      margin: 12px 0 20px;
+    }
+
+    .style-d .field {
+      display: flex;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .style-d .field-label {
+      color: #888;
+      font-size: 14px;
+      width: 60px;
+    }
+
+    .style-d .field input {
+      flex: 1;
+      padding: 8px 12px;
+      background: #0f0f1a;
+      border: 2px solid #444;
+      border-radius: 4px;
+      color: #fff;
+      font-family: inherit;
+      font-size: 14px;
+    }
+
+    .style-d .field input:focus {
+      outline: none;
+      border-color: #f0c000;
+    }
+
+    .style-d .stats {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 20px;
+      padding: 12px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 4px;
+    }
+
+    .style-d .stat {
+      flex: 1;
+    }
+
+    .style-d .stat-label {
+      color: #666;
+      font-size: 11px;
+      margin-bottom: 2px;
+    }
+
+    .style-d .stat-value {
+      color: #48a868;
+      font-size: 14px;
+    }
+
+    .style-d .btn {
+      width: 100%;
+      background: linear-gradient(180deg, #f0c000 0%, #d4a800 100%);
+      color: #1a1a2e;
+      border: none;
+      padding: 12px;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: bold;
+      border-radius: 4px;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .style-d .btn:hover {
+      background: linear-gradient(180deg, #ffd700 0%, #f0c000 100%);
+    }
+
+    /* ============================================
+       Vote Section
+       ============================================ */
+    .vote-section {
+      max-width: 800px;
+      margin: 50px auto 0;
+      text-align: center;
+      padding: 30px;
+      background: #0f0f1a;
+      border: 2px solid #333;
+      border-radius: 8px;
+    }
+
+    .vote-section h2 {
+      color: #f0c000;
+      margin-bottom: 10px;
+    }
+
+    .vote-section p {
+      color: #888;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+
+    .vote-buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .vote-btn {
+      background: #16213e;
+      color: #fff;
+      border: 2px solid #444;
+      padding: 12px 24px;
+      font-family: inherit;
+      font-size: 14px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .vote-btn:hover {
+      border-color: #f0c000;
+      background: #1a2744;
+    }
+
+    .vote-btn.selected {
+      border-color: #f0c000;
+      background: #f0c000;
+      color: #1a1a2e;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>Name Input Style Mockup</h1>
+  <p class="subtitle">Click on each to see how it feels. Which style fits the Innovation Lab vibe?</p>
+
+  <div class="mockup-grid">
+    <!-- Style A: Minimal Retro -->
+    <div class="mockup-card">
+      <h2>Style A: Minimal Retro</h2>
+      <p class="description">Clean and simple. Dark box with gold border, standard input field, single Play button.</p>
+      <div class="demo-container style-a">
+        <div class="modal">
+          <label>Enter your name:</label>
+          <input type="text" value="Player" placeholder="Your name">
+          <button class="btn">Play</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Style B: Character Preview -->
+    <div class="mockup-card">
+      <h2>Style B: Character Preview</h2>
+      <p class="description">Shows animated character sprite next to input. Has Skip button for quick entry.</p>
+      <div class="demo-container style-b">
+        <div class="modal">
+          <div class="header">
+            <div class="avatar">
+              <span class="avatar-placeholder">🧑‍🌾</span>
+            </div>
+            <div class="header-text">
+              <label>Enter your name:</label>
+            </div>
+          </div>
+          <input type="text" value="Player" placeholder="Your name">
+          <div class="buttons">
+            <button class="btn-skip">Skip</button>
+            <button class="btn-play">Play</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Style C: Typewriter -->
+    <div class="mockup-card">
+      <h2>Style C: Typewriter</h2>
+      <p class="description">Immersive retro terminal feel. Blinking cursor, no visible input box. Press ENTER to begin.</p>
+      <div class="demo-container style-c">
+        <div class="modal" onclick="document.getElementById('typewriter-input').focus()">
+          <div class="question">What shall we call you?</div>
+          <div class="typewriter-line">
+            <span class="prompt">&gt;</span> <span id="typewriter-text">Player</span><span class="cursor">_</span>
+          </div>
+          <div class="underline">^^^^^^^^</div>
+          <div class="hint">Press ENTER to begin</div>
+          <input type="text" id="typewriter-input" class="hidden-input" value="Player">
+        </div>
+      </div>
+    </div>
+
+    <!-- Style D: Registration Card -->
+    <div class="mockup-card">
+      <h2>Style D: Registration Card</h2>
+      <p class="description">RPG character sheet style. Double border, stats display, more elaborate theming.</p>
+      <div class="demo-container style-d">
+        <div class="modal">
+          <div class="title">INNOVATION LAB</div>
+          <hr class="divider">
+          <div class="field">
+            <span class="field-label">Name:</span>
+            <input type="text" value="Player" placeholder="Your name">
+          </div>
+          <div class="stats">
+            <div class="stat">
+              <div class="stat-label">Class</div>
+              <div class="stat-value">Adventurer</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Level</div>
+              <div class="stat-value">1</div>
+            </div>
+          </div>
+          <button class="btn">Enter the Lab</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="vote-section">
+    <h2>Which style do you prefer?</h2>
+    <p>Click a button to indicate your choice (just for quick reference)</p>
+    <div class="vote-buttons">
+      <button class="vote-btn" onclick="selectVote(this, 'A')">A: Minimal</button>
+      <button class="vote-btn" onclick="selectVote(this, 'B')">B: Character</button>
+      <button class="vote-btn" onclick="selectVote(this, 'C')">C: Typewriter</button>
+      <button class="vote-btn" onclick="selectVote(this, 'D')">D: Card</button>
+    </div>
+  </div>
+
+  <script>
+    // Typewriter effect for Style C
+    const typewriterInput = document.getElementById('typewriter-input');
+    const typewriterText = document.getElementById('typewriter-text');
+
+    typewriterInput.addEventListener('input', (e) => {
+      typewriterText.textContent = e.target.value || '';
+    });
+
+    // Vote selection
+    function selectVote(btn, style) {
+      document.querySelectorAll('.vote-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      console.log('Selected style:', style);
+    }
+  </script>
+</body>
+</html>

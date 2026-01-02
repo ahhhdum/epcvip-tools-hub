@@ -20,17 +20,29 @@ let targetWord = null;
 // Auth state (SSO from Tools Hub or direct login)
 let authUser = null; // { email, name, userId } if authenticated
 
-// Supabase client (initialized on first use)
+// Supabase client (initialized after fetching config)
 let supabase = null;
+let supabaseConfig = null;
+
+async function fetchSupabaseConfig() {
+  if (supabaseConfig) return supabaseConfig;
+
+  try {
+    const response = await fetch('/api/config');
+    if (response.ok) {
+      const config = await response.json();
+      supabaseConfig = config.supabase;
+      return supabaseConfig;
+    }
+  } catch (e) {
+    console.warn('[Wordle Auth] Failed to fetch config:', e);
+  }
+  return null;
+}
 
 function getSupabase() {
-  if (!supabase) {
-    const config = window.SUPABASE_CONFIG;
-    if (!config?.url || !config?.anonKey) {
-      console.warn('[Wordle Auth] Supabase not configured');
-      return null;
-    }
-    supabase = window.supabase.createClient(config.url, config.anonKey);
+  if (!supabase && supabaseConfig?.url && supabaseConfig?.anonKey) {
+    supabase = window.supabase.createClient(supabaseConfig.url, supabaseConfig.anonKey);
   }
   return supabase;
 }
@@ -379,6 +391,9 @@ async function handleAuthSubmit(e) {
 
 // Initialize
 async function init() {
+  // Fetch Supabase config from server
+  await fetchSupabaseConfig();
+
   // Priority 1: Check for SSO token from Tools Hub
   authUser = await checkSSOToken();
 
