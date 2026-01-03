@@ -32,8 +32,10 @@ body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
   min-height: 100vh;
+  min-height: 100dvh; /* Dynamic viewport height for mobile */
   display: flex;
   justify-content: center;
+  overflow-x: hidden;
 }
 
 .container {
@@ -486,6 +488,15 @@ body {
   font-size: 1rem;
   color: var(--text-secondary);
   margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.player-count {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-weight: normal;
 }
 
 .player-list ul {
@@ -501,10 +512,25 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  transition: background-color 0.3s ease;
 }
 
 .player-list li:last-child {
   border-bottom: none;
+}
+
+/* Highlight animation for new players */
+.player-list li.player-joined {
+  animation: playerJoinFlash 1s ease-out;
+}
+
+@keyframes playerJoinFlash {
+  0% {
+    background-color: rgba(83, 141, 78, 0.4);
+  }
+  100% {
+    background-color: transparent;
+  }
 }
 
 .player-list .host-badge {
@@ -971,15 +997,37 @@ body {
 /* Connection Status */
 .connection-status {
   position: fixed;
-  bottom: 20px;
-  right: 20px;
+  top: 10px;
+  left: 10px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 15px;
+  gap: 6px;
+  padding: 6px 12px;
   background-color: var(--bg-secondary);
   border-radius: 20px;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
+  z-index: 100;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* Auto-minimize when connected - only show dot */
+.connection-status.connected {
+  padding: 6px;
+  gap: 0;
+}
+
+.connection-status.connected .status-text {
+  display: none;
+}
+
+/* Show full status on hover when connected */
+.connection-status.connected:hover {
+  padding: 6px 12px;
+  gap: 6px;
+}
+
+.connection-status.connected:hover .status-text {
+  display: inline;
 }
 
 .status-dot {
@@ -987,6 +1035,7 @@ body {
   height: 8px;
   border-radius: 50%;
   background-color: #ffa500;
+  flex-shrink: 0;
 }
 
 .connection-status.connected .status-dot {
@@ -995,6 +1044,12 @@ body {
 
 .connection-status.disconnected .status-dot {
   background-color: var(--danger);
+  animation: pulse-disconnect 1.5s infinite;
+}
+
+@keyframes pulse-disconnect {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 /* Toast */
@@ -1017,6 +1072,11 @@ body {
   color: var(--danger);
 }
 
+.toast.info {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
 .toast.hidden {
   display: none;
 }
@@ -1034,14 +1094,47 @@ body {
 
 /* Responsive */
 @media (max-width: 768px) {
+  .container {
+    padding: 10px;
+    padding-bottom: 0;
+  }
+
+  .header {
+    padding: 10px 0;
+    margin-bottom: 10px;
+  }
+
+  .header h1 {
+    font-size: 1.5rem;
+  }
+
+  /* Game view layout for mobile */
+  #game.view {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    height: calc(100vh - 80px);
+    height: calc(100dvh - 80px);
+  }
+
   .game-layout {
     flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    gap: 10px;
   }
 
   .opponents-panel {
     width: 100%;
     order: -1; /* Show at top on mobile */
-    padding: 10px;
+    padding: 8px;
+    max-height: 120px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex-shrink: 0;
+    -webkit-overflow-scrolling: touch;
   }
 
   .opponents-panel h3 {
@@ -1065,10 +1158,40 @@ body {
     min-width: 120px;
   }
 
+  /* Main game area fills remaining space */
+  .main-game {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 10px;
+    padding-bottom: 10px;
+  }
+
+  .timer-display {
+    flex-shrink: 0;
+  }
+
+  /* Grid scales to fit available space */
+  .grid {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 0;
+  }
+
   .tile {
     width: 50px;
     height: 50px;
     font-size: 1.5rem;
+  }
+
+  /* Keyboard stays at bottom */
+  .keyboard {
+    flex-shrink: 0;
+    padding-bottom: env(safe-area-inset-bottom, 10px);
   }
 
   .keyboard button {
@@ -1084,8 +1207,26 @@ body {
 
 /* Mobile - small screens */
 @media (max-width: 480px) {
+  .container {
+    padding: 8px;
+    padding-bottom: 0;
+  }
+
+  .header {
+    padding: 8px 0;
+    margin-bottom: 8px;
+  }
+
+  .header h1 {
+    font-size: 1.25rem;
+  }
+
+  .header .tagline {
+    font-size: 0.75rem;
+  }
+
   .auth-section {
-    padding: 16px;
+    padding: 12px;
   }
 
   .auth-buttons {
@@ -1098,17 +1239,17 @@ body {
   }
 
   .auth-message {
-    font-size: 0.95rem;
+    font-size: 0.9rem;
   }
 
   .auth-submessage {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
   }
 
   .modal-content {
     width: 95%;
-    padding: 20px;
-    margin: 20px;
+    padding: 16px;
+    margin: 10px;
   }
 
   .join-section {
@@ -1121,6 +1262,83 @@ body {
 
   .join-section .btn {
     width: 100%;
+  }
+
+  /* Game view on small screens */
+  #game.view {
+    height: calc(100vh - 60px);
+    height: calc(100dvh - 60px);
+  }
+
+  .opponents-panel {
+    max-height: 100px;
+    padding: 6px;
+  }
+
+  .main-game {
+    gap: 8px;
+    padding-bottom: 8px;
+  }
+
+  .tile {
+    width: 44px;
+    height: 44px;
+    font-size: 1.3rem;
+  }
+
+  .grid {
+    gap: 4px;
+  }
+
+  .row {
+    gap: 4px;
+  }
+
+  .keyboard {
+    gap: 4px;
+  }
+
+  .keyboard-row {
+    gap: 4px;
+  }
+
+  .keyboard button {
+    min-width: 28px;
+    height: 45px;
+    font-size: 0.7rem;
+    border-radius: 3px;
+  }
+
+  .keyboard button.key-wide {
+    min-width: 44px;
+    font-size: 0.65rem;
+  }
+
+  .timer-display {
+    font-size: 1.25rem;
+  }
+}
+
+/* Very small screens (iPhone SE, etc.) */
+@media (max-width: 360px) {
+  .tile {
+    width: 40px;
+    height: 40px;
+    font-size: 1.2rem;
+  }
+
+  .keyboard button {
+    min-width: 24px;
+    height: 40px;
+    font-size: 0.65rem;
+  }
+
+  .keyboard button.key-wide {
+    min-width: 38px;
+  }
+
+  .opponents-panel {
+    max-height: 80px;
   }
 }
 

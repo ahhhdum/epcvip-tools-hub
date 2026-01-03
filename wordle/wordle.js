@@ -84,6 +84,7 @@ const elements = {
   wordModeRandom: document.getElementById('wordModeRandom'),
   dailyNumberDisplay: document.getElementById('dailyNumber'),
   players: document.getElementById('players'),
+  playerCount: document.getElementById('playerCount'),
   readyBtn: document.getElementById('readyBtn'),
   startGame: document.getElementById('startGame'),
   waitingMessage: document.getElementById('waitingMessage'),
@@ -638,19 +639,36 @@ function handleRoomJoined(msg) {
 
 function handlePlayerJoined(msg) {
   // Add to players list
-  playersInRoom.push({
+  const newPlayer = {
     id: msg.player.id,
     name: msg.player.name,
     isCreator: msg.player.isCreator,
     isReady: msg.player.isReady || false,
-  });
-  updatePlayerList(playersInRoom);
+  };
+  playersInRoom.push(newPlayer);
+  updatePlayerList(playersInRoom, msg.player.id);
+
+  // Show toast notification
+  showInfoToast(`${msg.player.name} joined`);
+
+  // Update start button (in case we now have enough players)
+  updateStartButton();
 }
 
 function handlePlayerLeft(msg) {
+  // Find player name before removing
+  const leavingPlayer = playersInRoom.find((p) => p.id === msg.playerId);
+  const playerName = leavingPlayer?.name || 'A player';
+
   // Remove from players list
   playersInRoom = playersInRoom.filter((p) => p.id !== msg.playerId);
   updatePlayerList(playersInRoom);
+
+  // Show toast notification
+  showInfoToast(`${playerName} left`);
+
+  // Update start button
+  updateStartButton();
 
   // Remove from opponents in game
   opponents.delete(msg.playerId);
@@ -874,11 +892,22 @@ function showView(name) {
   }
 }
 
-function updatePlayerList(players) {
+function updatePlayerList(players, highlightPlayerId = null) {
   elements.players.innerHTML = '';
+
+  // Update player count
+  if (elements.playerCount) {
+    elements.playerCount.textContent = `(${players.length})`;
+  }
+
   for (const player of players) {
     const li = document.createElement('li');
     li.id = `player-${player.id}`;
+
+    // Add highlight animation for newly joined players
+    if (highlightPlayerId && player.id === highlightPlayerId) {
+      li.classList.add('player-joined');
+    }
 
     const readyIndicator = player.isReady
       ? '<span class="ready-indicator ready">✓</span>'
@@ -945,12 +974,22 @@ function getPlayerName() {
 
 function showError(message) {
   elements.errorToast.textContent = message;
-  elements.errorToast.classList.remove('hidden');
+  elements.errorToast.classList.remove('hidden', 'info');
   elements.errorToast.classList.add('error');
 
   setTimeout(() => {
     elements.errorToast.classList.add('hidden');
   }, 3000);
+}
+
+function showInfoToast(message) {
+  elements.errorToast.textContent = message;
+  elements.errorToast.classList.remove('hidden', 'error');
+  elements.errorToast.classList.add('info');
+
+  setTimeout(() => {
+    elements.errorToast.classList.add('hidden');
+  }, 2000);
 }
 
 // Grid
