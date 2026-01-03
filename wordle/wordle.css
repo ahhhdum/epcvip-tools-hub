@@ -831,20 +831,27 @@ body {
 .keyboard {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
+  touch-action: manipulation; /* Prevent double-tap zoom, remove 300ms delay */
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 0 2px;
 }
 
 .keyboard-row {
   display: flex;
   justify-content: center;
-  gap: 6px;
+  gap: 5px;
+  width: 100%;
 }
 
 .keyboard button {
-  padding: 0;
-  min-width: 43px;
+  flex: 1;
+  max-width: 44px;
   height: 58px;
-  font-size: 0.85rem;
+  padding: 0;
+  font-size: 0.9rem;
   font-weight: 700;
   text-transform: uppercase;
   background-color: var(--key-bg);
@@ -853,6 +860,7 @@ body {
   border-radius: 4px;
   cursor: pointer;
   transition: background-color 0.1s;
+  -webkit-tap-highlight-color: transparent; /* Remove tap highlight on iOS */
 }
 
 .keyboard button:hover {
@@ -860,8 +868,19 @@ body {
 }
 
 .keyboard button.key-wide {
-  min-width: 65px;
+  flex: 1.5;
+  max-width: 66px;
   font-size: 0.75rem;
+}
+
+/* ENTER button stands out */
+.keyboard button.key-enter {
+  background-color: var(--correct);
+  color: var(--text-primary);
+}
+
+.keyboard button.key-enter:hover {
+  opacity: 0.85;
 }
 
 .keyboard button.correct {
@@ -1108,14 +1127,15 @@ body {
     font-size: 1.5rem;
   }
 
-  /* Game view layout for mobile */
+  /* Game view layout for mobile - use svh for stability */
   #game.view {
     display: flex;
     flex-direction: column;
     flex: 1;
     min-height: 0;
     height: calc(100vh - 80px);
-    height: calc(100dvh - 80px);
+    height: calc(100svh - 80px);
+    touch-action: manipulation;
   }
 
   .game-layout {
@@ -1123,7 +1143,7 @@ body {
     flex: 1;
     min-height: 0;
     overflow: hidden;
-    gap: 10px;
+    gap: 6px;
   }
 
   .opponents-panel {
@@ -1165,8 +1185,8 @@ body {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    gap: 10px;
-    padding-bottom: 10px;
+    gap: 6px;
+    padding-bottom: 6px;
   }
 
   .timer-display {
@@ -1180,41 +1200,42 @@ body {
     flex-direction: column;
     justify-content: center;
     min-height: 0;
+    touch-action: manipulation;
   }
 
   .tile {
-    width: 50px;
-    height: 50px;
-    font-size: 1.5rem;
+    width: 48px;
+    height: 48px;
+    font-size: 1.4rem;
   }
 
-  /* Keyboard stays at bottom */
+  /* Keyboard stays at bottom - flex-based sizing */
   .keyboard {
     flex-shrink: 0;
-    padding-bottom: env(safe-area-inset-bottom, 10px);
+    padding-bottom: env(safe-area-inset-bottom, 8px);
   }
 
   .keyboard button {
-    min-width: 32px;
-    height: 50px;
-    font-size: 0.75rem;
+    max-width: 40px;
+    height: 54px;
+    font-size: 0.8rem;
   }
 
   .keyboard button.key-wide {
-    min-width: 50px;
+    max-width: 60px;
   }
 }
 
-/* Mobile - small screens */
+/* Mobile - standard phones (iPhone, Pixel, Galaxy) */
 @media (max-width: 480px) {
   .container {
-    padding: 8px;
+    padding: 6px;
     padding-bottom: 0;
   }
 
   .header {
-    padding: 8px 0;
-    margin-bottom: 8px;
+    padding: 6px 0;
+    margin-bottom: 6px;
   }
 
   .header h1 {
@@ -1222,7 +1243,7 @@ body {
   }
 
   .header .tagline {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
   }
 
   .auth-section {
@@ -1264,10 +1285,10 @@ body {
     width: 100%;
   }
 
-  /* Game view on small screens */
+  /* Game view on phones - use svh for stable layout */
   #game.view {
-    height: calc(100vh - 60px);
-    height: calc(100dvh - 60px);
+    height: calc(100vh - 50px);
+    height: calc(100svh - 50px);
   }
 
   .opponents-panel {
@@ -1276,26 +1297,29 @@ body {
   }
 
   .main-game {
-    gap: 8px;
-    padding-bottom: 8px;
+    gap: 4px;
+    padding-bottom: 4px;
   }
 
+  /* Smaller tiles to give keyboard more room */
   .tile {
-    width: 44px;
-    height: 44px;
-    font-size: 1.3rem;
+    width: 42px;
+    height: 42px;
+    font-size: 1.25rem;
   }
 
   .grid {
     gap: 4px;
   }
 
-  .row {
+  .grid-row {
     gap: 4px;
   }
 
+  /* Keyboard - taller keys, flex fills width */
   .keyboard {
-    gap: 4px;
+    gap: 5px;
+    padding: 0 4px;
   }
 
   .keyboard-row {
@@ -1303,34 +1327,61 @@ body {
   }
 
   .keyboard button {
-    min-width: 28px;
-    height: 45px;
-    font-size: 0.7rem;
-    border-radius: 3px;
+    max-width: none; /* Remove cap, let flex fill */
+    height: 52px;
+    font-size: 0.8rem;
+    border-radius: 4px;
   }
 
   .keyboard button.key-wide {
-    min-width: 44px;
-    font-size: 0.65rem;
+    max-width: none;
+    font-size: 0.7rem;
   }
 
   .timer-display {
-    font-size: 1.25rem;
+    font-size: 1.1rem;
+    padding: 4px 0;
   }
 }
 
-/* Very small screens (iPhone SE, etc.) */
-@media (max-width: 360px) {
+/* Small phones (iPhone SE, Mini, budget Android) */
+@media (max-width: 375px) {
+  .header {
+    padding: 4px 0;
+    margin-bottom: 4px;
+  }
+
+  .header h1 {
+    font-size: 1.1rem;
+  }
+
+  .opponents-panel {
+    max-height: 85px;
+  }
+
   .tile {
-    width: 40px;
-    height: 40px;
-    font-size: 1.2rem;
+    width: 38px;
+    height: 38px;
+    font-size: 1.1rem;
   }
 
   .keyboard button {
-    min-width: 24px;
-    height: 40px;
-    font-size: 0.65rem;
+    height: 48px;
+    font-size: 0.75rem;
+  }
+}
+
+/* Very small screens (iPhone SE 1st gen, etc.) */
+@media (max-width: 340px) {
+  .tile {
+    width: 34px;
+    height: 34px;
+    font-size: 1rem;
+  }
+
+  .keyboard button {
+    height: 44px;
+    font-size: 0.7rem;
   }
 
   .keyboard button.key-wide {
