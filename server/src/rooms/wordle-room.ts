@@ -6,8 +6,11 @@
 
 import { WebSocket } from 'ws';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import * as fs from 'fs';
+import * as path from 'path';
 import { generateUniqueRoomCode } from '../utils/room-codes';
 import { getRandomWord, isValidGuess } from '../utils/word-list';
+import { getDailyWord, getDailyNumber, WordMode } from '../utils/daily-word';
 
 // Supabase client for stats persistence
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
@@ -52,9 +55,12 @@ interface WordleRoom {
   players: Map<string, WordlePlayer>;
   gameState: GameState;
   gameMode: GameMode;
+  wordMode: WordMode;
   word: string | null;
   startTime: number | null;
   creatorId: string;
+  countdownTimer: NodeJS.Timeout | null;
+  timerInterval: NodeJS.Timeout | null;
 }
 
 // Player counter for unique IDs
@@ -106,9 +112,12 @@ export class WordleRoomManager {
       players: new Map([[playerId, player]]),
       gameState: 'waiting',
       gameMode: 'casual',
+      wordMode: 'daily',
       word: null,
       startTime: null,
       creatorId: playerId,
+      countdownTimer: null,
+      timerInterval: null,
     };
 
     this.rooms.set(roomCode, room);
@@ -183,6 +192,7 @@ export class WordleRoomManager {
       isCreator: false,
       gameState: room.gameState,
       gameMode: room.gameMode,
+      wordMode: room.wordMode,
     });
 
     // Notify other players
@@ -223,6 +233,13 @@ export class WordleRoomManager {
 
     // If room is empty, delete it
     if (room.players.size === 0) {
+      // Clear any active countdown
+      if (room.countdownTimer) {
+        clearInterval(room.countdownTimer);
+        room.countdownTimer = null;
+      }
+      // Clear timer sync
+      this.stopTimerSync(room);
       this.rooms.delete(roomCode);
       console.log(`[Wordle] Room ${roomCode} deleted (empty)`);
       return;
@@ -271,7 +288,196 @@ export class WordleRoomManager {
   }
 
   /**
-   * Start the game
+   * Set word mode (daily or random)
+   */
+  setWordMode(socket: WebSocket, mode: WordMode): void {
+    const playerId = this.socketToPlayer.get(socket);
+    if (!playerId) return;
+
+    const roomCode = this.playerToRoom.get(playerId);
+    if (!roomCode) return;
+
+    const room = this.rooms.get(roomCode);
+    if (!room) return;
+
+    const player = room.players.get(playerId);
+    if (!player?.isCreator) {
+      this.send(socket, { type: 'error', message: 'Only the room creator can change settings.' });
+      return;
+    }
+
+    room.wordMode = mode;
+    this.broadcastToRoom(roomCode, {
+      type: 'wordModeChanged',
+      mode,
+      dailyNumber: mode === 'daily' ? getDailyNumber() : null,
+    });
+  }
+
+  /**
+   * Set player ready status
+   */
+  setReady(socket: WebSocket, ready: boolean): void {
+    const playerId = this.socketToPlayer.get(socket);
+    if (!playerId) return;
+
+    const roomCode = this.playerToRoom.get(playerId);
+    if (!roomCode) return;
+
+    const room = this.rooms.get(roomCode);
+    if (!room || room.gameState !== 'waiting') return;
+
+    const player = room.players.get(playerId);
+    if (!player) return;
+
+    player.isReady = ready;
+
+    // Broadcast ready status to all players
+    this.broadcastToRoom(roomCode, {
+      type: 'playerReadyChanged',
+      playerId,
+      isReady: ready,
+    });
+
+    // Check if all players are ready and notify creator
+    const allReady = Array.from(room.players.values()).every((p) => p.isReady);
+    const creator = room.players.get(room.creatorId);
+    if (creator) {
+      this.send(creator.socket, {
+        type: 'allPlayersReadyStatus',
+        allReady,
+      });
+    }
+  }
+
+  /**
+   * Start the countdown and then the game
+   */
+  private startCountdown(room: WordleRoom): void {
+    let count = 3;
+
+    // Broadcast initial countdown
+    this.broadcastToRoom(room.code, {
+      type: 'countdown',
+      count,
+    });
+
+    room.countdownTimer = setInterval(() => {
+      count--;
+
+      if (count > 0) {
+        this.broadcastToRoom(room.code, {
+          type: 'countdown',
+          count,
+        });
+      } else {
+        // Countdown finished - start the game
+        if (room.countdownTimer) {
+          clearInterval(room.countdownTimer);
+          room.countdownTimer = null;
+        }
+        this.beginGame(room);
+      }
+    }, 1000);
+  }
+
+  /**
+   * Actually begin the game (after countdown)
+   */
+  private beginGame(room: WordleRoom): void {
+    // Reset all players
+    for (const p of room.players.values()) {
+      p.guesses = [];
+      p.guessResults = [];
+      p.isFinished = false;
+      p.won = false;
+      p.finishTime = null;
+      p.score = 0;
+    }
+
+    // Select word based on word mode
+    room.word = room.wordMode === 'daily' ? getDailyWord() : getRandomWord();
+    room.gameState = 'playing';
+    room.startTime = Date.now();
+
+    const wordModeInfo = room.wordMode === 'daily' ? `Daily #${getDailyNumber()}` : 'Random';
+    console.log(`[Wordle] Game started in room ${room.code}, word: ${room.word} (${wordModeInfo})`);
+
+    // Send game start to all players
+    const players = Array.from(room.players.values()).map((p) => ({
+      id: p.id,
+      name: p.name,
+    }));
+
+    this.broadcastToRoom(room.code, {
+      type: 'gameStarted',
+      wordLength: 5,
+      players,
+      gameMode: room.gameMode,
+    });
+
+    // Start timer sync interval (broadcasts every second)
+    this.startTimerSync(room);
+  }
+
+  /**
+   * Start broadcasting timer updates
+   */
+  private startTimerSync(room: WordleRoom): void {
+    // Clear any existing timer
+    if (room.timerInterval) {
+      clearInterval(room.timerInterval);
+    }
+
+    // Broadcast timer sync every second
+    room.timerInterval = setInterval(() => {
+      if (room.gameState !== 'playing' || !room.startTime) {
+        this.stopTimerSync(room);
+        return;
+      }
+
+      const now = Date.now();
+      const playerTimes: Record<
+        string,
+        { elapsed: number; finished: boolean; finishTime: number | null }
+      > = {};
+
+      for (const [id, player] of room.players) {
+        if (player.isFinished && player.finishTime) {
+          playerTimes[id] = {
+            elapsed: player.finishTime,
+            finished: true,
+            finishTime: player.finishTime,
+          };
+        } else {
+          playerTimes[id] = {
+            elapsed: now - room.startTime,
+            finished: false,
+            finishTime: null,
+          };
+        }
+      }
+
+      this.broadcastToRoom(room.code, {
+        type: 'timerSync',
+        gameTime: now - room.startTime,
+        playerTimes,
+      });
+    }, 1000);
+  }
+
+  /**
+   * Stop timer sync
+   */
+  private stopTimerSync(room: WordleRoom): void {
+    if (room.timerInterval) {
+      clearInterval(room.timerInterval);
+      room.timerInterval = null;
+    }
+  }
+
+  /**
+   * Start the game (initiates countdown)
    */
   startGame(socket: WebSocket): void {
     const playerId = this.socketToPlayer.get(socket);
@@ -299,41 +505,23 @@ export class WordleRoomManager {
       return;
     }
 
-    // Reset all players
-    for (const p of room.players.values()) {
-      p.guesses = [];
-      p.guessResults = [];
-      p.isFinished = false;
-      p.won = false;
-      p.finishTime = null;
-      p.score = 0;
+    // Check that all players are ready
+    const allReady = Array.from(room.players.values()).every((p) => p.isReady);
+    if (!allReady) {
+      this.send(socket, { type: 'error', message: 'All players must be ready to start.' });
+      return;
     }
 
-    // Select word and start
-    room.word = getRandomWord();
-    room.gameState = 'playing';
-    room.startTime = Date.now();
+    console.log(`[Wordle] Starting countdown in room ${roomCode}`);
 
-    console.log(`[Wordle] Game started in room ${roomCode}, word: ${room.word}`);
-
-    // Send game start to all players
-    const players = Array.from(room.players.values()).map((p) => ({
-      id: p.id,
-      name: p.name,
-    }));
-
-    this.broadcastToRoom(roomCode, {
-      type: 'gameStarted',
-      wordLength: 5,
-      players,
-      gameMode: room.gameMode,
-    });
+    // Start the countdown (game will begin after 3... 2... 1...)
+    this.startCountdown(room);
   }
 
   /**
    * Handle a guess
    */
-  handleGuess(socket: WebSocket, word: string): void {
+  handleGuess(socket: WebSocket, word: string, forced: boolean = false): void {
     const playerId = this.socketToPlayer.get(socket);
     if (!playerId) return;
 
@@ -351,6 +539,11 @@ export class WordleRoomManager {
     if (!isValidGuess(guess)) {
       this.send(socket, { type: 'error', message: 'Invalid guess. Must be 5 letters.' });
       return;
+    }
+
+    // Log forced words for dictionary review
+    if (forced) {
+      this.logForcedWord(guess, player.name, player.email, roomCode);
     }
 
     // Check if already used 6 guesses
@@ -447,10 +640,43 @@ export class WordleRoomManager {
   }
 
   /**
+   * Log a forced word for dictionary review
+   */
+  private logForcedWord(
+    word: string,
+    playerName: string,
+    playerEmail: string | null,
+    roomCode: string
+  ): void {
+    const logEntry = {
+      timestamp: new Date().toISOString(),
+      word,
+      player: playerName,
+      playerEmail,
+      roomCode,
+    };
+
+    // Ensure logs directory exists
+    const logsDir = path.join(__dirname, '../../logs');
+    if (!fs.existsSync(logsDir)) {
+      fs.mkdirSync(logsDir, { recursive: true });
+    }
+
+    // Append to JSONL file
+    const logPath = path.join(logsDir, 'forced-words.jsonl');
+    fs.appendFileSync(logPath, JSON.stringify(logEntry) + '\n');
+
+    console.log(`[Wordle] Forced word logged: ${word} by ${playerName}`);
+  }
+
+  /**
    * End the game and show results
    */
   private async endGame(room: WordleRoom): Promise<void> {
     room.gameState = 'finished';
+
+    // Stop the timer sync
+    this.stopTimerSync(room);
 
     // Build results
     const results = Array.from(room.players.values())
@@ -656,11 +882,17 @@ export class WordleRoomManager {
         case 'setGameMode':
           this.setGameMode(socket, msg.mode);
           break;
+        case 'setWordMode':
+          this.setWordMode(socket, msg.mode);
+          break;
+        case 'setReady':
+          this.setReady(socket, msg.ready);
+          break;
         case 'startGame':
           this.startGame(socket);
           break;
         case 'guess':
-          this.handleGuess(socket, msg.word);
+          this.handleGuess(socket, msg.word, msg.forced || false);
           break;
         case 'playAgain':
           this.handlePlayAgain(socket);

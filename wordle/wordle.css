@@ -602,6 +602,113 @@ body {
   background-color: var(--absent);
 }
 
+/* Mobile Compact Opponent View */
+.opponent-board.compact {
+  padding: 8px 10px;
+}
+
+.opponent-board.compact .player-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 0;
+}
+
+.opponent-board.compact .player-name {
+  font-weight: 600;
+  font-size: 0.8rem;
+  margin-bottom: 0;
+  min-width: 60px;
+}
+
+.opponent-board.compact .player-name .check {
+  color: var(--correct);
+  margin-right: 2px;
+}
+
+.opponent-board.compact .opponent-timer {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.opponent-board.compact .position-cells {
+  display: flex;
+  gap: 3px;
+  flex: 1;
+  justify-content: center;
+}
+
+.opponent-board.compact .pos-cell {
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  background-color: var(--bg-tile);
+  transition: all 0.2s ease;
+}
+
+.opponent-board.compact .pos-cell.correct {
+  background-color: var(--correct);
+}
+
+.opponent-board.compact .pos-cell.present {
+  background-color: var(--present);
+}
+
+.opponent-board.compact .row-progress {
+  display: flex;
+  gap: 2px;
+  margin-left: 8px;
+}
+
+.opponent-board.compact .row-segment {
+  width: 5px;
+  height: 14px;
+  border-radius: 2px;
+  background-color: var(--bg-tile);
+}
+
+.opponent-board.compact .row-segment.filled {
+  background-color: var(--absent);
+}
+
+.opponent-board.compact .row-segment.active {
+  background-color: var(--correct);
+  animation: pulse 1s infinite;
+}
+
+.opponent-board.compact.solved .row-segment.filled {
+  background-color: var(--correct);
+}
+
+.opponent-board.compact.solved {
+  opacity: 0.8;
+}
+
+.opponent-board.compact.solved .player-name {
+  color: var(--correct);
+}
+
+/* Hide mini-grid in compact mode */
+.opponent-board.compact .mini-grid {
+  display: none;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes cellPop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+.pos-cell.animate {
+  animation: cellPop 0.2s ease;
+}
+
 .main-game {
   display: flex;
   flex-direction: column;
@@ -667,6 +774,12 @@ body {
   font-size: 1rem;
   color: var(--text-secondary);
   text-align: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.game-message.visible {
+  opacity: 1;
 }
 
 .game-message.error {
@@ -675,6 +788,17 @@ body {
 
 .game-message.success {
   color: var(--correct);
+}
+
+/* Grid row shake animation for invalid words */
+.grid-row.shake {
+  animation: shake 0.5s ease;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
 }
 
 /* Keyboard */
@@ -916,16 +1040,27 @@ body {
 
   .opponents-panel {
     width: 100%;
-    order: 2;
+    order: -1; /* Show at top on mobile */
+    padding: 10px;
+  }
+
+  .opponents-panel h3 {
+    display: none; /* Hide "Opponents" header in compact mode */
   }
 
   #opponentBoards {
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 10px;
+    flex-direction: column;
+    gap: 6px;
   }
 
-  .opponent-board {
+  .opponent-board.compact {
+    flex: none;
+    min-width: auto;
+    width: 100%;
+  }
+
+  /* Fallback for non-compact (shouldn't happen on mobile, but just in case) */
+  .opponent-board:not(.compact) {
     flex: 1;
     min-width: 120px;
   }
@@ -987,4 +1122,183 @@ body {
   .join-section .btn {
     width: 100%;
   }
+}
+
+/* Ready System */
+.ready-section {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.btn-ready {
+  padding: 14px 32px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  background-color: var(--bg-tile);
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 150px;
+}
+
+.btn-ready:hover {
+  border-color: var(--accent);
+  background-color: rgba(83, 141, 78, 0.2);
+}
+
+.btn-ready.ready {
+  background-color: var(--correct);
+  border-color: var(--correct);
+  color: var(--text-primary);
+}
+
+.btn-ready.ready:hover {
+  background-color: #477841;
+}
+
+/* Ready indicators in player list */
+.ready-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 0.85rem;
+  margin-right: 10px;
+  flex-shrink: 0;
+}
+
+.ready-indicator.ready {
+  background-color: var(--correct);
+  color: var(--text-primary);
+}
+
+.ready-indicator.not-ready {
+  background-color: var(--bg-tile);
+  color: var(--text-secondary);
+}
+
+.player-list li .player-name {
+  flex: 1;
+}
+
+/* Disabled start button */
+.btn.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Countdown Overlay */
+.countdown-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+}
+
+.countdown-overlay.hidden {
+  display: none;
+}
+
+.countdown-content {
+  text-align: center;
+}
+
+.countdown-number {
+  font-size: 10rem;
+  font-weight: 700;
+  color: var(--accent);
+  text-shadow: 0 0 40px rgba(83, 141, 78, 0.5);
+}
+
+.countdown-number.pulse {
+  animation: countdownPulse 0.5s ease-out;
+}
+
+@keyframes countdownPulse {
+  0% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Timer Display */
+.timer-display {
+  text-align: center;
+  margin-bottom: 15px;
+}
+
+.timer-display #gameTimer {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.timer-display #gameTimer.finished {
+  color: var(--correct);
+}
+
+/* Opponent Timer */
+.player-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.player-header .player-name {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.opponent-timer {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  background-color: var(--bg-tile);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.opponent-timer.finished {
+  color: var(--correct);
+  background-color: rgba(83, 141, 78, 0.2);
+}
+
+/* Word Mode Selector */
+.word-mode-selector {
+  margin-bottom: 20px;
+}
+
+.word-mode-selector label {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin-bottom: 10px;
+}
+
+.daily-number {
+  color: var(--accent);
+  font-weight: 600;
+  margin-left: 5px;
+}
+
+.daily-number.hidden {
+  display: none;
 }

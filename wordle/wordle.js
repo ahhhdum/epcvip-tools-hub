@@ -4,18 +4,31 @@
  * Multiplayer Wordle game with real-time opponent visibility.
  */
 
+import { VALID_GUESSES } from './valid-guesses.js';
+
 // State
 let socket = null;
 let playerId = null;
 let roomCode = null;
 let isCreator = false;
+let isReady = false;
+let allPlayersReady = false;
 let gameMode = 'casual';
+let wordMode = 'daily'; // daily or random
+let dailyNumber = null;
 let gameState = 'lobby'; // lobby, waiting, playing, results
 let currentGuess = '';
 let guesses = [];
 let guessResults = [];
 let opponents = new Map();
 let targetWord = null;
+let playersInRoom = [];
+let gameTimer = 0; // Current game timer in ms
+let playerTimes = {}; // Per-player timer data
+
+// Dictionary validation state
+let lastRejectedWord = null;
+let rejectionCount = 0;
 
 // Auth state (SSO from Tools Hub or direct login)
 let authUser = null; // { email, name, userId } if authenticated
@@ -67,14 +80,21 @@ const elements = {
   copyCode: document.getElementById('copyCode'),
   modeCasual: document.getElementById('modeCasual'),
   modeCompetitive: document.getElementById('modeCompetitive'),
+  wordModeDaily: document.getElementById('wordModeDaily'),
+  wordModeRandom: document.getElementById('wordModeRandom'),
+  dailyNumberDisplay: document.getElementById('dailyNumber'),
   players: document.getElementById('players'),
+  readyBtn: document.getElementById('readyBtn'),
   startGame: document.getElementById('startGame'),
   waitingMessage: document.getElementById('waitingMessage'),
   leaveRoom: document.getElementById('leaveRoom'),
+  countdownOverlay: document.getElementById('countdownOverlay'),
+  countdownNumber: document.getElementById('countdownNumber'),
 
   // Game
   opponentBoards: document.getElementById('opponentBoards'),
   grid: document.getElementById('grid'),
+  gameTimerDisplay: document.getElementById('gameTimer'),
   message: document.getElementById('message'),
   keyboard: document.getElementById('keyboard'),
 
@@ -104,6 +124,9 @@ const elements = {
   signupBtn: document.getElementById('signupBtn'),
   playAsGuest: document.getElementById('playAsGuest'),
   logoutBtn: document.getElementById('logoutBtn'),
+
+  // Room actions section (hidden until auth choice)
+  roomActionsSection: document.getElementById('roomActionsSection'),
 
   // Auth Modal
   authModal: document.getElementById('authModal'),
@@ -276,14 +299,18 @@ function updateAuthUI() {
   if (!elements.authPrompt || !elements.authStatus) return;
 
   if (authUser) {
-    // Logged in - show status, hide prompt
+    // Logged in - show status, hide prompt, show room actions
     elements.authPrompt.classList.add('hidden');
     elements.authStatus.classList.remove('hidden');
     elements.userEmail.textContent = authUser.email;
+    if (elements.roomActionsSection) {
+      elements.roomActionsSection.classList.remove('hidden');
+    }
   } else {
-    // Not logged in - show prompt, hide status
+    // Not logged in - show prompt, hide status, hide room actions (until guest chosen)
     elements.authPrompt.classList.remove('hidden');
     elements.authStatus.classList.add('hidden');
+    // Room actions stay hidden until user clicks "play as guest"
   }
 }
 
@@ -503,8 +530,23 @@ function handleMessage(msg) {
     case 'gameModeChanged':
       handleGameModeChanged(msg);
       break;
+    case 'wordModeChanged':
+      handleWordModeChanged(msg);
+      break;
+    case 'playerReadyChanged':
+      handlePlayerReadyChanged(msg);
+      break;
+    case 'allPlayersReadyStatus':
+      handleAllPlayersReadyStatus(msg);
+      break;
+    case 'countdown':
+      handleCountdown(msg);
+      break;
     case 'gameStarted':
       handleGameStarted(msg);
+      break;
+    case 'timerSync':
+      handleTimerSync(msg);
       break;
     case 'guessResult':
       handleGuessResult(msg);
@@ -529,13 +571,28 @@ function handleRoomCreated(msg) {
   playerId = msg.playerId;
   roomCode = msg.roomCode;
   isCreator = true;
+  isReady = false;
+  allPlayersReady = false;
+  wordMode = 'daily';
+  dailyNumber = null;
 
   showView('waiting');
   elements.roomCode.textContent = roomCode;
   elements.startGame.classList.remove('hidden');
   elements.waitingMessage.classList.add('hidden');
 
-  updatePlayerList([{ id: playerId, name: getPlayerName(), isCreator: true }]);
+  // Enable mode buttons for creator
+  elements.modeCasual.disabled = false;
+  elements.modeCompetitive.disabled = false;
+  if (elements.wordModeDaily) elements.wordModeDaily.disabled = false;
+  if (elements.wordModeRandom) elements.wordModeRandom.disabled = false;
+
+  playersInRoom = [{ id: playerId, name: getPlayerName(), isCreator: true, isReady: false }];
+  updatePlayerList(playersInRoom);
+  updateModeButtons(gameMode);
+  updateWordModeButtons();
+  updateReadyButton();
+  updateStartButton();
 }
 
 function handleRoomJoined(msg) {
@@ -543,6 +600,9 @@ function handleRoomJoined(msg) {
   roomCode = msg.roomCode;
   isCreator = msg.isCreator;
   gameMode = msg.gameMode || 'casual';
+  wordMode = msg.wordMode || 'daily';
+  isReady = false;
+  allPlayersReady = false;
 
   showView('waiting');
   elements.roomCode.textContent = roomCode;
@@ -550,31 +610,47 @@ function handleRoomJoined(msg) {
   if (isCreator) {
     elements.startGame.classList.remove('hidden');
     elements.waitingMessage.classList.add('hidden');
+    elements.modeCasual.disabled = false;
+    elements.modeCompetitive.disabled = false;
+    if (elements.wordModeDaily) elements.wordModeDaily.disabled = false;
+    if (elements.wordModeRandom) elements.wordModeRandom.disabled = false;
   } else {
     elements.startGame.classList.add('hidden');
     elements.waitingMessage.classList.remove('hidden');
     // Disable mode buttons for non-creators
     elements.modeCasual.disabled = true;
     elements.modeCompetitive.disabled = true;
+    if (elements.wordModeDaily) elements.wordModeDaily.disabled = true;
+    if (elements.wordModeRandom) elements.wordModeRandom.disabled = true;
   }
 
-  updatePlayerList(msg.players);
+  // Store players with ready status
+  playersInRoom = msg.players.map((p) => ({
+    ...p,
+    isReady: p.isReady || false,
+  }));
+  updatePlayerList(playersInRoom);
   updateModeButtons(gameMode);
+  updateWordModeButtons();
+  updateReadyButton();
+  updateStartButton();
 }
 
 function handlePlayerJoined(msg) {
-  const li = document.createElement('li');
-  li.id = `player-${msg.player.id}`;
-  li.innerHTML = `
-    <span>${msg.player.name}</span>
-    ${msg.player.isCreator ? '<span class="host-badge">Host</span>' : ''}
-  `;
-  elements.players.appendChild(li);
+  // Add to players list
+  playersInRoom.push({
+    id: msg.player.id,
+    name: msg.player.name,
+    isCreator: msg.player.isCreator,
+    isReady: msg.player.isReady || false,
+  });
+  updatePlayerList(playersInRoom);
 }
 
 function handlePlayerLeft(msg) {
-  const li = document.getElementById(`player-${msg.playerId}`);
-  if (li) li.remove();
+  // Remove from players list
+  playersInRoom = playersInRoom.filter((p) => p.id !== msg.playerId);
+  updatePlayerList(playersInRoom);
 
   // Remove from opponents in game
   opponents.delete(msg.playerId);
@@ -587,6 +663,10 @@ function handleBecameCreator() {
   elements.waitingMessage.classList.add('hidden');
   elements.modeCasual.disabled = false;
   elements.modeCompetitive.disabled = false;
+
+  // Check if all players ready and update start button
+  allPlayersReady = playersInRoom.every((p) => p.isReady);
+  updateStartButton();
 }
 
 function handleGameModeChanged(msg) {
@@ -594,12 +674,88 @@ function handleGameModeChanged(msg) {
   updateModeButtons(gameMode);
 }
 
+function handleWordModeChanged(msg) {
+  wordMode = msg.mode;
+  dailyNumber = msg.dailyNumber;
+  updateWordModeButtons();
+}
+
+function handlePlayerReadyChanged(msg) {
+  // Update player in our list
+  const player = playersInRoom.find((p) => p.id === msg.playerId);
+  if (player) {
+    player.isReady = msg.isReady;
+    updatePlayerList(playersInRoom);
+  }
+
+  // Update our own ready state if it's us
+  if (msg.playerId === playerId) {
+    isReady = msg.isReady;
+    updateReadyButton();
+  }
+}
+
+function handleAllPlayersReadyStatus(msg) {
+  allPlayersReady = msg.allReady;
+  updateStartButton();
+}
+
+function handleCountdown(msg) {
+  // Show countdown overlay
+  if (elements.countdownOverlay) {
+    elements.countdownOverlay.classList.remove('hidden');
+    elements.countdownNumber.textContent = msg.count;
+    elements.countdownNumber.classList.add('pulse');
+
+    // Remove pulse animation class after animation completes
+    setTimeout(() => {
+      elements.countdownNumber.classList.remove('pulse');
+    }, 500);
+  }
+}
+
+// Timer helper
+function formatTime(ms) {
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
+
+function handleTimerSync(msg) {
+  gameTimer = msg.gameTime;
+  playerTimes = msg.playerTimes;
+
+  // Update main timer display
+  if (elements.gameTimerDisplay) {
+    const myTime = playerTimes[playerId];
+    if (myTime && myTime.finished) {
+      elements.gameTimerDisplay.textContent = formatTime(myTime.finishTime);
+      elements.gameTimerDisplay.classList.add('finished');
+    } else {
+      elements.gameTimerDisplay.textContent = formatTime(gameTimer);
+      elements.gameTimerDisplay.classList.remove('finished');
+    }
+  }
+
+  // Update opponent boards with times (re-render to include times)
+  renderOpponentBoards();
+}
+
 // Game Handlers
 function handleGameStarted(msg) {
+  // Hide countdown overlay
+  if (elements.countdownOverlay) {
+    elements.countdownOverlay.classList.add('hidden');
+  }
   gameState = 'playing';
+  gameTimer = 0;
+  playerTimes = {};
   currentGuess = '';
   guesses = [];
   guessResults = [];
+  lastRejectedWord = null;
+  rejectionCount = 0;
 
   // Initialize opponent boards
   opponents.clear();
@@ -699,7 +855,16 @@ function handleGameEnded(msg) {
 
 function handleReturnedToLobby() {
   gameState = 'waiting';
+  isReady = false;
+  allPlayersReady = false;
+
+  // Reset all players' ready status
+  playersInRoom = playersInRoom.map((p) => ({ ...p, isReady: false }));
+
   showView('waiting');
+  updatePlayerList(playersInRoom);
+  updateReadyButton();
+  updateStartButton();
 }
 
 // UI Helpers
@@ -714,8 +879,14 @@ function updatePlayerList(players) {
   for (const player of players) {
     const li = document.createElement('li');
     li.id = `player-${player.id}`;
+
+    const readyIndicator = player.isReady
+      ? '<span class="ready-indicator ready">✓</span>'
+      : '<span class="ready-indicator not-ready">○</span>';
+
     li.innerHTML = `
-      <span>${player.name}${player.id === playerId ? ' (You)' : ''}</span>
+      ${readyIndicator}
+      <span class="player-name">${player.name}${player.id === playerId ? ' (You)' : ''}</span>
       ${player.isCreator ? '<span class="host-badge">Host</span>' : ''}
     `;
     elements.players.appendChild(li);
@@ -725,6 +896,47 @@ function updatePlayerList(players) {
 function updateModeButtons(mode) {
   elements.modeCasual.classList.toggle('active', mode === 'casual');
   elements.modeCompetitive.classList.toggle('active', mode === 'competitive');
+}
+
+function updateWordModeButtons() {
+  if (elements.wordModeDaily) {
+    elements.wordModeDaily.classList.toggle('active', wordMode === 'daily');
+  }
+  if (elements.wordModeRandom) {
+    elements.wordModeRandom.classList.toggle('active', wordMode === 'random');
+  }
+  if (elements.dailyNumberDisplay) {
+    if (wordMode === 'daily' && dailyNumber) {
+      elements.dailyNumberDisplay.textContent = `#${dailyNumber}`;
+      elements.dailyNumberDisplay.classList.remove('hidden');
+    } else {
+      elements.dailyNumberDisplay.classList.add('hidden');
+    }
+  }
+}
+
+function updateReadyButton() {
+  if (!elements.readyBtn) return;
+
+  if (isReady) {
+    elements.readyBtn.textContent = 'Not Ready';
+    elements.readyBtn.classList.add('ready');
+  } else {
+    elements.readyBtn.textContent = "I'm Ready";
+    elements.readyBtn.classList.remove('ready');
+  }
+}
+
+function updateStartButton() {
+  if (!elements.startGame || !isCreator) return;
+
+  if (allPlayersReady) {
+    elements.startGame.disabled = false;
+    elements.startGame.classList.remove('disabled');
+  } else {
+    elements.startGame.disabled = true;
+    elements.startGame.classList.add('disabled');
+  }
 }
 
 function getPlayerName() {
@@ -798,10 +1010,43 @@ function handleKeyPress(key) {
 
   if (key === 'ENTER') {
     if (currentGuess.length === 5) {
-      send({ type: 'guess', word: currentGuess });
+      // Dictionary validation
+      if (!VALID_GUESSES.has(currentGuess)) {
+        if (currentGuess === lastRejectedWord) {
+          rejectionCount++;
+          if (rejectionCount >= 2) {
+            // Third attempt - force submit
+            send({ type: 'guess', word: currentGuess, forced: true });
+            lastRejectedWord = null;
+            rejectionCount = 0;
+            currentGuess = '';
+            return;
+          }
+          // Second attempt - warn them
+          showGameMessage("Not recognized. Enter again to force.");
+        } else {
+          // First attempt with this word
+          lastRejectedWord = currentGuess;
+          rejectionCount = 0; // Will be 1 on second attempt, 2 on third
+          showGameMessage("Not in word list");
+        }
+        shakeCurrentRow();
+        return;
+      }
+
+      // Valid word - submit normally
+      send({ type: 'guess', word: currentGuess, forced: false });
+      lastRejectedWord = null;
+      rejectionCount = 0;
+      currentGuess = '';
     }
   } else if (key === 'BACKSPACE') {
     currentGuess = currentGuess.slice(0, -1);
+    // Reset rejection if changing word
+    if (lastRejectedWord && currentGuess !== lastRejectedWord.slice(0, currentGuess.length)) {
+      lastRejectedWord = null;
+      rejectionCount = 0;
+    }
     updateCurrentRow();
   } else if (/^[A-Z]$/.test(key) && currentGuess.length < 5) {
     currentGuess += key;
@@ -809,39 +1054,140 @@ function handleKeyPress(key) {
   }
 }
 
+// Visual feedback for invalid words
+function shakeCurrentRow() {
+  const rowIndex = guesses.length;
+  if (rowIndex >= 6) return;
+  const row = elements.grid.children[rowIndex];
+  row.classList.add('shake');
+  setTimeout(() => row.classList.remove('shake'), 500);
+}
+
+function showGameMessage(text) {
+  elements.message.textContent = text;
+  elements.message.classList.add('visible');
+  setTimeout(() => {
+    elements.message.classList.remove('visible');
+  }, 2000);
+}
+
 // Opponent Boards
+function isMobileView() {
+  return window.innerWidth <= 768;
+}
+
+// Compute best known state per position from all guesses
+function computeBestKnownState(guessResults) {
+  const bestState = ['', '', '', '', '']; // empty = unknown
+
+  for (const row of guessResults) {
+    if (!row) continue;
+    for (let col = 0; col < 5; col++) {
+      const result = row[col];
+      if (result === 'correct') {
+        // Green always wins
+        bestState[col] = 'correct';
+      } else if (result === 'present' && bestState[col] !== 'correct') {
+        // Yellow only if not already green
+        bestState[col] = 'present';
+      }
+    }
+  }
+
+  return bestState;
+}
+
+// Count filled rows (guesses made)
+function countFilledRows(guessResults) {
+  return guessResults.filter((row) => row && row.length > 0).length;
+}
+
 function renderOpponentBoards() {
   elements.opponentBoards.innerHTML = '';
+  const isMobile = isMobileView();
 
   for (const [id, opponent] of opponents) {
     const board = document.createElement('div');
-    board.className = 'opponent-board';
+    board.className = isMobile ? 'opponent-board compact' : 'opponent-board';
 
-    let statusBadge = '';
-    if (opponent.isFinished) {
-      statusBadge = `<span class="status-badge ${opponent.won ? 'won' : 'lost'}">${opponent.won ? 'Won' : 'Lost'}</span>`;
+    if (opponent.isFinished && opponent.won) {
+      board.classList.add('solved');
     }
 
-    board.innerHTML = `
-      <div class="player-name">
-        <span>${opponent.name}</span>
-        ${statusBadge}
-      </div>
-      <div class="mini-grid"></div>
-    `;
+    // Get timer for this opponent
+    let timerDisplay = '';
+    const opponentTime = playerTimes[id];
+    if (opponentTime) {
+      const timeStr = formatTime(opponentTime.elapsed);
+      const finishedClass = opponentTime.finished ? 'finished' : '';
+      timerDisplay = `<span class="opponent-timer ${finishedClass}">${timeStr}</span>`;
+    }
 
-    const miniGrid = board.querySelector('.mini-grid');
+    if (isMobile) {
+      // Compact mobile view
+      const bestState = computeBestKnownState(opponent.guessResults);
+      const filledRows = countFilledRows(opponent.guessResults);
+      const isPlaying = !opponent.isFinished;
 
-    // Render 6 rows x 5 cols
-    for (let row = 0; row < 6; row++) {
-      const results = opponent.guessResults[row] || [];
-      for (let col = 0; col < 5; col++) {
-        const tile = document.createElement('div');
-        tile.className = 'mini-tile';
-        if (results[col]) {
-          tile.classList.add(results[col]);
+      // Build position cells HTML
+      const positionCellsHtml = bestState
+        .map((state) => `<div class="pos-cell ${state}"></div>`)
+        .join('');
+
+      // Build row progress HTML
+      let rowProgressHtml = '';
+      for (let i = 0; i < 6; i++) {
+        let segmentClass = 'row-segment';
+        if (i < filledRows) {
+          segmentClass += ' filled';
+        } else if (i === filledRows && isPlaying) {
+          segmentClass += ' active';
         }
-        miniGrid.appendChild(tile);
+        rowProgressHtml += `<div class="${segmentClass}"></div>`;
+      }
+
+      // Name with checkmark if solved
+      const nameHtml = opponent.won
+        ? `<span class="check">✓</span>${opponent.name}`
+        : opponent.name;
+
+      board.innerHTML = `
+        <div class="player-header">
+          <span class="player-name">${nameHtml}</span>
+          ${timerDisplay}
+          <div class="position-cells">${positionCellsHtml}</div>
+          <div class="row-progress">${rowProgressHtml}</div>
+        </div>
+      `;
+    } else {
+      // Desktop: full mini-grid view
+      let statusBadge = '';
+      if (opponent.isFinished) {
+        statusBadge = `<span class="status-badge ${opponent.won ? 'won' : 'lost'}">${opponent.won ? 'Won' : 'Lost'}</span>`;
+      }
+
+      board.innerHTML = `
+        <div class="player-header">
+          <span class="player-name">${opponent.name}</span>
+          ${timerDisplay}
+          ${statusBadge}
+        </div>
+        <div class="mini-grid"></div>
+      `;
+
+      const miniGrid = board.querySelector('.mini-grid');
+
+      // Render 6 rows x 5 cols
+      for (let row = 0; row < 6; row++) {
+        const results = opponent.guessResults[row] || [];
+        for (let col = 0; col < 5; col++) {
+          const tile = document.createElement('div');
+          tile.className = 'mini-tile';
+          if (results[col]) {
+            tile.classList.add(results[col]);
+          }
+          miniGrid.appendChild(tile);
+        }
       }
     }
 
@@ -905,6 +1251,30 @@ function setupEventListeners() {
     }
   });
 
+  // Word mode buttons
+  if (elements.wordModeDaily) {
+    elements.wordModeDaily.addEventListener('click', () => {
+      if (isCreator) {
+        send({ type: 'setWordMode', mode: 'daily' });
+      }
+    });
+  }
+
+  if (elements.wordModeRandom) {
+    elements.wordModeRandom.addEventListener('click', () => {
+      if (isCreator) {
+        send({ type: 'setWordMode', mode: 'random' });
+      }
+    });
+  }
+
+  // Ready button
+  if (elements.readyBtn) {
+    elements.readyBtn.addEventListener('click', () => {
+      send({ type: 'setReady', ready: !isReady });
+    });
+  }
+
   elements.startGame.addEventListener('click', () => {
     send({ type: 'startGame' });
   });
@@ -963,8 +1333,13 @@ function setupEventListeners() {
   if (elements.playAsGuest) {
     elements.playAsGuest.addEventListener('click', (e) => {
       e.preventDefault();
-      // Just hide the auth prompt - user can play as guest
-      elements.authSection.style.display = 'none';
+      // Hide the auth section and show room actions
+      if (elements.authSection) {
+        elements.authSection.classList.add('hidden');
+      }
+      if (elements.roomActionsSection) {
+        elements.roomActionsSection.classList.remove('hidden');
+      }
     });
   }
 
@@ -993,6 +1368,17 @@ function setupEventListeners() {
       showAuthModal(true);
     });
   }
+
+  // Re-render opponent boards on resize (debounced)
+  let resizeTimeout;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+      if (opponents.size > 0) {
+        renderOpponentBoards();
+      }
+    }, 150);
+  });
 }
 
 // Start

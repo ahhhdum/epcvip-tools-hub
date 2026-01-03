@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Mobile Opponents - Wordle Battle Mockup</title>
+  <style>
+    :root {
+      --green: #6aaa64;
+      --yellow: #c9b458;
+      --gray: #787c7e;
+      --dark-gray: #3a3a3c;
+      --light-gray: #d3d6da;
+      --bg: #121213;
+      --text: #ffffff;
+      --card-bg: #1a1a1b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 12px;
+    }
+
+    h1 {
+      font-size: 14px;
+      text-align: center;
+      margin-bottom: 12px;
+      color: var(--light-gray);
+      font-weight: 400;
+    }
+
+    /* Opponent Panel */
+    .opponents-panel {
+      background: var(--card-bg);
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin-bottom: 12px;
+    }
+
+    .opponent-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0;
+      border-bottom: 1px solid #2a2a2b;
+    }
+
+    .opponent-row:last-child {
+      border-bottom: none;
+    }
+
+    .opponent-row.solved {
+      opacity: 0.7;
+    }
+
+    .opponent-row.solved .player-name {
+      color: var(--green);
+    }
+
+    .player-info {
+      display: flex;
+      flex-direction: column;
+      min-width: 70px;
+    }
+
+    .player-name {
+      font-weight: 600;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .player-name .check {
+      color: var(--green);
+    }
+
+    .player-time {
+      font-size: 11px;
+      color: var(--gray);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Position Cells (shows WHERE, not WHAT) */
+    .position-cells {
+      display: flex;
+      gap: 3px;
+      flex: 1;
+      justify-content: center;
+    }
+
+    .pos-cell {
+      width: 20px;
+      height: 20px;
+      border-radius: 3px;
+      background: var(--dark-gray);
+      transition: all 0.2s ease;
+    }
+
+    .pos-cell.green {
+      background: var(--green);
+    }
+
+    .pos-cell.yellow {
+      background: var(--yellow);
+    }
+
+    .pos-cell.animate {
+      animation: cellPop 0.2s ease;
+    }
+
+    @keyframes cellPop {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.2); }
+      100% { transform: scale(1); }
+    }
+
+    /* Row Progress */
+    .row-progress {
+      display: flex;
+      gap: 2px;
+      margin-left: 4px;
+    }
+
+    .row-segment {
+      width: 6px;
+      height: 16px;
+      border-radius: 2px;
+      background: var(--dark-gray);
+      transition: background 0.2s ease;
+    }
+
+    .row-segment.filled {
+      background: var(--gray);
+    }
+
+    .row-segment.active {
+      background: var(--green);
+      animation: pulse 1s infinite;
+    }
+
+    .opponent-row.solved .row-segment.filled {
+      background: var(--green);
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    /* Overflow indicator */
+    .more-opponents {
+      text-align: center;
+      padding: 8px;
+      color: var(--gray);
+      font-size: 12px;
+      cursor: pointer;
+      border-top: 1px solid #2a2a2b;
+      margin-top: 4px;
+    }
+
+    .more-opponents:hover {
+      color: var(--text);
+    }
+
+    /* Scrollable version for many opponents */
+    .opponents-panel.scrollable {
+      max-height: 180px;
+      overflow-y: auto;
+    }
+
+    .opponents-panel.scrollable::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .opponents-panel.scrollable::-webkit-scrollbar-thumb {
+      background: var(--dark-gray);
+      border-radius: 2px;
+    }
+
+    /* Your Board (placeholder) */
+    .your-board {
+      background: var(--card-bg);
+      border-radius: 8px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .your-board h2 {
+      font-size: 12px;
+      color: var(--gray);
+      margin-bottom: 8px;
+      font-weight: 400;
+    }
+
+    .your-timer {
+      font-size: 24px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      margin-bottom: 16px;
+    }
+
+    .grid-placeholder {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 5px;
+      max-width: 280px;
+      margin: 0 auto 16px;
+    }
+
+    .grid-cell {
+      aspect-ratio: 1;
+      background: var(--dark-gray);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 20px;
+    }
+
+    .grid-cell.green { background: var(--green); }
+    .grid-cell.yellow { background: var(--yellow); color: #1a1a1b; }
+
+    .keyboard-placeholder {
+      height: 120px;
+      background: #1e1e1f;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--gray);
+      font-size: 12px;
+    }
+
+    /* Demo Controls */
+    .demo-controls {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #2a2a2b;
+      padding: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+    }
+
+    .demo-controls button {
+      background: var(--dark-gray);
+      color: var(--text);
+      border: none;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .demo-controls button:hover {
+      background: var(--gray);
+    }
+
+    .demo-controls button.active {
+      background: var(--green);
+    }
+
+    /* Variant: Summary Mode for 6+ opponents */
+    .opponents-summary {
+      background: var(--card-bg);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .summary-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .summary-header h3 {
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .summary-header span {
+      font-size: 11px;
+      color: var(--gray);
+    }
+
+    .summary-stats {
+      display: flex;
+      gap: 16px;
+    }
+
+    .summary-stat {
+      text-align: center;
+    }
+
+    .summary-stat .value {
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .summary-stat .value.green { color: var(--green); }
+    .summary-stat .value.yellow { color: var(--yellow); }
+
+    .summary-stat .label {
+      font-size: 10px;
+      color: var(--gray);
+      text-transform: uppercase;
+    }
+
+    /* Animation for new guess */
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateX(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    .letter-cell.animate {
+      animation: slideIn 0.2s ease;
+    }
+
+    /* Mobile frame indicator */
+    .mobile-frame {
+      max-width: 390px;
+      margin: 0 auto;
+      border: 2px solid #333;
+      border-radius: 24px;
+      padding: 20px 12px 80px;
+      background: var(--bg);
+    }
+
+    .frame-notch {
+      width: 120px;
+      height: 24px;
+      background: #333;
+      border-radius: 12px;
+      margin: -8px auto 12px;
+    }
+
+    /* Variant selector */
+    .variant-tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 16px;
+      background: var(--card-bg);
+      padding: 4px;
+      border-radius: 8px;
+    }
+
+    .variant-tab {
+      flex: 1;
+      padding: 8px;
+      text-align: center;
+      font-size: 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      color: var(--gray);
+    }
+
+    .variant-tab.active {
+      background: var(--dark-gray);
+      color: var(--text);
+    }
+  </style>
+</head>
+<body>
+  <div class="mobile-frame">
+    <div class="frame-notch"></div>
+
+    <h1>Wordle Battle - Mobile Opponent View</h1>
+
+    <!-- Variant Tabs -->
+    <div class="variant-tabs">
+      <div class="variant-tab active" data-variant="3-players">3 Players</div>
+      <div class="variant-tab" data-variant="5-players">5 Players</div>
+      <div class="variant-tab" data-variant="summary">6+ Summary</div>
+    </div>
+
+    <!-- Variant: 3 Players (default) -->
+    <div id="variant-3-players" class="variant-content">
+      <div class="opponents-panel">
+        <div class="opponent-row solved">
+          <div class="player-info">
+            <span class="player-name"><span class="check">✓</span> Adam</span>
+            <span class="player-time">0:45</span>
+          </div>
+          <div class="position-cells">
+            <div class="pos-cell green"></div>
+            <div class="pos-cell green"></div>
+            <div class="pos-cell green"></div>
+            <div class="pos-cell green"></div>
+            <div class="pos-cell green"></div>
+          </div>
+          <div class="row-progress">
+            <div class="row-segment filled"></div>
+            <div class="row-segment filled"></div>
+            <div class="row-segment filled"></div>
+            <div class="row-segment filled"></div>
+            <div class="row-segment"></div>
+            <div class="row-segment"></div>
+          </div>
+        </div>
+
+        <div class="opponent-row" id="bob-row">
+          <div class="player-info">
+            <span class="player-name">Bob</span>
+            <span class="player-time">0:52</span>
+          </div>
+          <div class="position-cells" id="bob-positions">
+            <div class="pos-cell"></div>
+            <div class="pos-cell green"></div>
+            <div class="pos-cell yellow"></div>
+            <div class="pos-cell"></div>
+            <div class="pos-cell green"></div>
+          </div>
+          <div class="row-progress">
+            <div class="row-segment filled"></div>
+            <div class="row-segment filled"></div>
+            <div class="row-segment filled"></div>
+            <div class="row-segment active"></div>
+            <div class="row-segment"></div>
+            <div class="row-segment"></div>
+          </div>
+        </div>
+
+        <div class="opponent-row">
+          <div class="player-info">
+            <span class="player-name">Eve</span>
+            <span class="player-time">1:03</span>
+          </div>
+          <div class="position-cells">
+            <div class="pos-cell"></div>
+            <div class="pos-cell"></div>
+            <div class="pos-cell"></div>
+            <div class="pos-cell"></div>
+            <div class="pos-cell"></div>
+          </div>
+          <div class="row-progress">
+            <div class="row-segment filled"></div>
+            <div class="row-segment filled"></div>
+            <div class="row-segment active"></div>
+            <div class="row-segment"></div>
+            <div class="row-segment"></div>
+            <div class="row-segment"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Variant: 5 Players (scrollable) -->
+    <div id="variant-5-players" class="variant-content" style="display: none;">
+      <div class="opponents-panel scrollable">
+        <div class="opponent-row solved">
+          <div class="player-info">
+            <span class="player-name"><span class="check">✓</span> Adam</span>
+            <span class="player-time">0:45</span>
+          </div>
+          <div class="position-cells">
+            <div class="pos-cell green"></div>
+            <div class="pos-cell green"></div>
+            <div class="pos-cell green"></div>
+            <div class="pos-cell green"></div>
+            <div class="pos-cell green"></div>
+          </div>
+          <div class="row-progress">
+            <div class="row-segment filled"></div>
+            <div class="row-segment filled"></div>
+            <div class="row-segment filled"></div>
+            <div class="row-segment filled"></div>
+            <div class="row-segment"></div>
+            <div class="row-segment"></div>
+          </div>
+        </div>
+
+        <div class="opponent-row">
+          <div class="player-info">
+            <span class="player-name">Bob</span>
+            <span class="player-time">0:52</span>
+          </div>
+          <div class="position-cells">
+            <div class="pos-cell"></div>
+            <div class="pos-cell green"></div>
+            <div class="pos-cell yellow"></div>
+            <div class="pos-cell"></div>
+            <div class="pos-cell green"></div>
+          </div>
+          <div class="row-progress">
+            <div class="row-segment filled"></div>
+            <div class="row-segment filled"></div>
+            <div class="row-segment filled"></div>
+            <div class="row-segment active"></div>
+            <div class="row-segment"></div>
+            <div class="row-segment"></div>
+          </div>
+        </div>
+
+        <div class="opponent-row">
+          <div class="player-info">
+            <span class="player-name">Charlie</span>
+            <span class="player-time">1:10</span>
+          </div>
+          <div class="position-cells">
+            <div class="pos-cell green"></div>
+            <div class="pos-cell"></div>
+            <div class="pos-cell"></div>
+            <div class="pos-cell yellow"></div>
+            <div class="pos-cell"></div>
+          </div>
+          <div class="row-progress">
+            <div class="row-segment filled"></div>
+            <div class="row-segment filled"></div>
+            <div class="row-segment filled"></div>
+            <div class="row-segment filled"></div>
+            <div class="row-segment active"></div>
+            <div class="row-segment"></div>
+          </div>
+        </div>
+
+        <div class="opponent-row">
+          <div class="player-info">
+            <span class="player-name">Diana</span>
+            <span class="player-time">1:15</span>
+          </div>
+          <div class="position-cells">
+            <div class="pos-cell"></div>
+            <div class="pos-cell green"></div>
+            <div class="pos-cell yellow"></div>
+            <div class="pos-cell"></div>
+            <div class="pos-cell"></div>
+          </div>
+          <div class="row-progress">
+            <div class="row-segment filled"></div>
+            <div class="row-segment filled"></div>
+            <div class="row-segment active"></div>
+            <div class="row-segment"></div>
+            <div class="row-segment"></div>
+            <div class="row-segment"></div>
+          </div>
+        </div>
+
+        <div class="opponent-row">
+          <div class="player-info">
+            <span class="player-name">Eve</span>
+            <span class="player-time">1:20</span>
+          </div>
+          <div class="position-cells">
+            <div class="pos-cell"></div>
+            <div class="pos-cell"></div>
+            <div class="pos-cell"></div>
+            <div class="pos-cell"></div>
+            <div class="pos-cell"></div>
+          </div>
+          <div class="row-progress">
+            <div class="row-segment filled"></div>
+            <div class="row-segment active"></div>
+            <div class="row-segment"></div>
+            <div class="row-segment"></div>
+            <div class="row-segment"></div>
+            <div class="row-segment"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Variant: 6+ Summary Mode -->
+    <div id="variant-summary" class="variant-content" style="display: none;">
+      <div class="opponents-summary">
+        <div class="summary-header">
+          <h3>7 Opponents</h3>
+          <span>Tap to expand</span>
+        </div>
+        <div class="summary-stats">
+          <div class="summary-stat">
+            <div class="value green">2</div>
+            <div class="label">Solved</div>
+          </div>
+          <div class="summary-stat">
+            <div class="value">5</div>
+            <div class="label">Playing</div>
+          </div>
+          <div class="summary-stat">
+            <div class="value yellow">3.2</div>
+            <div class="label">Avg Row</div>
+          </div>
+          <div class="summary-stat">
+            <div class="value">1:15</div>
+            <div class="label">Avg Time</div>
+          </div>
+        </div>
+      </div>
+      <p style="text-align: center; font-size: 11px; color: var(--gray); margin-bottom: 12px;">
+        For 6+ players, show summary by default.<br>
+        Tap to expand full list (scrollable).
+      </p>
+    </div>
+
+    <!-- Your Board -->
+    <div class="your-board">
+      <h2>YOUR BOARD</h2>
+      <div class="your-timer">1:23</div>
+      <div class="grid-placeholder">
+        <div class="grid-cell">S</div>
+        <div class="grid-cell yellow">T</div>
+        <div class="grid-cell">O</div>
+        <div class="grid-cell">R</div>
+        <div class="grid-cell yellow">E</div>
+
+        <div class="grid-cell">C</div>
+        <div class="grid-cell green">T</div>
+        <div class="grid-cell">A</div>
+        <div class="grid-cell">R</div>
+        <div class="grid-cell green">E</div>
+
+        <div class="grid-cell"></div>
+        <div class="grid-cell"></div>
+        <div class="grid-cell"></div>
+        <div class="grid-cell"></div>
+        <div class="grid-cell"></div>
+
+        <div class="grid-cell"></div>
+        <div class="grid-cell"></div>
+        <div class="grid-cell"></div>
+        <div class="grid-cell"></div>
+        <div class="grid-cell"></div>
+
+        <div class="grid-cell"></div>
+        <div class="grid-cell"></div>
+        <div class="grid-cell"></div>
+        <div class="grid-cell"></div>
+        <div class="grid-cell"></div>
+
+        <div class="grid-cell"></div>
+        <div class="grid-cell"></div>
+        <div class="grid-cell"></div>
+        <div class="grid-cell"></div>
+        <div class="grid-cell"></div>
+      </div>
+      <div class="keyboard-placeholder">[Keyboard]</div>
+    </div>
+  </div>
+
+  <div class="demo-controls">
+    <button onclick="simulateGuess()">Simulate Guess</button>
+    <button onclick="simulateSolve()">Simulate Solve</button>
+    <button onclick="resetDemo()">Reset</button>
+  </div>
+
+  <script>
+    // Tab switching
+    document.querySelectorAll('.variant-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.variant-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.variant-content').forEach(c => c.style.display = 'none');
+
+        tab.classList.add('active');
+        const variant = tab.dataset.variant;
+        document.getElementById(`variant-${variant}`).style.display = 'block';
+      });
+    });
+
+    // Demo: Simulate a guess (light up a position)
+    function simulateGuess() {
+      const positions = document.getElementById('bob-positions');
+      const cells = positions.querySelectorAll('.pos-cell');
+      const bobRow = document.getElementById('bob-row');
+      const progress = bobRow.querySelectorAll('.row-segment');
+
+      // Find first empty cell and make it yellow or green
+      for (let cell of cells) {
+        if (!cell.classList.contains('green') && !cell.classList.contains('yellow')) {
+          // Randomly choose green or yellow
+          const color = Math.random() > 0.5 ? 'green' : 'yellow';
+          cell.classList.add(color, 'animate');
+          setTimeout(() => cell.classList.remove('animate'), 200);
+          break;
+        }
+      }
+
+      // Update progress bar
+      let filledCount = 0;
+      progress.forEach((seg) => {
+        if (seg.classList.contains('filled') || seg.classList.contains('active')) {
+          filledCount++;
+        }
+      });
+
+      if (filledCount < 6) {
+        progress[filledCount - 1].classList.remove('active');
+        progress[filledCount - 1].classList.add('filled');
+        if (filledCount < 5) {
+          progress[filledCount].classList.add('active');
+        }
+      }
+    }
+
+    // Demo: Simulate solve
+    function simulateSolve() {
+      const positions = document.getElementById('bob-positions');
+      const cells = positions.querySelectorAll('.pos-cell');
+      const bobRow = document.getElementById('bob-row');
+      const progress = bobRow.querySelectorAll('.row-segment');
+      const name = bobRow.querySelector('.player-name');
+
+      // All cells green
+      cells.forEach((cell, i) => {
+        cell.classList.remove('yellow');
+        cell.classList.add('green', 'animate');
+        setTimeout(() => cell.classList.remove('animate'), 200 + i * 50);
+      });
+
+      // Mark solved
+      bobRow.classList.add('solved');
+      name.innerHTML = '<span class="check">✓</span> Bob';
+
+      // Fill progress
+      progress.forEach(seg => {
+        seg.classList.remove('active');
+        seg.classList.add('filled');
+      });
+    }
+
+    // Reset demo
+    function resetDemo() {
+      const positions = document.getElementById('bob-positions');
+      const cells = positions.querySelectorAll('.pos-cell');
+      const bobRow = document.getElementById('bob-row');
+      const progress = bobRow.querySelectorAll('.row-segment');
+      const name = bobRow.querySelector('.player-name');
+
+      // Reset cells: pos 2 green, pos 3 yellow, rest empty
+      cells.forEach((cell, i) => {
+        cell.classList.remove('green', 'yellow');
+        if (i === 1) cell.classList.add('green');
+        if (i === 2) cell.classList.add('yellow');
+        if (i === 4) cell.classList.add('green');
+      });
+
+      // Reset solved state
+      bobRow.classList.remove('solved');
+      name.innerHTML = 'Bob';
+
+      // Reset progress
+      progress.forEach((seg, i) => {
+        seg.classList.remove('filled', 'active');
+        if (i < 3) seg.classList.add('filled');
+        if (i === 3) seg.classList.add('active');
+      });
+    }
+
+    // Auto-increment timers
+    setInterval(() => {
+      document.querySelectorAll('.player-time').forEach(timer => {
+        const parent = timer.closest('.opponent-row');
+        if (parent && !parent.classList.contains('solved')) {
+          const [mins, secs] = timer.textContent.split(':').map(Number);
+          const newSecs = secs + 1;
+          if (newSecs >= 60) {
+            timer.textContent = `${mins + 1}:00`;
+          } else {
+            timer.textContent = `${mins}:${String(newSecs).padStart(2, '0')}`;
+          }
+        }
+      });
+
+      // Also increment "your" timer
+      const yourTimer = document.querySelector('.your-timer');
+      const [mins, secs] = yourTimer.textContent.split(':').map(Number);
+      const newSecs = secs + 1;
+      if (newSecs >= 60) {
+        yourTimer.textContent = `${mins + 1}:00`;
+      } else {
+        yourTimer.textContent = `${mins}:${String(newSecs).padStart(2, '0')}`;
+      }
+    }, 1000);
+  </script>
+</body>
+</html>
