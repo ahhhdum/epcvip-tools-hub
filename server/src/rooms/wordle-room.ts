@@ -42,10 +42,13 @@ import {
 } from '../services/wordle-timer';
 import {
   hasCompletedDailyChallenge,
+  createGame,
+  saveGuess,
   saveGameResults,
   saveDailyChallengeCompletions,
   GameResultData,
   DailyChallengePlayerData,
+  GuessData,
 } from '../services/wordle-database';
 
 // Re-export LetterResult for consumers
@@ -71,6 +74,7 @@ interface WordlePlayer {
   won: boolean;
   finishTime: number | null;
   score: number;
+  lastGuessTime: number | null; // For tracking time between guesses
 }
 
 // Wordle room
@@ -88,6 +92,7 @@ interface WordleRoom {
   isDailyChallenge: boolean; // True if this is a daily challenge room
   dailyNumber: number | null; // The specific daily number (for historical dailies)
   isSolo: boolean; // True if this is a solo game (skip 2-player requirement)
+  gameId: string | null; // Database game ID for tracking guesses
 }
 
 // Player counter for unique IDs
@@ -139,6 +144,7 @@ export class WordleRoomManager {
       won: false,
       finishTime: null,
       score: 0,
+      lastGuessTime: null,
     };
 
     const room: WordleRoom = {
@@ -155,6 +161,7 @@ export class WordleRoomManager {
       isDailyChallenge: false,
       dailyNumber: null,
       isSolo: false,
+      gameId: null,
     };
 
     this.rooms.set(roomCode, room);
@@ -284,6 +291,7 @@ export class WordleRoomManager {
       won: false,
       finishTime: null,
       score: 0,
+      lastGuessTime: null,
     };
 
     room.players.set(playerId, player);
@@ -484,7 +492,7 @@ export class WordleRoomManager {
   /**
    * Actually begin the game (after countdown)
    */
-  private beginGame(room: WordleRoom): void {
+  private async beginGame(room: WordleRoom): Promise<void> {
     // Reset all players
     for (const p of room.players.values()) {
       p.guesses = [];
@@ -493,6 +501,7 @@ export class WordleRoomManager {
       p.won = false;
       p.finishTime = null;
       p.score = 0;
+      p.lastGuessTime = null;
     }
 
     // Select word based on word mode
@@ -505,6 +514,18 @@ export class WordleRoomManager {
     }
     room.gameState = 'playing';
     room.startTime = Date.now();
+
+    // Create game record in database for tracking guesses
+    room.gameId = await createGame({
+      roomCode: room.code,
+      word: room.word!,
+      gameMode: room.gameMode,
+      wordMode: room.wordMode,
+      dailyNumber: room.dailyNumber,
+      isSolo: room.isSolo,
+      playerCount: room.players.size,
+      startTime: room.startTime,
+    });
 
     const wordModeInfo =
       room.wordMode === 'daily' ? `Daily #${room.dailyNumber ?? getDailyNumber()}` : 'Random';
@@ -611,7 +632,7 @@ export class WordleRoomManager {
   /**
    * Handle a guess
    */
-  handleGuess(socket: WebSocket, word: string, forced: boolean = false): void {
+  async handleGuess(socket: WebSocket, word: string, forced: boolean = false): Promise<void> {
     const playerId = this.socketToPlayer.get(socket);
     if (!playerId) return;
 
@@ -642,10 +663,16 @@ export class WordleRoomManager {
       return;
     }
 
+    // Calculate timing for this guess
+    const now = Date.now();
+    const elapsedMs = now - (room.startTime || now);
+    const timeSinceLastMs = player.lastGuessTime ? now - player.lastGuessTime : null;
+
     // Validate guess against target word using validator service
     const result = validateGuess(guess, room.word);
     player.guesses.push(guess);
     player.guessResults.push(result);
+    player.lastGuessTime = now;
 
     const isWin = isWinningResult(result);
     const isLoss = !isWin && isOutOfGuesses(player.guesses.length);
@@ -658,6 +685,27 @@ export class WordleRoomManager {
       if (isWin && room.gameMode === 'competitive') {
         player.score = calculateScore(player.guesses.length, player.finishTime);
       }
+    }
+
+    // Save guess to database (async, don't block the response)
+    if (room.gameId && player.email) {
+      const correctCount = countCorrectLetters(result);
+      const presentCount = result.filter((r) => r === 'present').length;
+
+      saveGuess({
+        gameId: room.gameId,
+        playerEmail: player.email,
+        guessNumber: player.guesses.length,
+        guessWord: guess,
+        elapsedMs,
+        timeSinceLastMs,
+        letterResults: result,
+        correctCount,
+        presentCount,
+        isWinningGuess: isWin,
+      }).catch((err) => {
+        console.error('[Wordle] Failed to save guess:', err);
+      });
     }
 
     // Send result to the guesser
@@ -771,11 +819,9 @@ export class WordleRoomManager {
     console.log(`[Wordle] Game ended in room ${room.code}`);
 
     // Save to database using service (async, don't block the response)
-    saveGameResults(room.code, room.word || '', room.gameMode, room.startTime, results).catch(
-      (err) => {
-        console.error('[Wordle] Failed to save game results:', err);
-      }
-    );
+    saveGameResults(room.gameId, results).catch((err) => {
+      console.error('[Wordle] Failed to save game results:', err);
+    });
 
     // Save daily challenge completions if applicable
     if (room.isDailyChallenge && room.word) {
@@ -815,6 +861,7 @@ export class WordleRoomManager {
     room.gameState = 'waiting';
     room.word = null;
     room.startTime = null;
+    room.gameId = null;
 
     for (const p of room.players.values()) {
       p.guesses = [];
@@ -824,6 +871,7 @@ export class WordleRoomManager {
       p.finishTime = null;
       p.score = 0;
       p.isReady = false;
+      p.lastGuessTime = null;
     }
 
     this.broadcastToRoom(roomCode, { type: 'returnedToLobby' });

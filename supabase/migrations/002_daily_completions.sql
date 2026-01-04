@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS daily_challenge_completions (
 ALTER TABLE daily_challenge_completions ENABLE ROW LEVEL SECURITY;
 
 -- Anyone can read (for leaderboards)
+DROP POLICY IF EXISTS "Public read" ON daily_challenge_completions;
 CREATE POLICY "Public read" ON daily_challenge_completions
   FOR SELECT USING (true);
 
