@@ -21,6 +21,7 @@ import {
   SOLO_START_DELAY_MS,
   FORCED_WORDS_LOG_FILE,
   LOGS_DIRECTORY,
+  GRACE_PERIOD,
 } from '../constants/wordle-constants';
 
 // Services
@@ -60,14 +61,24 @@ export type GameMode = 'casual' | 'competitive';
 // Game states
 export type GameState = 'waiting' | 'playing' | 'finished';
 
+// Player connection state
+type ConnectionState = 'connected' | 'disconnected';
+
 // Player in a Wordle room
 interface WordlePlayer {
   id: string;
   name: string;
   email: string | null; // Email from SSO (null for guests)
-  socket: WebSocket;
   isCreator: boolean;
   isReady: boolean;
+
+  // Connection state - enables grace period on disconnect
+  socket: WebSocket | null; // null when disconnected
+  connectionState: ConnectionState;
+  disconnectedAt: number | null; // Timestamp when disconnected
+  reconnectTimer: ReturnType<typeof setTimeout> | null; // Timer for removal
+
+  // Game state
   guesses: string[];
   guessResults: LetterResult[][];
   isFinished: boolean;
@@ -105,6 +116,31 @@ function generatePlayerId(): string {
   return `${PLAYER_ID_PREFIX}${++playerCounter}_${Date.now()}`;
 }
 
+// =============================================================================
+// Connection State Helpers
+// =============================================================================
+
+/**
+ * Check if a player is currently connected
+ */
+function isPlayerConnected(player: WordlePlayer): boolean {
+  return player.connectionState === 'connected' && player.socket !== null;
+}
+
+/**
+ * Get only connected players from a room
+ */
+function getConnectedPlayers(room: WordleRoom): WordlePlayer[] {
+  return Array.from(room.players.values()).filter(isPlayerConnected);
+}
+
+/**
+ * Get count of connected players in a room
+ */
+function getConnectedPlayerCount(room: WordleRoom): number {
+  return getConnectedPlayers(room).length;
+}
+
 /**
  * Wordle Room Manager
  */
@@ -135,9 +171,16 @@ export class WordleRoomManager {
       id: playerId,
       name: playerName || 'Player',
       email: playerEmail || null,
-      socket,
       isCreator: true,
       isReady: false,
+
+      // Connection state
+      socket,
+      connectionState: 'connected',
+      disconnectedAt: null,
+      reconnectTimer: null,
+
+      // Game state
       guesses: [],
       guessResults: [],
       isFinished: false,
@@ -282,9 +325,16 @@ export class WordleRoomManager {
       id: playerId,
       name: playerName || 'Player',
       email: playerEmail || null,
-      socket,
       isCreator: false,
       isReady: false,
+
+      // Connection state
+      socket,
+      connectionState: 'connected',
+      disconnectedAt: null,
+      reconnectTimer: null,
+
+      // Game state
       guesses: [],
       guessResults: [],
       isFinished: false,
@@ -331,8 +381,122 @@ export class WordleRoomManager {
     return true;
   }
 
+  // ===========================================================================
+  // Connection Management (Grace Period System)
+  // ===========================================================================
+
   /**
-   * Handle player disconnect
+   * Get the appropriate grace period based on room state
+   *
+   * Longer grace periods for low-urgency states (waiting room),
+   * shorter for time-sensitive states (active game).
+   */
+  private getGracePeriod(room: WordleRoom): number {
+    // Solo games get shorter grace period (only affects the solo player)
+    if (room.isSolo) {
+      return GRACE_PERIOD.SOLO_MS;
+    }
+
+    switch (room.gameState) {
+      case 'waiting':
+        return GRACE_PERIOD.WAITING_MS;
+      case 'playing':
+        return GRACE_PERIOD.PLAYING_MS;
+      case 'finished':
+        return GRACE_PERIOD.RESULTS_MS;
+      default:
+        return GRACE_PERIOD.DEFAULT_MS;
+    }
+  }
+
+  /**
+   * Permanently remove a player after their grace period expires
+   *
+   * This contains the logic that was previously executed immediately
+   * in handleDisconnect. Now it only runs after the grace period.
+   */
+  private removePlayerPermanently(roomCode: string, playerId: string): void {
+    const room = this.rooms.get(roomCode);
+    if (!room) {
+      console.log(`[Wordle] Room ${roomCode} already deleted, skipping removal of ${playerId}`);
+      return;
+    }
+
+    const player = room.players.get(playerId);
+    if (!player) {
+      console.log(`[Wordle] Player ${playerId} already removed from ${roomCode}`);
+      return;
+    }
+
+    // If player reconnected, they won't be in disconnected state
+    if (player.connectionState === 'connected') {
+      console.log(`[Wordle] Player ${player.name} reconnected, skipping removal`);
+      return;
+    }
+
+    // Clear any pending timer (safety check)
+    if (player.reconnectTimer) {
+      clearTimeout(player.reconnectTimer);
+      player.reconnectTimer = null;
+    }
+
+    const wasCreator = player.isCreator;
+    const playerName = player.name;
+
+    // Now actually remove the player
+    room.players.delete(playerId);
+    this.playerToRoom.delete(playerId);
+
+    console.log(
+      `[Wordle] ${playerName} permanently removed from ${roomCode} (grace period expired)`
+    );
+
+    // If room is empty, delete it
+    if (room.players.size === 0) {
+      clearCountdown(room.countdownTimer);
+      room.countdownTimer = null;
+      stopTimerSync(room.timerInterval);
+      room.timerInterval = null;
+      this.rooms.delete(roomCode);
+      console.log(`[Wordle] Room ${roomCode} deleted (empty)`);
+      return;
+    }
+
+    // If creator left, assign new creator (prefer connected players)
+    if (wasCreator) {
+      const connectedPlayers = getConnectedPlayers(room);
+      const newCreator =
+        connectedPlayers.length > 0 ? connectedPlayers[0] : room.players.values().next().value;
+
+      if (newCreator) {
+        newCreator.isCreator = true;
+        room.creatorId = newCreator.id;
+        if (newCreator.socket && newCreator.connectionState === 'connected') {
+          this.send(newCreator.socket, { type: 'becameCreator' });
+        }
+        console.log(`[Wordle] ${newCreator.name} is now host of ${roomCode}`);
+      }
+    }
+
+    // Notify remaining connected players that player has left
+    this.broadcastToRoom(roomCode, { type: 'playerLeft', playerId });
+
+    // Check if game should end (only connected players count for active games)
+    if (room.gameState === 'playing') {
+      const connectedCount = getConnectedPlayerCount(room);
+      if (connectedCount <= 1) {
+        console.log(`[Wordle] Only ${connectedCount} connected player(s) left, ending game`);
+        this.endGame(room);
+      }
+    }
+  }
+
+  /**
+   * Handle player disconnect - start grace period instead of immediate removal
+   *
+   * When a player disconnects (close tab, refresh, network issue), they are
+   * marked as disconnected and given a grace period to reconnect. If they
+   * don't reconnect within the grace period, they are permanently removed.
    */
   handleDisconnect(socket: WebSocket): void {
     const playerId = this.socketToPlayer.get(socket);
@@ -345,44 +509,41 @@ export class WordleRoomManager {
     if (!room) return;
 
     const player = room.players.get(playerId);
-    const wasCreator = player?.isCreator;
+    if (!player) return;
 
-    room.players.delete(playerId);
-    this.playerToRoom.delete(playerId);
-    this.socketToPlayer.delete(socket);
-
-    console.log(`[Wordle] Player ${playerId} left room ${roomCode}`);
-
-    // If room is empty, delete it
-    if (room.players.size === 0) {
-      // Clear any active countdown
-      clearCountdown(room.countdownTimer);
-      room.countdownTimer = null;
-      // Clear timer sync
-      stopTimerSync(room.timerInterval);
-      room.timerInterval = null;
-      this.rooms.delete(roomCode);
-      console.log(`[Wordle] Room ${roomCode} deleted (empty)`);
+    // If player is already disconnected, this is a duplicate close event
+    if (player.connectionState === 'disconnected') {
+      console.log(`[Wordle] Ignoring duplicate disconnect for ${player.name}`);
       return;
     }
 
-    // If creator left, assign new creator
-    if (wasCreator) {
-      const newCreator = room.players.values().next().value;
-      if (newCreator) {
-        newCreator.isCreator = true;
-        room.creatorId = newCreator.id;
-        this.send(newCreator.socket, { type: 'becameCreator' });
-      }
-    }
+    // Mark as disconnected instead of removing immediately
+    player.socket = null;
+    player.connectionState = 'disconnected';
+    player.disconnectedAt = Date.now();
 
-    // Notify remaining players
-    this.broadcastToRoom(roomCode, { type: 'playerLeft', playerId });
+    // Clean up socket mapping (socket is gone, but player persists)
+    this.socketToPlayer.delete(socket);
 
-    // Check if game should end (only one player left during game)
-    if (room.gameState === 'playing' && room.players.size === 1) {
-      this.endGame(room);
-    }
+    // Determine grace period based on game state
+    const gracePeriod = this.getGracePeriod(room);
+
+    // Start reconnect timer - player will be removed after grace period
+    player.reconnectTimer = setTimeout(() => {
+      this.removePlayerPermanently(roomCode, playerId);
+    }, gracePeriod);
+
+    console.log(
+      `[Wordle] ${player.name} disconnected from ${roomCode}, grace period: ${gracePeriod / 1000}s`
+    );
+
+    // Notify connected players that this player disconnected
+    this.broadcastToRoom(roomCode, {
+      type: 'playerDisconnected',
+      playerId,
+      playerName: player.name,
+      gracePeriodSeconds: gracePeriod / 1000,
+    });
   }
 
   /**
@@ -460,10 +621,11 @@ export class WordleRoomManager {
       isReady: ready,
     });
 
-    // Check if all players are ready and notify creator
-    const allReady = Array.from(room.players.values()).every((p) => p.isReady);
+    // Check if all connected players are ready and notify creator
+    const connectedPlayers = getConnectedPlayers(room);
+    const allReady = connectedPlayers.every((p) => p.isReady);
     const creator = room.players.get(room.creatorId);
-    if (creator) {
+    if (creator && creator.socket && creator.connectionState === 'connected') {
       this.send(creator.socket, {
         type: 'allPlayersReadyStatus',
         allReady,
@@ -616,8 +778,9 @@ export class WordleRoomManager {
       return;
     }
 
-    // Check that all players are ready
-    const allReady = Array.from(room.players.values()).every((p) => p.isReady);
+    // Check that all connected players are ready
+    const connectedPlayers = getConnectedPlayers(room);
+    const allReady = connectedPlayers.every((p) => p.isReady);
     if (!allReady) {
       this.send(socket, { type: 'error', message: 'All players must be ready to start.' });
       return;
@@ -738,7 +901,10 @@ export class WordleRoomManager {
     );
 
     // Check if game should end
-    const allFinished = Array.from(room.players.values()).every((p) => p.isFinished);
+    // Disconnected players count as "finished" (they can't guess anymore)
+    const allFinished = Array.from(room.players.values()).every(
+      (p) => p.isFinished || p.connectionState === 'disconnected'
+    );
     if (allFinished) {
       this.endGame(room);
     }
@@ -928,15 +1094,19 @@ export class WordleRoomManager {
 
   /**
    * Send a message to a socket
+   *
+   * Safely handles null sockets (disconnected players).
    */
-  private send(socket: WebSocket, msg: object): void {
-    if (socket.readyState === WebSocket.OPEN) {
+  private send(socket: WebSocket | null, msg: object): void {
+    if (socket && socket.readyState === WebSocket.OPEN) {
       socket.send(JSON.stringify(msg));
     }
   }
 
   /**
-   * Broadcast a message to all players in a room
+   * Broadcast a message to all CONNECTED players in a room
+   *
+   * Only sends to players who are currently connected (not in grace period).
    */
   private broadcastToRoom(roomCode: string, msg: object, excludeId?: string): void {
     const room = this.rooms.get(roomCode);
@@ -944,7 +1114,13 @@ export class WordleRoomManager {
 
     const data = JSON.stringify(msg);
     for (const player of room.players.values()) {
-      if (player.id !== excludeId && player.socket.readyState === WebSocket.OPEN) {
+      // Only send to connected players with open sockets
+      if (
+        player.id !== excludeId &&
+        player.connectionState === 'connected' &&
+        player.socket &&
+        player.socket.readyState === WebSocket.OPEN
+      ) {
         player.socket.send(data);
       }
     }

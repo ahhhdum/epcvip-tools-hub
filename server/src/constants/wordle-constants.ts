@@ -38,3 +38,20 @@ export const PLAYER_ID_PREFIX = 'wp';
 // Log File Paths
 export const FORCED_WORDS_LOG_FILE = 'forced-words.jsonl';
 export const LOGS_DIRECTORY = 'logs';
+
+// Grace Periods (milliseconds)
+// Time before disconnected players are permanently removed
+export const GRACE_PERIOD = {
+  /** Waiting room - longest, host may be sharing code */
+  WAITING_MS: 120000, // 2 minutes
+  /** During countdown - short, but allow for network blips */
+  COUNTDOWN_MS: 10000, // 10 seconds
+  /** Active game - balance between fairness and allowing reconnect */
+  PLAYING_MS: 60000, // 1 minute
+  /** Results screen - no rush, let them see results */
+  RESULTS_MS: 300000, // 5 minutes
+  /** Solo games - shorter, only affects the solo player */
+  SOLO_MS: 30000, // 30 seconds
+  /** Default fallback */
+  DEFAULT_MS: 60000, // 1 minute
+} as const;
