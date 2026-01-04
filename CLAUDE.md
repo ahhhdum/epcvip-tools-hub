@@ -30,11 +30,20 @@ epcvip-tools-hub/
 │   │   ├── index.ts          # Express + WebSocket server, API routes
 │   │   ├── rooms/
 │   │   │   └── wordle-room.ts # Wordle game logic, room management
+│   │   ├── services/         # Modular business logic
+│   │   │   ├── wordle-database.ts  # Supabase operations
+│   │   │   ├── wordle-validator.ts # Guess validation (pure functions)
+│   │   │   └── wordle-timer.ts     # Timer sync logic
+│   │   ├── constants/
+│   │   │   └── wordle-constants.ts # Game constants
 │   │   └── utils/
 │   │       ├── daily-word.ts  # Daily word system (epoch: 2024-01-01)
 │   │       ├── room-codes.ts  # 6-char room code generator
 │   │       └── word-list.ts   # 666 common 5-letter words
 │   └── public/               # Static files (copied during build)
+│
+├── supabase/                  # Database migrations
+│   └── migrations/           # SQL files (001-005)
 │
 ├── js/                        # KaPlay game frontend
 │   ├── main.js               # Entry point, scene registration
@@ -59,29 +68,37 @@ epcvip-tools-hub/
 
 ```bash
 # Development
-npm run dev              # Start server with hot reload
+cd server && npm start  # Start dev server (ts-node)
 npm run build           # Compile TypeScript + copy static
 
 # Quality
 npm run lint            # ESLint check
 npm run lint:fix        # Auto-fix ESLint issues
 npm run format          # Prettier formatting
-/audit                  # Comprehensive quality audit
-/review-recent          # Review recent changes
+cd server && npm test   # Run Jest tests
 
-# Server
-cd server && npm start  # Start production server
+# Database (Supabase)
+npx supabase login              # Authenticate CLI
+npx supabase link --project-ref yuithqxycicgokkgmpzg
+npx supabase db push            # Apply migrations to remote
+npx supabase migration list     # Check migration status
 ```
 
 ## Database Schema
 
+Migrations in `supabase/migrations/`. Push with `npx supabase db push`.
+
 | Table | Purpose |
 |-------|---------|
-| `wordle_stats` | Aggregate player stats (games, wins, streaks) |
-| `wordle_games` | Game records (room, word, mode, timestamps) |
-| `wordle_results` | Per-player results per game |
-| `daily_challenge_completions` | Daily challenge tracking |
-| `players` | Player profiles (from auth) |
+| `players` | Player profiles (display_name, character) |
+| `wordle_games` | Game sessions (room, word, mode, timing) |
+| `wordle_results` | Per-player outcomes per game |
+| `wordle_stats` | Aggregate stats (wins, streaks, guess distribution 1-6) |
+| `wordle_guesses` | Per-guess tracking (timing, letter results) |
+| `daily_challenge_completions` | Daily challenge tracking (one per user per day) |
+| `achievements` | Achievement definitions (seeded) |
+| `player_achievements` | Earned achievements per player |
+| `player_achievement_progress` | Progress toward incremental achievements |
 
 ## Code Patterns
 
@@ -119,10 +136,11 @@ res.status(400).json({ error: 'Invalid email', code: 'BAD_REQUEST' });
 ## Wordle Battle Features
 
 - **Solo Daily Challenge** - One attempt per day per user
-- **Historical Dailies** - Play missed past dailies
+- **Historical Dailies** - Play missed past dailies (random, recent 7, or browse)
 - **Multiplayer Rooms** - 2-6 players, casual or competitive
 - **Real-time Progress** - See opponent boards (colors only)
-- **Stats Tracking** - Games, wins, streaks, solve times
+- **Granular Tracking** - Per-guess timing, letter results, guess distribution
+- **Stats Dashboard** - Games, wins, streaks, fastest times (UI pending)
 
 ## Development Workflow
 

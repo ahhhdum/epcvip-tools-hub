@@ -28,7 +28,7 @@
 ### Completed
 - [x] **Solo Daily Challenge** - Allow single player to complete daily without waiting for others
 
-### High Priority - Stats Infrastructure
+### High Priority - Stats Infrastructure (Complete)
 - [x] **Historical Daily Puzzles** - Play past daily challenges (solo or multiplayer)
   - Random unplayed daily button
   - Recent 7 days quick access
@@ -37,27 +37,43 @@
   - Per-guess timing (time since start, time since last guess)
   - Letter result tracking (greens, yellows, grays)
   - Guess distribution in wordle_stats (guesses_1 through guesses_6)
-- [ ] **Starting word analytics** - Track favorite openers, success rates per starter
-  - Data available via `wordle_guesses WHERE guess_number = 1`
-- [ ] **Matchup history** - Head-to-head records against specific opponents
-  - Data available via `wordle_results` joined on `game_id`
+- [x] **Stats database tables** - wordle_games, wordle_results, wordle_stats, wordle_guesses
+- [x] **Achievements database** - achievements, player_achievements, player_achievement_progress
+
+### High Priority - Stats UI (Data Ready, Needs Frontend)
+- [ ] **Personal stats dashboard** - Display existing wordle_stats data
+  - Games played, win rate, current/best streak
+  - Fastest solve time, average solve time
+  - API: `GET /api/wordle/stats/:email` (exists)
+- [ ] **Guess distribution chart** - Bar chart visualization
+  - Data: wordle_stats.guesses_1 through guesses_6
+  - Simple horizontal bar chart in lobby or post-game
+- [ ] **Starting word analytics UI** - Show favorite openers
+  - Query: `wordle_guesses WHERE guess_number = 1 GROUP BY guess_word`
+  - Display: top 5 starters, success rate per starter
+- [ ] **Matchup history UI** - Head-to-head records
+  - Query: `wordle_results` joined on `game_id`
+  - Display: win/loss record against each opponent
 
 ### Medium Priority - User-Facing Stats
 - [ ] **Share results** - Copy Wordle-style emoji grid to clipboard
+  - Generate from wordle_guesses letter_results
+  - Format: Daily #267 🟩🟨⬛⬛⬛ etc.
 - [ ] **Daily leaderboard** - Fastest solvers for today's daily
-- [ ] **Personal stats dashboard** - Detailed breakdown of all metrics
-- [ ] **Guess distribution chart** - Bar chart of 1/2/3/4/5/6 guess wins
+  - Query: daily_challenge_completions by daily_number, order by solve_time_ms
 - [ ] **Time analytics** - Average time, fastest, slowest, trend over time
+  - Data available in wordle_stats (fastest_solve_ms, avg_solve_time_ms)
 
-### Medium Priority - Achievements
-- [ ] **Achievement system** - Unlock badges for milestones
-  - First Victory, Hot Streak (3), On Fire (7), Unstoppable (30)
-  - Speed Demon (<30s), Lucky Guess (1 guess)
-  - Night Owl, Early Bird, Veteran (100 games), Grandmaster (1000 games)
-  - Word Nerd (50 different starters), Creature of Habit (same starter 20x)
-  - Daily Devotee (30 dailies), Week Warrior (7 daily streak), Monthly Master (30 daily streak)
+### Medium Priority - Achievements (Database Ready)
+Tables exist: `achievements`, `player_achievements`, `player_achievement_progress`
+Initial achievements seeded. Needs: trigger logic + UI.
+
+- [ ] **Achievement trigger logic** - Server-side checks after each game
+  - Check wordle_stats for milestone thresholds
+  - Insert into player_achievements when earned
 - [ ] **Achievement notifications** - Toast popups when earned
-- [ ] **Achievement showcase** - Display on profile/lobby
+- [ ] **Achievement showcase** - Display earned badges on profile/lobby
+- [ ] **Achievement progress UI** - Show progress toward next achievements
 
 ### Low Priority - Advanced Analytics
 - [ ] **Letter frequency analysis** - Which letters you guess most
