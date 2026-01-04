@@ -40,6 +40,11 @@ let todaysDailyNumber = null;
 let historicalDailiesData = null; // Cached data from API
 let selectedHistoricalDaily = null; // { daily_number, date } when selecting from list
 
+// Reconnection state
+let _isReconnecting = false; // True when attempting to rejoin a room (for future use)
+const SESSION_STORAGE_KEY = 'wordle_session';
+const SESSION_MAX_AGE_MS = 120000; // 2 minutes - matches server grace period
+
 // Supabase client (initialized after fetching config)
 let supabase = null;
 let supabaseConfig = null;
@@ -65,6 +70,109 @@ function getSupabase() {
     supabase = window.supabase.createClient(supabaseConfig.url, supabaseConfig.anonKey);
   }
   return supabase;
+}
+
+// =============================================================================
+// Session Storage (for reconnection)
+// =============================================================================
+
+/**
+ * Save session data when joining a room
+ * This allows reconnection if the page is refreshed or connection is lost
+ */
+function saveSession(roomCodeValue, playerIdValue) {
+  try {
+    const session = {
+      roomCode: roomCodeValue,
+      playerId: playerIdValue,
+      savedAt: Date.now(),
+    };
+    localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+    console.log('[Wordle] Session saved:', session.roomCode);
+  } catch (e) {
+    console.warn('[Wordle] Failed to save session:', e);
+  }
+}
+
+/**
+ * Clear session data when intentionally leaving a room
+ */
+function clearSession() {
+  try {
+    localStorage.removeItem(SESSION_STORAGE_KEY);
+    console.log('[Wordle] Session cleared');
+  } catch (e) {
+    console.warn('[Wordle] Failed to clear session:', e);
+  }
+}
+
+/**
+ * Get session data if it exists and is still valid
+ * @returns {Object|null} Session object or null if expired/missing
+ */
+function getSession() {
+  try {
+    const data = localStorage.getItem(SESSION_STORAGE_KEY);
+    if (!data) return null;
+
+    const session = JSON.parse(data);
+    const age = Date.now() - session.savedAt;
+
+    // Session expired
+    if (age > SESSION_MAX_AGE_MS) {
+      console.log('[Wordle] Session expired, clearing');
+      clearSession();
+      return null;
+    }
+
+    return session;
+  } catch (e) {
+    console.warn('[Wordle] Failed to get session:', e);
+    return null;
+  }
+}
+
+/**
+ * Attempt to rejoin a room using saved session data
+ */
+function attemptRejoin() {
+  const session = getSession();
+  if (!session) {
+    return false;
+  }
+
+  console.log('[Wordle] Attempting to rejoin room:', session.roomCode);
+  _isReconnecting = true;
+  showReconnectingOverlay();
+
+  send({
+    type: 'rejoin',
+    roomCode: session.roomCode,
+    playerId: session.playerId,
+  });
+
+  return true;
+}
+
+/**
+ * Show the reconnecting overlay
+ */
+function showReconnectingOverlay() {
+  const overlay = document.getElementById('reconnectingOverlay');
+  if (overlay) {
+    overlay.classList.remove('hidden');
+  }
+}
+
+/**
+ * Hide the reconnecting overlay
+ */
+function hideReconnectingOverlay() {
+  const overlay = document.getElementById('reconnectingOverlay');
+  if (overlay) {
+    overlay.classList.add('hidden');
+  }
+  _isReconnecting = false;
 }
 
 // DOM Elements
@@ -957,6 +1065,9 @@ function connect() {
   socket.onopen = () => {
     console.log('[Wordle] Connected');
     updateConnectionStatus('connected');
+
+    // Try to rejoin if we have a saved session
+    attemptRejoin();
   };
 
   socket.onclose = () => {
@@ -1046,6 +1157,30 @@ function handleMessage(msg) {
     case 'returnedToLobby':
       handleReturnedToLobby();
       break;
+
+    // Reconnection messages
+    case 'rejoinWaiting':
+      handleRejoinWaiting(msg);
+      break;
+    case 'rejoinGame':
+      handleRejoinGame(msg);
+      break;
+    case 'rejoinResults':
+      handleRejoinResults(msg);
+      break;
+    case 'rejoinFailed':
+      handleRejoinFailed(msg);
+      break;
+    case 'playerDisconnected':
+      handlePlayerDisconnected(msg);
+      break;
+    case 'playerReconnected':
+      handlePlayerReconnected(msg);
+      break;
+    case 'replacedByNewConnection':
+      handleReplacedByNewConnection(msg);
+      break;
+
     case 'error':
       showError(msg.message);
       break;
@@ -1061,6 +1196,9 @@ function handleRoomCreated(msg) {
   allPlayersReady = false;
   wordMode = 'daily';
   dailyNumber = null;
+
+  // Save session for reconnection
+  saveSession(roomCode, playerId);
 
   showView('waiting');
   elements.roomCode.textContent = roomCode;
@@ -1089,6 +1227,9 @@ function handleRoomJoined(msg) {
   wordMode = msg.wordMode || 'daily';
   isReady = false;
   allPlayersReady = false;
+
+  // Save session for reconnection
+  saveSession(roomCode, playerId);
 
   // For solo daily: skip waiting room, countdown will start automatically
   // The countdown overlay is position:fixed, so it shows over any view
@@ -1378,6 +1519,243 @@ function handleReturnedToLobby() {
   updateStartButton();
 }
 
+// =============================================================================
+// Reconnection Handlers
+// =============================================================================
+
+/**
+ * Handle successful rejoin to waiting room
+ */
+function handleRejoinWaiting(msg) {
+  hideReconnectingOverlay();
+
+  // Restore state
+  playerId = msg.playerId;
+  roomCode = msg.roomCode;
+  isCreator = msg.isCreator;
+  gameMode = msg.gameMode || 'casual';
+  wordMode = msg.wordMode || 'daily';
+  dailyNumber = msg.dailyNumber;
+  isReady = msg.isReady;
+  playersInRoom = msg.players;
+  gameState = 'waiting';
+
+  // Update session with current data
+  saveSession(roomCode, playerId);
+
+  // Show waiting room
+  showView('waiting');
+  elements.roomCode.textContent = roomCode;
+
+  if (isCreator) {
+    elements.startGame.classList.remove('hidden');
+    elements.waitingMessage.classList.add('hidden');
+    elements.modeCasual.disabled = false;
+    elements.modeCompetitive.disabled = false;
+    if (elements.wordModeDaily) elements.wordModeDaily.disabled = false;
+    if (elements.wordModeRandom) elements.wordModeRandom.disabled = false;
+  } else {
+    elements.startGame.classList.add('hidden');
+    elements.waitingMessage.classList.remove('hidden');
+    elements.modeCasual.disabled = true;
+    elements.modeCompetitive.disabled = true;
+    if (elements.wordModeDaily) elements.wordModeDaily.disabled = true;
+    if (elements.wordModeRandom) elements.wordModeRandom.disabled = true;
+  }
+
+  updatePlayerList(playersInRoom);
+  updateModeButtons(gameMode);
+  updateWordModeButtons();
+  updateReadyButton();
+  updateStartButton();
+
+  showToast('Reconnected!', 'success');
+  console.log('[Wordle] Rejoined waiting room:', roomCode);
+}
+
+/**
+ * Handle successful rejoin to active game
+ */
+function handleRejoinGame(msg) {
+  hideReconnectingOverlay();
+
+  // Restore state
+  playerId = msg.playerId;
+  roomCode = msg.roomCode;
+  gameMode = msg.gameMode || 'casual';
+  guesses = msg.guesses || [];
+  guessResults = msg.guessResults || [];
+  gameState = 'playing';
+
+  // Update session
+  saveSession(roomCode, playerId);
+
+  // Restore opponents
+  opponents.clear();
+  if (msg.opponents) {
+    for (const opp of msg.opponents) {
+      opponents.set(opp.id, {
+        name: opp.name,
+        guessResults: opp.guessResults || [],
+        guessCount: opp.guessCount || 0,
+        isFinished: opp.isFinished || false,
+        won: opp.won || false,
+      });
+    }
+  }
+
+  // Show game view
+  showView('game');
+  buildGrid();
+
+  // Restore grid state
+  for (let row = 0; row < guesses.length; row++) {
+    const guess = guesses[row];
+    const results = guessResults[row];
+    const rowEl = elements.grid.children[row];
+
+    for (let col = 0; col < 5; col++) {
+      const tile = rowEl.children[col];
+      tile.textContent = guess[col].toUpperCase();
+      tile.classList.add('filled', 'flip', results[col]);
+    }
+  }
+
+  // Restore keyboard state
+  for (let row = 0; row < guessResults.length; row++) {
+    const guess = guesses[row];
+    const results = guessResults[row];
+    for (let i = 0; i < 5; i++) {
+      const letter = guess[i].toLowerCase();
+      const result = results[i];
+      updateKeyboardKey(letter, result);
+    }
+  }
+
+  // Render opponents
+  renderOpponentBoards();
+
+  // Calculate game timer from start time
+  if (msg.gameStartTime) {
+    gameTimer = Date.now() - msg.gameStartTime;
+  }
+
+  showToast('Reconnected to game!', 'success');
+  console.log('[Wordle] Rejoined active game:', roomCode);
+}
+
+/**
+ * Handle successful rejoin to results screen
+ */
+function handleRejoinResults(msg) {
+  hideReconnectingOverlay();
+
+  // Restore state
+  roomCode = msg.roomCode;
+  _targetWord = msg.word;
+  gameMode = msg.gameMode || 'casual';
+  gameState = 'finished';
+
+  // Clear session since game is over
+  clearSession();
+
+  // Show results
+  showView('results');
+  elements.revealedWord.textContent = msg.word;
+
+  // Build results list (same as handleGameEnded)
+  elements.resultsList.innerHTML = '';
+  msg.results.forEach((result, index) => {
+    const li = document.createElement('li');
+
+    let rankClass = '';
+    if (index === 0) rankClass = 'gold';
+    else if (index === 1) rankClass = 'silver';
+    else if (index === 2) rankClass = 'bronze';
+
+    const timeStr = result.time ? `${(result.time / 1000).toFixed(1)}s` : '-';
+    const statsStr =
+      gameMode === 'competitive'
+        ? `${result.guesses} guesses • ${timeStr} • ${result.score} pts`
+        : `${result.guesses} guesses • ${timeStr}`;
+
+    li.innerHTML = `
+      <span class="rank ${rankClass}">${index + 1}</span>
+      <span class="player-name">${result.name}${result.id === playerId ? ' (You)' : ''}</span>
+      <span class="player-stats">${result.won ? statsStr : 'Did not solve'}</span>
+    `;
+    elements.resultsList.appendChild(li);
+  });
+
+  showToast('Reconnected to results', 'success');
+  console.log('[Wordle] Rejoined results screen:', roomCode);
+}
+
+/**
+ * Handle failed rejoin attempt
+ */
+function handleRejoinFailed(msg) {
+  hideReconnectingOverlay();
+  clearSession();
+
+  console.log('[Wordle] Rejoin failed:', msg.reason, msg.message);
+
+  // Show appropriate message based on reason
+  if (msg.reason === 'roomNotFound') {
+    showToast('Room no longer exists', 'error');
+  } else if (msg.reason === 'playerNotFound') {
+    showToast('Session expired', 'error');
+  } else {
+    showToast(msg.message || 'Could not reconnect', 'error');
+  }
+
+  // Stay on lobby
+  showView('lobby');
+}
+
+/**
+ * Handle notification that another player disconnected
+ */
+function handlePlayerDisconnected(msg) {
+  console.log('[Wordle] Player disconnected:', msg.playerName);
+
+  // Update player in list to show disconnected state
+  const player = playersInRoom.find((p) => p.id === msg.playerId);
+  if (player) {
+    player.connectionState = 'disconnected';
+    updatePlayerList(playersInRoom);
+  }
+
+  // Show toast
+  showToast(`${msg.playerName} disconnected (${msg.gracePeriodSeconds}s to reconnect)`, 'warning');
+}
+
+/**
+ * Handle notification that a player reconnected
+ */
+function handlePlayerReconnected(msg) {
+  console.log('[Wordle] Player reconnected:', msg.playerName);
+
+  // Update player in list to show connected state
+  const player = playersInRoom.find((p) => p.id === msg.playerId);
+  if (player) {
+    player.connectionState = 'connected';
+    updatePlayerList(playersInRoom);
+  }
+
+  showToast(`${msg.playerName} reconnected`, 'success');
+}
+
+/**
+ * Handle being replaced by a new connection (duplicate tab)
+ */
+function handleReplacedByNewConnection(_msg) {
+  console.log('[Wordle] Replaced by new connection');
+  clearSession();
+  showError('Connected from another tab');
+  showView('lobby');
+}
+
 // UI Helpers
 function showView(name) {
   for (const [key, view] of Object.entries(views)) {
@@ -1483,6 +1861,22 @@ function showInfoToast(message) {
   setTimeout(() => {
     elements.errorToast.classList.add('hidden');
   }, 2000);
+}
+
+/**
+ * Show a toast notification with a specific type
+ * @param {string} message - Message to display
+ * @param {'success'|'error'|'warning'|'info'} type - Toast type
+ */
+function showToast(message, type = 'info') {
+  elements.errorToast.textContent = message;
+  elements.errorToast.classList.remove('hidden', 'error', 'info', 'success', 'warning');
+  elements.errorToast.classList.add(type);
+
+  const duration = type === 'error' ? 4000 : 3000;
+  setTimeout(() => {
+    elements.errorToast.classList.add('hidden');
+  }, duration);
 }
 
 // Grid

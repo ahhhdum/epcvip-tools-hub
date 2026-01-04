@@ -1043,6 +1043,184 @@ export class WordleRoomManager {
     this.broadcastToRoom(roomCode, { type: 'returnedToLobby' });
   }
 
+  // ===========================================================================
+  // Reconnection (Phase 1)
+  // ===========================================================================
+
+  /**
+   * Handle a player attempting to rejoin after disconnect
+   *
+   * This is called when a client reconnects and has stored session data
+   * from a previous connection. The client sends their old playerId and
+   * roomCode, and we try to restore their connection.
+   */
+  handleRejoin(socket: WebSocket, roomCode: string, playerId: string): void {
+    // Validate inputs
+    if (!roomCode || !playerId) {
+      this.send(socket, {
+        type: 'rejoinFailed',
+        reason: 'invalidParams',
+        message: 'Missing room code or player ID',
+      });
+      return;
+    }
+
+    const room = this.rooms.get(roomCode.toUpperCase());
+
+    // Room doesn't exist (deleted, game ended, etc.)
+    if (!room) {
+      this.send(socket, {
+        type: 'rejoinFailed',
+        reason: 'roomNotFound',
+        message: 'Room no longer exists',
+      });
+      console.log(`[Wordle] Rejoin failed: room ${roomCode} not found`);
+      return;
+    }
+
+    const player = room.players.get(playerId);
+
+    // Player not in room (grace period expired, never joined, etc.)
+    if (!player) {
+      this.send(socket, {
+        type: 'rejoinFailed',
+        reason: 'playerNotFound',
+        message: 'You are no longer in this room',
+      });
+      console.log(`[Wordle] Rejoin failed: player ${playerId} not in room ${roomCode}`);
+      return;
+    }
+
+    // Player is already connected (duplicate tab scenario)
+    if (player.connectionState === 'connected' && player.socket) {
+      // Close the old connection, take over with the new one
+      this.send(player.socket, {
+        type: 'replacedByNewConnection',
+        message: 'Connected from another tab',
+      });
+      try {
+        player.socket.close();
+      } catch {
+        // Socket may already be closed
+      }
+      console.log(`[Wordle] ${player.name} reconnecting, closing old connection`);
+    }
+
+    // Cancel the removal timer if one is pending
+    if (player.reconnectTimer) {
+      clearTimeout(player.reconnectTimer);
+      player.reconnectTimer = null;
+    }
+
+    // Restore the connection
+    player.socket = socket;
+    player.connectionState = 'connected';
+    player.disconnectedAt = null;
+    this.socketToPlayer.set(socket, playerId);
+
+    console.log(`[Wordle] ${player.name} reconnected to ${roomCode}`);
+
+    // Send appropriate state based on game phase
+    this.sendRejoinState(socket, room, player);
+
+    // Notify other players
+    this.broadcastToRoom(
+      roomCode,
+      {
+        type: 'playerReconnected',
+        playerId,
+        playerName: player.name,
+      },
+      playerId
+    );
+  }
+
+  /**
+   * Send the appropriate room/game state to a rejoining player
+   */
+  private sendRejoinState(socket: WebSocket, room: WordleRoom, player: WordlePlayer): void {
+    const players = Array.from(room.players.values()).map((p) => ({
+      id: p.id,
+      name: p.name,
+      isCreator: p.isCreator,
+      isReady: p.isReady,
+      connectionState: p.connectionState,
+    }));
+
+    switch (room.gameState) {
+      case 'waiting':
+        this.send(socket, {
+          type: 'rejoinWaiting',
+          roomCode: room.code,
+          playerId: player.id,
+          isCreator: player.isCreator,
+          gameMode: room.gameMode,
+          wordMode: room.wordMode,
+          dailyNumber: room.dailyNumber,
+          players,
+          isReady: player.isReady,
+        });
+        break;
+
+      case 'playing':
+        // Send full game state so player can resume
+        this.send(socket, {
+          type: 'rejoinGame',
+          roomCode: room.code,
+          playerId: player.id,
+          wordLength: room.word?.length || 5,
+          gameMode: room.gameMode,
+          // Player's own state
+          guesses: player.guesses,
+          guessResults: player.guessResults,
+          isFinished: player.isFinished,
+          won: player.won,
+          // Timer info
+          gameStartTime: room.startTime,
+          playerFinishTime: player.finishTime,
+          // Opponent state (colors only, not words)
+          opponents: Array.from(room.players.values())
+            .filter((p) => p.id !== player.id)
+            .map((p) => ({
+              id: p.id,
+              name: p.name,
+              guessResults: p.guessResults,
+              guessCount: p.guesses.length,
+              isFinished: p.isFinished,
+              won: p.won,
+              connectionState: p.connectionState,
+            })),
+        });
+        break;
+
+      case 'finished':
+        // Send results
+        const results = Array.from(room.players.values())
+          .map((p) => ({
+            playerId: p.id,
+            name: p.name,
+            won: p.won,
+            guesses: p.guesses.length,
+            time: p.finishTime || 0,
+            score: p.score,
+          }))
+          .sort((a, b) => {
+            if (a.won !== b.won) return a.won ? -1 : 1;
+            if (a.guesses !== b.guesses) return a.guesses - b.guesses;
+            return a.time - b.time;
+          });
+
+        this.send(socket, {
+          type: 'rejoinResults',
+          roomCode: room.code,
+          word: room.word,
+          results,
+          gameMode: room.gameMode,
+        });
+        break;
+    }
+  }
+
   /**
    * Handle incoming message
    */
@@ -1083,6 +1261,9 @@ export class WordleRoomManager {
           break;
         case 'playAgain':
           this.handlePlayAgain(socket);
+          break;
+        case 'rejoin':
+          this.handleRejoin(socket, msg.roomCode, msg.playerId);
           break;
         default:
           console.log(`[Wordle] Unknown message type: ${msg.type}`);
