@@ -88,11 +88,46 @@ Initial achievements seeded. Needs: trigger logic + UI.
 - [ ] **Marathon mode** - 6-7 letter words
 - [ ] **Powerups** - Reveal a letter, extra guess, etc.
 
-### Low Priority - Navigation & UX
-- [ ] **URL-based routing** - Enable browser back button navigation
-  - Rooms create unique URLs (e.g., `/wordle/room/ABC123`)
-  - Separate URLs for lobby, game, historical dailies views
-  - Browser history integration for natural navigation
+### High Priority - Connection Resilience
+See `docs/RECONNECTION_ARCHITECTURE.md` for full design.
+
+**Phase 0: Architectural Foundation** (Critical - Enables all future work)
+- [ ] **Separate player identity from connection** - Player state survives disconnect
+  - Add `connectionState: 'connected' | 'disconnected'` to player
+  - Add `disconnectedAt` timestamp for grace period tracking
+  - Add `reconnectTimer` for delayed removal
+- [ ] **Grace period instead of immediate removal** - Don't delete players on disconnect
+  - Waiting room: 120s grace period
+  - Active game: 60s grace period
+  - Results: 300s grace period
+- [ ] **Broadcast disconnect/reconnect events** - UI feedback for other players
+  - `playerDisconnected` with grace period countdown
+  - `playerReconnected` when they return
+
+**Phase 1: Waiting Room Reconnection** (High - Solves primary pain point)
+- [ ] **Client session storage** - Store roomCode + playerId in sessionStorage
+- [ ] **Rejoin message handler** - Server accepts `rejoin` and restores player
+- [ ] **Reconnecting UI** - Overlay while attempting to reconnect
+- [ ] **Handle rejoin failures** - "Room not found" / "Player removed" messages
+
+**Phase 2: URL-Based Room Sharing** (High - Easy win)
+- [ ] **Room code in URL** - `/wordle/room/ABC123` format
+- [ ] **Auto-join from URL** - Parse URL on load, join room automatically
+- [ ] **Browser history integration** - Back button returns to lobby
+- [ ] **Server route for room URLs** - Serve index.html for `/wordle/room/*`
+
+**Phase 3: In-Game Reconnection** (Medium - Full solution)
+- [ ] **Send game state on rejoin** - Guesses, timer, opponent progress
+- [ ] **Restore grid and keyboard** - Rebuild UI from saved state
+- [ ] **Handle game-ended-while-away** - Show results if game finished
+- [ ] **Timer synchronization** - Correct for time passed during disconnect
+
+**Phase 4: Advanced (Future)**
+- [ ] **Cross-session persistence** - Store room state in database
+- [ ] **Server restart recovery** - Reload rooms from DB on startup
+- [ ] **Spectator mode** - Watch after finishing
+
+### Medium Priority - Navigation & UX
 - [ ] **Leave/Cancel game** - Clear exit mechanics for mid-game abandonment
   - "Leave Game" button visible during play
   - Confirmation dialog to prevent accidental exits
@@ -155,7 +190,7 @@ Let players personalize their character appearance.
 
 ---
 
-## Priority 3: Multiplayer Optimizations
+## Priority 3: Multiplayer Optimizations (Overworld)
 
 ### Latency Improvements
 - [ ] Client-side prediction - move locally, reconcile with server
@@ -164,7 +199,6 @@ Let players personalize their character appearance.
 - [ ] Compression - msgpack instead of JSON (optional)
 
 ### Reliability
-- [ ] Reconnection handling - auto-reconnect on disconnect
 - [ ] Connection quality indicator - show ping/latency
 - [ ] Graceful degradation - continue in single-player if server dies
 
@@ -172,6 +206,8 @@ Let players personalize their character appearance.
 - [ ] Rooms/lobbies - multiple game instances
 - [ ] Player limits per room
 - [ ] Matchmaking - auto-join available rooms
+
+Note: Wordle reconnection is tracked in "High Priority - Connection Resilience" above.
 
 ---
 
