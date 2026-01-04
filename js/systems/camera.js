@@ -18,8 +18,8 @@ export function updateCamera(targetPos) {
   const { width, height, worldWidth, worldHeight } = GAME_CONFIG;
 
   // Target: center player in viewport
-  let targetX = targetPos.x - width / 2;
-  let targetY = targetPos.y - height / 2;
+  const targetX = targetPos.x - width / 2;
+  const targetY = targetPos.y - height / 2;
 
   // Clamp to world bounds
   cameraX = Math.max(0, Math.min(targetX, worldWidth - width));

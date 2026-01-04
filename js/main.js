@@ -12,8 +12,8 @@ import { pauseScene } from './scenes/pause.js';
 import { spriteTestScene } from './scenes/sprite-test.js';
 import { initInput } from './systems/input.js';
 
-// Initialize KaPlay
-const k = kaplay({
+// Initialize KaPlay (global mode - functions available globally, instance reserved for future use)
+const _k = kaplay({
   canvas: document.getElementById('gameCanvas'),
   width: GAME_CONFIG.width,
   height: GAME_CONFIG.height,

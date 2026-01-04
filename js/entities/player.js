@@ -5,7 +5,7 @@
  * Uses Farmer_Bob sprite sheet with proper directional animations.
  */
 
-import { GAME_CONFIG, COLORS, getSelectedCharacter } from '../config.js';
+import { GAME_CONFIG, getSelectedCharacter } from '../config.js';
 import { virtualInput, setInteractCallback, setThrowCallback } from '../systems/input.js';
 import { updateCamera } from '../systems/camera.js';
 import { throwFritelle } from './collectible.js';

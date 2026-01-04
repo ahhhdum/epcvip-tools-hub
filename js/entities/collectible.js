@@ -20,7 +20,7 @@ import {
 let fritelleCount = 0;
 
 // HUD elements
-let hudIcon = null;
+let _hudIcon = null; // Reserved for future HUD icon reference
 let hudText = null;
 
 /**
@@ -195,7 +195,7 @@ export function initFritelleSystem(player) {
   loadSprite('fritelle', 'assets/sprites/fritelle-v2.png');
 
   // Create HUD (fixed position, doesn't scroll with camera)
-  hudIcon = add([sprite('fritelle'), pos(20, 20), scale(1), fixed(), z(100)]);
+  _hudIcon = add([sprite('fritelle'), pos(20, 20), scale(1), fixed(), z(100)]);
 
   hudText = add([
     text(`x ${fritelleCount}`, { size: 14 }),

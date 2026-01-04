@@ -7,7 +7,7 @@
  * NOTE: World objects do NOT use uiScale - only UI overlays scale with viewport.
  */
 
-import { GAME_CONFIG, COLORS } from '../config.js';
+import { GAME_CONFIG } from '../config.js';
 import { isLoggedIn, generateSSOToken } from '../systems/auth.js';
 
 /**
@@ -90,7 +90,7 @@ export function createBuilding(tool) {
       // Render specific piece using quad (normalized 0-1 coordinates)
       const piece = tool.pieceData;
       const fullWidth = tool.fullAsset.width;
-      const fullHeight = tool.fullAsset.height;
+      const _fullHeight = tool.fullAsset.height; // Reserved for future piece height calculations
 
       // Calculate quad coordinates for the piece
       // Support both x property (variable widths) and col property (equal widths)
@@ -129,7 +129,7 @@ export function createBuilding(tool) {
     { type: 'rect', x: 0, y: 0, w: 1, h: 1 }, // Fallback: full rect
   ];
 
-  shapes.forEach((shape, index) => {
+  shapes.forEach((shape, _index) => {
     if (shape.type === 'rect') {
       add([
         rect(shape.w * bWidth, shape.h * bHeight),

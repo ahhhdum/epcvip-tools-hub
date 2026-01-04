@@ -17,7 +17,7 @@ const MAP_H = Math.floor(GAME_CONFIG.worldHeight / TILE);
 const USE_TILEMAP = true;
 
 // Store tile entities for potential cleanup
-let currentTileEntities = null;
+let _currentTileEntities = null; // Reserved for future tile cleanup functionality
 
 /**
  * Draw ground - uses tilemap if available, falls back to procedural
@@ -26,8 +26,7 @@ export async function drawGround() {
   if (USE_TILEMAP) {
     try {
       const mapData = await loadMapData('maps/village.json');
-      currentTileEntities = renderTileMap(mapData);
-      console.log('Tilemap rendered successfully');
+      _currentTileEntities = renderTileMap(mapData);
       return;
     } catch (error) {
       console.warn('Tilemap failed, falling back to procedural:', error);

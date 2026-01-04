@@ -19,7 +19,7 @@ import { initAuth, getSavedCharacter, saveCharacterSelection } from '../systems/
 
 // localStorage keys
 const STORAGE_KEY_NAME = 'epcvip_playerName';
-const STORAGE_KEY_CHARACTER = 'selectedCharacter';
+const _STORAGE_KEY_CHARACTER = 'selectedCharacter'; // Reserved for future local character persistence
 
 // Standard animation config (same for all characters)
 const ANIM_CONFIG = {
@@ -62,7 +62,7 @@ export function loadingScene() {
 
   const S = GAME_CONFIG.uiScale;
   const centerX = width() / 2;
-  const centerY = height() / 2;
+  const _centerY = height() / 2; // Reserved for future vertical centering
 
   // Background
   add([rect(width(), height()), pos(0, 0), color(...COLORS.grass)]);

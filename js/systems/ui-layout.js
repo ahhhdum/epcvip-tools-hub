@@ -21,7 +21,7 @@ export function getPauseLayout() {
 
   // Usable area after margins
   const usableW = W - margin * 2;
-  const usableH = H - margin * 2;
+  const _usableH = H - margin * 2; // Reserved for vertical constraints
 
   // Two-column layout: 55% left, 45% right with gap
   const columnGap = 20 * S;
@@ -115,7 +115,7 @@ export function getCharSelectLayout() {
 
   // Recalculate start position to center the grid
   const gridTotalW = finalCardW * numCols + gap * (numCols - 1);
-  const gridTotalH = finalCardH * numRows + gap * (numRows - 1);
+  const _gridTotalH = finalCardH * numRows + gap * (numRows - 1); // Reserved for vertical centering
   const gridStartX = (W - gridTotalW) / 2;
   const gridStartY = marginTop;
 

@@ -4,13 +4,13 @@
  * Main game scene with buildings, player, and decorations.
  */
 
-import { GAME_CONFIG, COLORS, TOOLS, TREES, FLOWERS } from '../config.js';
+import { GAME_CONFIG, TOOLS } from '../config.js';
 import { createPlayer } from '../entities/player.js';
 import { createBuilding } from '../entities/building.js';
-import { createTree, createFlower, drawGround } from '../entities/decoration.js';
+import { drawGround } from '../entities/decoration.js';
 import { initDialog, showDialog, clearDialog } from '../systems/dialog.js';
 import { initFritelleSystem } from '../entities/collectible.js';
-import { connectToServer, isMultiplayerConnected, getPlayerCount } from '../systems/multiplayer.js';
+import { connectToServer } from '../systems/multiplayer.js';
 import { loadEntities } from '../systems/entity-loader.js';
 import { loadMapData } from '../systems/tilemap.js';
 
@@ -31,10 +31,8 @@ export async function overworldScene() {
     const mapData = await loadMapData('maps/village.json');
     if (mapData.entities && mapData.entities.length > 0) {
       buildings = loadEntities(mapData);
-      console.log(`Loaded ${buildings.length} buildings from map`);
     } else {
       // Map has no entities yet, use legacy TOOLS array
-      console.log('Map has no entities, using TOOLS config');
       buildings = TOOLS.map((tool) => createBuilding(tool));
     }
   } catch (error) {

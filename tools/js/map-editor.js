@@ -1,10 +1,4 @@
-import {
-  ASSET_LIBRARY,
-  getAssetsByType,
-  getAssetById,
-  getAssetsByCategory,
-  getCategoriesForType,
-} from './asset-library.js';
+import { getAssetsByType, getAssetById } from './asset-library.js';
 
 // ===================
 // EDITOR CONFIGURATION
@@ -476,9 +470,9 @@ function drawAssetPreview(asset) {
   if (!img) return;
 
   // Calculate source region
-  let sx = 0,
-    sy = 0,
-    sw = img.width,
+  let sx = 0;
+  const sy = 0;
+  let sw = img.width,
     sh = img.height;
   if (asset.isSpritePiece && asset.piece) {
     // Support both x property (variable widths) and col property (equal widths)
@@ -538,9 +532,9 @@ function updateSelectedAssetPreview() {
   }
 
   // Calculate source region for sprite pieces
-  let sx = 0,
-    sy = 0,
-    sw = img.width,
+  let sx = 0;
+  const sy = 0;
+  let sw = img.width,
     sh = img.height;
   if (selectedAsset.isSpritePiece && selectedAsset.piece) {
     // Support both x property (variable widths) and col property (equal widths)
@@ -1882,7 +1876,7 @@ document.getElementById('tilesetSelect').addEventListener('change', async (e) =>
 // SPRITE SLICER
 // ===================
 let slicerImage = null;
-let slicerImagePath = '';
+let _slicerImagePath = ''; // Reserved for future use
 let slicerAssetId = ''; // Currently selected asset ID
 let slicerAssetType = ''; // Entity type (buildings, decorations, trees)
 let slicerSplits = []; // Array of x-positions for vertical splits
@@ -1966,7 +1960,7 @@ document.getElementById('slicerFileSelect').addEventListener('change', async (e)
   slicerAssetType = type;
 
   // Load image
-  slicerImagePath = asset.file;
+  _slicerImagePath = asset.file;
   slicerImage = await loadSlicerImage(asset.file);
   slicerSplits = [];
   slicerPieceNames = ['Piece 1'];
@@ -2374,7 +2368,7 @@ window.removeOverride = (assetId) => {
 };
 
 // Initialize overrides list on modal open
-const originalOpenSlicer = document.getElementById('openSlicerBtn').onclick;
+const _originalOpenSlicer = document.getElementById('openSlicerBtn').onclick;
 document.getElementById('openSlicerBtn').addEventListener('click', () => {
   renderOverridesList();
 });
@@ -2389,8 +2383,6 @@ document.getElementById('exportOverridesBtn').addEventListener('click', () => {
   }
 
   const json = JSON.stringify(pieceOverrides, null, 2);
-  console.log('=== PIECE OVERRIDES ===');
-  console.log(json);
 
   // Copy to clipboard
   navigator.clipboard

@@ -6,7 +6,6 @@
  */
 
 import {
-  GAME_CONFIG,
   COLORS,
   TOOLS,
   CHARACTERS,
@@ -275,7 +274,7 @@ export function pauseScene() {
     'auth-btn',
   ]);
 
-  const authText = add([
+  add([
     text(loggedIn ? 'Logout' : 'Login', { size: 12 * S }),
     pos(width() / 2 + 130 * S, btnY),
     anchor('center'),
@@ -591,19 +590,15 @@ export function pauseScene() {
   });
 
   // === LOGIN MODAL ===
-  let isLoggingIn = false;
   const loginModalObjects = [];
   let loginKeyHandler = null;
 
   function showLoginModal() {
-    isLoggingIn = true;
-
     // Modal state
     let mode = 'login'; // 'login' or 'signup'
     let email = '';
     let password = '';
     let displayName = '';
-    const errorMessage = '';
     let activeField = 'email';
 
     // Modal background
@@ -979,7 +974,6 @@ export function pauseScene() {
   }
 
   function hideLoginModal() {
-    isLoggingIn = false;
     loginModalObjects.forEach((obj) => destroy(obj));
     loginModalObjects.length = 0;
     if (loginKeyHandler) {

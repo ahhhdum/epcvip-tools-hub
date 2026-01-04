@@ -16,7 +16,7 @@ export function spriteTestScene() {
   const CELL_SIZE = FRAME_SIZE + PADDING;
 
   // Calculate total grid size
-  const gridWidth = COLS * CELL_SIZE;
+  const _gridWidth = COLS * CELL_SIZE; // Reserved for horizontal scroll
   const gridHeight = ROWS * CELL_SIZE;
 
   // Scroll offset for viewing all frames

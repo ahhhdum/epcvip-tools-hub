@@ -8,14 +8,14 @@
  * using the shared asset library for sprite and collision data.
  */
 
-import { ASSET_LIBRARY, getAssetById, COLLISION_PRESETS } from '../../tools/js/asset-library.js';
+import { getAssetById, ASSET_LIBRARY } from '../../tools/js/asset-library.js';
 import { createBuilding } from '../entities/building.js';
 
-// Entity types that are rendered as interactive buildings
-const BUILDING_TYPES = ['building', 'buildings'];
+// Entity types that are rendered as interactive buildings (reserved for type filtering)
+const _BUILDING_TYPES = ['building', 'buildings'];
 
-// Entity types that are decorative (trees, props)
-const DECORATION_TYPES = ['decorations', 'trees'];
+// Entity types that are decorative (reserved for type filtering)
+const _DECORATION_TYPES = ['decorations', 'trees'];
 
 /**
  * Get asset from any entity type

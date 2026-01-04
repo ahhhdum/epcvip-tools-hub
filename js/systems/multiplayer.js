@@ -5,7 +5,7 @@
  * Falls back gracefully to single-player if server unavailable.
  */
 
-import { COLORS, getSelectedCharacter } from '../config.js';
+import { getSelectedCharacter } from '../config.js';
 import { playSound } from './audio.js';
 
 // Connection state
@@ -17,14 +17,14 @@ let pendingPlayerName = 'Player'; // Name to send on connect
 // Other player entities
 const otherPlayers = new Map(); // id -> { parts, label, targetX, targetY }
 
-// Server-synced fritelles
-const networkedFritelles = new Map(); // id -> { entity, halo }
+// Server-synced fritelles (reserved for future network sync)
+const _networkedFritelles = new Map(); // id -> { entity, halo }
 
 // Server URL
 const SERVER_URL = window.MULTIPLAYER_SERVER || 'ws://localhost:2567';
 
-// Player colors
-const PLAYER_COLORS = [
+// Player colors (reserved for player differentiation feature)
+const _PLAYER_COLORS = [
   [255, 100, 100], // Red
   [100, 100, 255], // Blue
   [100, 255, 100], // Green
@@ -345,7 +345,7 @@ function createThrownFritelleVisual(data) {
 /**
  * Show hit effect
  */
-function showHitEffect(targetId, throwerId) {
+function showHitEffect(targetId, _throwerId) {
   const data = otherPlayers.get(targetId);
   if (data && data.sprite?.exists()) {
     // Flash red effect using opacity pulse
