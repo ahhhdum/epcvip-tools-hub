@@ -51,4 +51,25 @@ export function getDailyNumber(date?: Date): number {
   return Math.abs(daysSinceEpoch) + 1;
 }
 
+/**
+ * Get the date string for a given daily number
+ * @param dailyNumber The daily challenge number (1-based)
+ * @returns ISO date string (YYYY-MM-DD)
+ */
+export function getDailyDate(dailyNumber: number): string {
+  const daysSinceEpoch = dailyNumber - 1;
+  const date = new Date(EPOCH.getTime() + daysSinceEpoch * 24 * 60 * 60 * 1000);
+  return date.toISOString().split('T')[0];
+}
+
+/**
+ * Get the word for a specific daily number
+ * Used for historical dailies
+ */
+export function getDailyWordByNumber(dailyNumber: number): string {
+  const daysSinceEpoch = dailyNumber - 1;
+  const index = Math.abs(daysSinceEpoch) % WORD_LIST.length;
+  return WORD_LIST[index];
+}
+
 export type WordMode = 'daily' | 'random';

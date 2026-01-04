@@ -13,8 +13,72 @@
 - [x] Tilemap system with multi-tileset support
 - [x] Plain grass tile for cleaner maps
 - [x] Wordle Battle MVP (rooms, multiplayer, opponent visibility)
+- [x] Ready-up system with countdown
+- [x] Live timer display during game
+- [x] Mobile compact opponent view
+- [x] Dictionary validation (3-strike override)
+- [x] Daily Challenge mode (auth-only, once per day)
 
 **Live at:** https://epcvip-tools-hub-production.up.railway.app
+
+---
+
+## Wordle Battle Backlog
+
+### Completed
+- [x] **Solo Daily Challenge** - Allow single player to complete daily without waiting for others
+
+### High Priority - Stats Infrastructure
+- [x] **Historical Daily Puzzles** - Play past daily challenges (solo or multiplayer)
+  - Random unplayed daily button
+  - Recent 7 days quick access
+  - Browse all with number input
+- [ ] **Granular guess tracking** - Store each guess with timestamp for analytics
+  - Per-guess timing (time since start, time since last guess)
+  - Letter result tracking (greens, yellows, grays)
+- [ ] **Starting word analytics** - Track favorite openers, success rates per starter
+- [ ] **Matchup history** - Head-to-head records against specific opponents
+
+### Medium Priority - User-Facing Stats
+- [ ] **Share results** - Copy Wordle-style emoji grid to clipboard
+- [ ] **Daily leaderboard** - Fastest solvers for today's daily
+- [ ] **Personal stats dashboard** - Detailed breakdown of all metrics
+- [ ] **Guess distribution chart** - Bar chart of 1/2/3/4/5/6 guess wins
+- [ ] **Time analytics** - Average time, fastest, slowest, trend over time
+
+### Medium Priority - Achievements
+- [ ] **Achievement system** - Unlock badges for milestones
+  - First Victory, Hot Streak (3), On Fire (7), Unstoppable (30)
+  - Speed Demon (<30s), Lucky Guess (1 guess)
+  - Night Owl, Early Bird, Veteran (100 games), Grandmaster (1000 games)
+  - Word Nerd (50 different starters), Creature of Habit (same starter 20x)
+  - Daily Devotee (30 dailies), Week Warrior (7 daily streak), Monthly Master (30 daily streak)
+- [ ] **Achievement notifications** - Toast popups when earned
+- [ ] **Achievement showcase** - Display on profile/lobby
+
+### Low Priority - Advanced Analytics
+- [ ] **Letter frequency analysis** - Which letters you guess most
+- [ ] **Win probability model** - Predict win chance after each guess
+- [ ] **Optimal play analysis** - Compare to "optimal" Wordle strategy
+- [ ] **Heatmaps** - Time-of-day play patterns
+- [ ] **Competitive ELO rating** - Ranked matchmaking
+
+### Low Priority - Game Modes
+- [ ] **Custom word mode** - Host enters a secret word for the room
+- [ ] **Expanded solutions list** - Grow from 666 → 2,500 words for more variety
+- [ ] **Marathon mode** - 6-7 letter words
+- [ ] **Powerups** - Reveal a letter, extra guess, etc.
+
+### Low Priority - Navigation & UX
+- [ ] **URL-based routing** - Enable browser back button navigation
+  - Rooms create unique URLs (e.g., `/wordle/room/ABC123`)
+  - Separate URLs for lobby, game, historical dailies views
+  - Browser history integration for natural navigation
+- [ ] **Leave/Cancel game** - Clear exit mechanics for mid-game abandonment
+  - "Leave Game" button visible during play
+  - Confirmation dialog to prevent accidental exits
+  - Handle stats tracking (count as loss? exclude from stats?)
+  - Notify other players when someone leaves
 
 ---
 
@@ -187,12 +251,48 @@ Allow player to walk "behind" buildings and trees for proper 2D depth illusion.
 
 ---
 
-## Priority 0: Code Quality Audit
+## Priority 0: Code Quality & Standards
+
+### Latest Audit (2026-01-03)
+
+See `TECH_DEBT.md` for full audit results and remediation plan.
+
+**Summary:**
+- 0 critical issues
+- 6 warnings (documented in TECH_DEBT.md)
+- 4 info items (backlogged)
+
+### Immediate Remediation Tasks
+
+- [ ] **Fix `any` type** - `server/src/index.ts:211` - Change to `unknown` (5 min)
+- [ ] **ESLint warnings** - Fix 39 unused variable warnings (1-2 hours)
+- [ ] **Review console.logs** - Remove debug logs, keep production logs (30 min)
+
+### Near-Term Improvements
+
+- [ ] **Split wordle-room.ts** - Extract timer, database, and message handlers (4-6 hours)
+  - Extract `WordleTimerManager` class
+  - Extract `WordleDatabaseService` for Supabase operations
+  - Extract `WordleMessageHandler` for message routing
+- [ ] **Set up Jest** - Add test infrastructure for server (4 hours)
+- [ ] **ESLint 9 migration** - Migrate to flat config (2-3 hours)
+
+### Quality Tools
+
+- `/audit` - Comprehensive codebase audit
+- `/review-recent` - Review recent changes before commit
+- `/lint` - Run ESLint + Prettier + TypeScript checks
+
+---
+
+## Code Quality Audit (Legacy Reference)
 
 ### Overview
 The codebase has grown significantly. Before adding major features, conduct a comprehensive code audit to identify technical debt, improve maintainability, and establish patterns for future development.
 
 **Scope:** ~15,000 lines across 40+ files, with `map-editor.html` (3,144 lines) being the largest single file.
+
+**Note:** Many items below are now tracked in `TECH_DEBT.md` with more detail.
 
 ### Audit Checklist
 

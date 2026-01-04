@@ -20,8 +20,8 @@ let gameState = 'lobby'; // lobby, waiting, playing, results
 let currentGuess = '';
 let guesses = [];
 let guessResults = [];
-let opponents = new Map();
-let targetWord = null;
+const opponents = new Map();
+let _targetWord = null; // Server sends word, client validates guesses but never displays it
 let playersInRoom = [];
 let gameTimer = 0; // Current game timer in ms
 let playerTimes = {}; // Per-player timer data
@@ -32,6 +32,13 @@ let rejectionCount = 0;
 
 // Auth state (SSO from Tools Hub or direct login)
 let authUser = null; // { email, name, userId } if authenticated
+
+// Daily Challenge state
+let todaysDailyNumber = null;
+
+// Historical Dailies state
+let historicalDailiesData = null; // Cached data from API
+let selectedHistoricalDaily = null; // { daily_number, date } when selecting from list
 
 // Supabase client (initialized after fetching config)
 let supabase = null;
@@ -66,6 +73,8 @@ const views = {
   waiting: document.getElementById('waiting'),
   game: document.getElementById('game'),
   results: document.getElementById('results'),
+  dailyCompleted: document.getElementById('dailyCompleted'),
+  historicalDailies: document.getElementById('historicalDailies'),
 };
 
 const elements = {
@@ -142,6 +151,48 @@ const elements = {
   closeModal: document.getElementById('closeModal'),
   authToggle: document.getElementById('authToggle'),
   switchToSignup: document.getElementById('switchToSignup'),
+
+  // Daily Challenge
+  dailyChallengeSection: document.getElementById('dailyChallengeSection'),
+  dailyChallengeBtn: document.getElementById('dailyChallengeBtn'),
+  dailyNum: document.getElementById('dailyNum'),
+  dailyGuestMsg: document.getElementById('dailyGuestMsg'),
+
+  // Daily Completed View
+  dailyCompletedView: document.getElementById('dailyCompleted'),
+  completedDailyNum: document.getElementById('completedDailyNum'),
+  completedGridContainer: document.getElementById('completedGridContainer'),
+  completedGuesses: document.getElementById('completedGuesses'),
+  completedTime: document.getElementById('completedTime'),
+  completedResult: document.getElementById('completedResult'),
+  playRandomInstead: document.getElementById('playRandomInstead'),
+  backFromDaily: document.getElementById('backFromDaily'),
+
+  // Daily Mode Selection Modal
+  dailyModeModal: document.getElementById('dailyModeModal'),
+  modalDailyNum: document.getElementById('modalDailyNum'),
+  playSoloBtn: document.getElementById('playSoloBtn'),
+  playWithFriendsBtn: document.getElementById('playWithFriendsBtn'),
+  cancelDailyMode: document.getElementById('cancelDailyMode'),
+
+  // Historical Dailies
+  historicalDailiesBtn: document.getElementById('historicalDailiesBtn'),
+  historicalDailiesView: document.getElementById('historicalDailies'),
+  randomUnplayedBtn: document.getElementById('randomUnplayedBtn'),
+  randomUnplayedInfo: document.getElementById('randomUnplayedInfo'),
+  recentDailiesList: document.getElementById('recentDailiesList'),
+  browseDailyNumber: document.getElementById('browseDailyNumber'),
+  browseGoBtn: document.getElementById('browseGoBtn'),
+  browseRange: document.getElementById('browseRange'),
+  backFromHistorical: document.getElementById('backFromHistorical'),
+
+  // Historical Daily Mode Modal
+  historicalModeModal: document.getElementById('historicalModeModal'),
+  historicalModalNum: document.getElementById('historicalModalNum'),
+  historicalModalDate: document.getElementById('historicalModalDate'),
+  historicalSoloBtn: document.getElementById('historicalSoloBtn'),
+  historicalMultiBtn: document.getElementById('historicalMultiBtn'),
+  cancelHistoricalMode: document.getElementById('cancelHistoricalMode'),
 };
 
 // SSO Token Handling
@@ -273,13 +324,19 @@ async function checkExistingSession() {
   if (!client) return null;
 
   try {
-    const { data: { user } } = await client.auth.getUser();
+    const {
+      data: { user },
+    } = await client.auth.getUser();
     if (user) {
       // Get display name from profile or metadata
       let displayName = user.user_metadata?.display_name || user.email.split('@')[0];
 
       // Try to get from players table
-      const { data: profile } = await client.from('players').select('display_name').eq('id', user.id).single();
+      const { data: profile } = await client
+        .from('players')
+        .select('display_name')
+        .eq('id', user.id)
+        .single();
       if (profile?.display_name) {
         displayName = profile.display_name;
       }
@@ -307,12 +364,431 @@ function updateAuthUI() {
     if (elements.roomActionsSection) {
       elements.roomActionsSection.classList.remove('hidden');
     }
+
+    // Enable daily challenge for logged-in users
+    if (elements.dailyChallengeSection) {
+      elements.dailyChallengeSection.classList.remove('hidden');
+    }
+    if (elements.dailyChallengeBtn) {
+      elements.dailyChallengeBtn.disabled = false;
+    }
+    if (elements.dailyGuestMsg) {
+      elements.dailyGuestMsg.classList.add('hidden');
+    }
+    // Show historical dailies button for logged-in users
+    if (elements.historicalDailiesBtn) {
+      elements.historicalDailiesBtn.classList.remove('hidden');
+    }
   } else {
     // Not logged in - show prompt, hide status, hide room actions (until guest chosen)
     elements.authPrompt.classList.remove('hidden');
     elements.authStatus.classList.add('hidden');
     // Room actions stay hidden until user clicks "play as guest"
+
+    // Disable daily challenge for guests
+    if (elements.dailyChallengeBtn) {
+      elements.dailyChallengeBtn.disabled = true;
+    }
+    if (elements.dailyGuestMsg) {
+      elements.dailyGuestMsg.classList.remove('hidden');
+    }
   }
+
+  // Update daily number display
+  if (elements.dailyNum && todaysDailyNumber) {
+    elements.dailyNum.textContent = todaysDailyNumber;
+  }
+}
+
+// Daily Challenge Functions
+async function fetchDailyNumber() {
+  try {
+    const response = await fetch('/api/wordle/daily-number');
+    if (response.ok) {
+      const data = await response.json();
+      todaysDailyNumber = data.dailyNumber;
+      console.log('[Wordle] Daily number:', todaysDailyNumber);
+      return todaysDailyNumber;
+    }
+  } catch (e) {
+    console.warn('[Wordle] Failed to fetch daily number:', e);
+  }
+  return null;
+}
+
+async function checkDailyCompletion(email, dailyNumber) {
+  try {
+    const response = await fetch(
+      `/api/wordle/daily-completion/${encodeURIComponent(email)}/${dailyNumber}`
+    );
+    if (response.ok) {
+      return await response.json();
+    }
+  } catch (e) {
+    console.warn('[Wordle] Failed to check daily completion:', e);
+  }
+  return null;
+}
+
+function showDailyCompletionView(completion) {
+  // Set header info
+  if (elements.completedDailyNum) {
+    elements.completedDailyNum.textContent = completion.daily_number;
+  }
+
+  // Set stats
+  if (elements.completedGuesses) {
+    elements.completedGuesses.textContent = completion.guess_count;
+  }
+  if (elements.completedTime) {
+    elements.completedTime.textContent = completion.solve_time_ms
+      ? formatTime(completion.solve_time_ms)
+      : '--:--';
+  }
+  if (elements.completedResult) {
+    elements.completedResult.textContent = completion.won ? 'Won' : 'Lost';
+  }
+
+  // Build the grid showing their previous guesses
+  buildCompletedGrid(completion.guesses, completion.word);
+
+  // Show the view
+  showView('dailyCompleted');
+}
+
+function buildCompletedGrid(guesses, word) {
+  if (!elements.completedGridContainer) return;
+
+  elements.completedGridContainer.innerHTML = '';
+
+  const grid = document.createElement('div');
+  grid.className = 'completed-grid';
+
+  // Build 6 rows
+  for (let row = 0; row < 6; row++) {
+    const rowDiv = document.createElement('div');
+    rowDiv.className = 'grid-row';
+
+    const guess = guesses[row] || '';
+
+    for (let col = 0; col < 5; col++) {
+      const tile = document.createElement('div');
+      tile.className = 'tile';
+
+      if (guess[col]) {
+        tile.textContent = guess[col];
+        tile.classList.add('filled');
+
+        // Determine color based on word
+        if (word[col] === guess[col]) {
+          tile.classList.add('correct');
+        } else if (word.includes(guess[col])) {
+          tile.classList.add('present');
+        } else {
+          tile.classList.add('absent');
+        }
+      }
+
+      rowDiv.appendChild(tile);
+    }
+
+    grid.appendChild(rowDiv);
+  }
+
+  elements.completedGridContainer.appendChild(grid);
+}
+
+async function handleDailyChallengeClick() {
+  if (!authUser || !todaysDailyNumber) {
+    showError('Please login to play Daily Challenge');
+    return;
+  }
+
+  // Check if already completed
+  const completion = await checkDailyCompletion(authUser.email, todaysDailyNumber);
+
+  if (completion && completion.completed) {
+    // Already completed - show results
+    showDailyCompletionView(completion);
+  } else {
+    // Not completed - show mode selection modal
+    showDailyModeModal();
+  }
+}
+
+// Show the daily mode selection modal
+function showDailyModeModal() {
+  if (elements.modalDailyNum) {
+    elements.modalDailyNum.textContent = todaysDailyNumber;
+  }
+  if (elements.dailyModeModal) {
+    elements.dailyModeModal.classList.remove('hidden');
+  }
+}
+
+// Hide the daily mode selection modal
+function hideDailyModeModal() {
+  if (elements.dailyModeModal) {
+    elements.dailyModeModal.classList.add('hidden');
+  }
+}
+
+// Start daily challenge (solo or friends mode)
+function startDailyChallenge(solo) {
+  hideDailyModeModal();
+
+  const name = getPlayerName();
+  localStorage.setItem('wordle_playerName', name);
+
+  console.log(`[DAILY] Starting ${solo ? 'solo' : 'friends'} daily challenge`);
+
+  send({
+    type: 'createDailyChallenge',
+    playerName: name,
+    playerEmail: authUser.email,
+    dailyNumber: todaysDailyNumber,
+    solo: solo,
+  });
+}
+
+// ============================================================
+// Historical Dailies Functions
+// ============================================================
+
+async function fetchHistoricalDailies() {
+  if (!authUser?.email) return null;
+
+  try {
+    const response = await fetch(
+      `/api/wordle/historical-dailies/${encodeURIComponent(authUser.email)}`
+    );
+    if (response.ok) {
+      historicalDailiesData = await response.json();
+      return historicalDailiesData;
+    }
+  } catch (e) {
+    console.warn('[Wordle] Failed to fetch historical dailies:', e);
+  }
+  return null;
+}
+
+async function fetchRandomUnplayedDaily() {
+  if (!authUser?.email) return null;
+
+  try {
+    const response = await fetch(
+      `/api/wordle/random-unplayed-daily/${encodeURIComponent(authUser.email)}`
+    );
+    if (response.ok) {
+      return await response.json();
+    }
+  } catch (e) {
+    console.warn('[Wordle] Failed to fetch random unplayed daily:', e);
+  }
+  return null;
+}
+
+async function showHistoricalDailiesView() {
+  // Fetch data if not cached
+  if (!historicalDailiesData) {
+    await fetchHistoricalDailies();
+  }
+
+  if (!historicalDailiesData) {
+    showError('Failed to load historical dailies');
+    return;
+  }
+
+  // Update browse range text
+  if (elements.browseRange) {
+    elements.browseRange.textContent = `Enter a daily number between 1 and ${historicalDailiesData.current_daily - 1}`;
+  }
+
+  // Set max on input
+  if (elements.browseDailyNumber) {
+    elements.browseDailyNumber.max = historicalDailiesData.current_daily - 1;
+  }
+
+  // Update random unplayed info
+  if (elements.randomUnplayedInfo) {
+    const completed = historicalDailiesData.total_completed;
+    const available = historicalDailiesData.total_available - 1; // Exclude today
+    const remaining = available - completed;
+    if (remaining > 0) {
+      elements.randomUnplayedInfo.textContent = `${remaining} unplayed dailies available`;
+    } else {
+      elements.randomUnplayedInfo.textContent = 'All historical dailies completed!';
+      if (elements.randomUnplayedBtn) {
+        elements.randomUnplayedBtn.disabled = true;
+      }
+    }
+  }
+
+  // Render recent dailies (last 7 days, excluding today)
+  renderRecentDailies();
+
+  showView('historicalDailies');
+}
+
+function renderRecentDailies() {
+  if (!elements.recentDailiesList || !historicalDailiesData) return;
+
+  elements.recentDailiesList.innerHTML = '';
+
+  // Get last 7 days excluding today (skip first item which is today)
+  const recentDailies = historicalDailiesData.dailies.slice(1, 8);
+
+  for (const daily of recentDailies) {
+    const item = document.createElement('div');
+    item.className = `recent-daily-item${daily.completed ? ' completed' : ''}`;
+    item.dataset.dailyNumber = daily.daily_number;
+    item.dataset.date = daily.date;
+
+    const statusText = daily.completed
+      ? daily.won
+        ? `✓ Won in ${daily.guess_count}`
+        : '✗ Failed'
+      : 'Not played';
+
+    const statusClass = daily.completed ? 'completed' : 'not-played';
+
+    item.innerHTML = `
+      <span class="daily-item-number">Daily #${daily.daily_number}</span>
+      <span class="daily-item-date">${formatDateForDisplay(daily.date)}</span>
+      <span class="daily-item-status ${statusClass}">${statusText}</span>
+    `;
+
+    item.addEventListener('click', () => handleRecentDailyClick(daily));
+    elements.recentDailiesList.appendChild(item);
+  }
+}
+
+function formatDateForDisplay(dateStr) {
+  const date = new Date(dateStr + 'T00:00:00');
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  if (date.toDateString() === yesterday.toDateString()) {
+    return 'Yesterday';
+  }
+
+  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+async function handleRandomUnplayedClick() {
+  const result = await fetchRandomUnplayedDaily();
+
+  if (!result) {
+    showError('Failed to find random daily');
+    return;
+  }
+
+  if (!result.found) {
+    showError(result.message || 'All dailies completed!');
+    return;
+  }
+
+  // Show mode selection for this daily
+  selectedHistoricalDaily = {
+    daily_number: result.daily_number,
+    date: result.date,
+  };
+  showHistoricalModeModal();
+}
+
+function handleBrowseDailyGo() {
+  const dailyNum = parseInt(elements.browseDailyNumber?.value, 10);
+
+  if (!dailyNum || dailyNum < 1) {
+    showError('Please enter a valid daily number');
+    return;
+  }
+
+  if (dailyNum >= todaysDailyNumber) {
+    showError(`Daily #${dailyNum} hasn't happened yet`);
+    return;
+  }
+
+  // Check if already completed
+  const daily = historicalDailiesData?.dailies.find((d) => d.daily_number === dailyNum);
+  if (daily?.completed) {
+    showError(`You've already completed Daily #${dailyNum}`);
+    return;
+  }
+
+  // Show mode selection
+  const dateStr = daily?.date || calculateDateFromDailyNumber(dailyNum);
+  selectedHistoricalDaily = {
+    daily_number: dailyNum,
+    date: dateStr,
+  };
+  showHistoricalModeModal();
+}
+
+function calculateDateFromDailyNumber(dailyNum) {
+  // Epoch is 2024-01-01
+  const epoch = new Date('2024-01-01T00:00:00Z');
+  const date = new Date(epoch.getTime() + (dailyNum - 1) * 24 * 60 * 60 * 1000);
+  return date.toISOString().split('T')[0];
+}
+
+function handleRecentDailyClick(daily) {
+  if (daily.completed) {
+    showError(`You've already completed Daily #${daily.daily_number}`);
+    return;
+  }
+
+  selectedHistoricalDaily = {
+    daily_number: daily.daily_number,
+    date: daily.date,
+  };
+  showHistoricalModeModal();
+}
+
+function showHistoricalModeModal() {
+  if (!selectedHistoricalDaily) return;
+
+  if (elements.historicalModalNum) {
+    elements.historicalModalNum.textContent = selectedHistoricalDaily.daily_number;
+  }
+  if (elements.historicalModalDate) {
+    elements.historicalModalDate.textContent = formatDateForDisplay(selectedHistoricalDaily.date);
+  }
+  if (elements.historicalModeModal) {
+    elements.historicalModeModal.classList.remove('hidden');
+  }
+}
+
+function hideHistoricalModeModal() {
+  if (elements.historicalModeModal) {
+    elements.historicalModeModal.classList.add('hidden');
+  }
+  selectedHistoricalDaily = null;
+}
+
+function startHistoricalDaily(solo) {
+  if (!selectedHistoricalDaily) return;
+
+  // Store before hiding modal (which clears selectedHistoricalDaily)
+  const dailyNumber = selectedHistoricalDaily.daily_number;
+
+  hideHistoricalModeModal();
+
+  const name = getPlayerName();
+  localStorage.setItem('wordle_playerName', name);
+
+  console.log(
+    `[HISTORICAL] Starting ${solo ? 'solo' : 'friends'} historical daily #${dailyNumber}`
+  );
+
+  send({
+    type: 'createDailyChallenge',
+    playerName: name,
+    playerEmail: authUser.email,
+    dailyNumber: dailyNumber,
+    solo: solo,
+  });
 }
 
 function showAuthModal(signup = false) {
@@ -323,10 +799,12 @@ function showAuthModal(signup = false) {
 
   if (signup) {
     elements.displayNameGroup.classList.remove('hidden');
-    elements.authToggle.innerHTML = 'Already have an account? <a href="#" id="switchToLogin">Login</a>';
+    elements.authToggle.innerHTML =
+      'Already have an account? <a href="#" id="switchToLogin">Login</a>';
   } else {
     elements.displayNameGroup.classList.add('hidden');
-    elements.authToggle.innerHTML = 'Don\'t have an account? <a href="#" id="switchToSignup">Sign up</a>';
+    elements.authToggle.innerHTML =
+      'Don\'t have an account? <a href="#" id="switchToSignup">Sign up</a>';
   }
 
   // Rebind toggle link
@@ -380,7 +858,11 @@ async function handleAuthSubmit(e) {
       let name = user.user_metadata?.display_name || displayName;
       const client = getSupabase();
       if (client) {
-        const { data: profile } = await client.from('players').select('display_name').eq('id', user.id).single();
+        const { data: profile } = await client
+          .from('players')
+          .select('display_name')
+          .eq('id', user.id)
+          .single();
         if (profile?.display_name) {
           name = profile.display_name;
         }
@@ -421,6 +903,9 @@ async function handleAuthSubmit(e) {
 async function init() {
   // Fetch Supabase config from server
   await fetchSupabaseConfig();
+
+  // Fetch today's daily number
+  await fetchDailyNumber();
 
   // Priority 1: Check for SSO token from Tools Hub
   authUser = await checkSSOToken();
@@ -604,6 +1089,14 @@ function handleRoomJoined(msg) {
   wordMode = msg.wordMode || 'daily';
   isReady = false;
   allPlayersReady = false;
+
+  // For solo daily: skip waiting room, countdown will start automatically
+  // The countdown overlay is position:fixed, so it shows over any view
+  if (msg.isSolo) {
+    console.log('[DAILY] Solo mode - waiting for countdown');
+    // Stay on lobby view - the countdown overlay will appear shortly
+    return;
+  }
 
   showView('waiting');
   elements.roomCode.textContent = roomCode;
@@ -838,7 +1331,7 @@ function handleOpponentGuess(msg) {
 
 function handleGameEnded(msg) {
   gameState = 'results';
-  targetWord = msg.word;
+  _targetWord = msg.word;
 
   showView('results');
   elements.revealedWord.textContent = msg.word;
@@ -1038,7 +1531,11 @@ function updateKeyboardKey(letter, result) {
   } else if (result === 'present' && !key.classList.contains('correct')) {
     key.classList.remove('absent');
     key.classList.add('present');
-  } else if (result === 'absent' && !key.classList.contains('correct') && !key.classList.contains('present')) {
+  } else if (
+    result === 'absent' &&
+    !key.classList.contains('correct') &&
+    !key.classList.contains('present')
+  ) {
     key.classList.add('absent');
   }
 }
@@ -1062,12 +1559,12 @@ function handleKeyPress(key) {
             return;
           }
           // Second attempt - warn them
-          showGameMessage("Not recognized. Enter again to force.");
+          showGameMessage('Not recognized. Enter again to force.');
         } else {
           // First attempt with this word
           lastRejectedWord = currentGuess;
           rejectionCount = 0; // Will be 1 on second attempt, 2 on third
-          showGameMessage("Not in word list");
+          showGameMessage('Not in word list');
         }
         shakeCurrentRow();
         return;
@@ -1379,6 +1876,10 @@ function setupEventListeners() {
       if (elements.roomActionsSection) {
         elements.roomActionsSection.classList.remove('hidden');
       }
+      // Show daily challenge section (but disabled for guests)
+      if (elements.dailyChallengeSection) {
+        elements.dailyChallengeSection.classList.remove('hidden');
+      }
     });
   }
 
@@ -1406,6 +1907,116 @@ function setupEventListeners() {
       e.preventDefault();
       showAuthModal(true);
     });
+  }
+
+  // Daily Challenge events
+  if (elements.dailyChallengeBtn) {
+    elements.dailyChallengeBtn.addEventListener('click', handleDailyChallengeClick);
+  }
+
+  if (elements.playRandomInstead) {
+    elements.playRandomInstead.addEventListener('click', () => {
+      showView('lobby');
+      // Optionally auto-create a random game
+    });
+  }
+
+  if (elements.backFromDaily) {
+    elements.backFromDaily.addEventListener('click', () => {
+      showView('lobby');
+    });
+  }
+
+  // Daily Mode Selection Modal events
+  if (elements.playSoloBtn) {
+    elements.playSoloBtn.addEventListener('click', () => {
+      startDailyChallenge(true);
+    });
+  }
+
+  if (elements.playWithFriendsBtn) {
+    elements.playWithFriendsBtn.addEventListener('click', () => {
+      startDailyChallenge(false);
+    });
+  }
+
+  if (elements.cancelDailyMode) {
+    elements.cancelDailyMode.addEventListener('click', hideDailyModeModal);
+  }
+
+  // Close modal on overlay click
+  if (elements.dailyModeModal) {
+    const overlay = elements.dailyModeModal.querySelector('.modal-overlay');
+    if (overlay) {
+      overlay.addEventListener('click', hideDailyModeModal);
+    }
+  }
+
+  // Historical Dailies events
+  if (elements.historicalDailiesBtn) {
+    elements.historicalDailiesBtn.addEventListener('click', showHistoricalDailiesView);
+  }
+
+  if (elements.randomUnplayedBtn) {
+    elements.randomUnplayedBtn.addEventListener('click', handleRandomUnplayedClick);
+  }
+
+  if (elements.browseGoBtn) {
+    // Initialize as disabled until valid input
+    elements.browseGoBtn.disabled = true;
+    elements.browseGoBtn.addEventListener('click', handleBrowseDailyGo);
+  }
+
+  if (elements.browseDailyNumber) {
+    elements.browseDailyNumber.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        handleBrowseDailyGo();
+      }
+    });
+
+    // Enable/disable Go button based on valid input
+    elements.browseDailyNumber.addEventListener('input', () => {
+      const value = parseInt(elements.browseDailyNumber.value, 10);
+      const maxDaily = (todaysDailyNumber || 734) - 1;
+      const isValid = value >= 1 && value <= maxDaily;
+
+      if (elements.browseGoBtn) {
+        elements.browseGoBtn.disabled = !isValid;
+      }
+    });
+  }
+
+  if (elements.backFromHistorical) {
+    elements.backFromHistorical.addEventListener('click', () => {
+      showView('lobby');
+      // Clear cached data so it refreshes on next visit
+      historicalDailiesData = null;
+    });
+  }
+
+  // Historical Mode Modal events
+  if (elements.historicalSoloBtn) {
+    elements.historicalSoloBtn.addEventListener('click', () => {
+      startHistoricalDaily(true);
+    });
+  }
+
+  if (elements.historicalMultiBtn) {
+    elements.historicalMultiBtn.addEventListener('click', () => {
+      startHistoricalDaily(false);
+    });
+  }
+
+  if (elements.cancelHistoricalMode) {
+    elements.cancelHistoricalMode.addEventListener('click', hideHistoricalModeModal);
+  }
+
+  // Close historical modal on overlay click
+  if (elements.historicalModeModal) {
+    const overlay = elements.historicalModeModal.querySelector('.modal-overlay');
+    if (overlay) {
+      overlay.addEventListener('click', hideHistoricalModeModal);
+    }
   }
 
   // Re-render opponent boards on resize (debounced)

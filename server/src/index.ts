@@ -5,6 +5,7 @@
  * Serves as gateway/proxy for all tools under single domain.
  */
 
+import 'dotenv/config';
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer, IncomingMessage } from 'http';
 import { Socket } from 'net';
@@ -207,13 +208,15 @@ app.post('/api/wordle/sso-validate', async (req, res) => {
       userId: payload.jti,
       session: { token: sessionToken },
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[SSO] Validation error:', e);
 
-    if (e.name === 'JsonWebTokenError') {
+    // Type-safe error handling
+    const error = e instanceof Error ? e : new Error(String(e));
+    if (error.name === 'JsonWebTokenError') {
       return res.status(401).json({ error: 'Invalid token' });
     }
-    if (e.name === 'TokenExpiredError') {
+    if (error.name === 'TokenExpiredError') {
       return res.status(401).json({ error: 'Token expired' });
     }
 
@@ -259,6 +262,192 @@ app.get('/api/wordle/stats/:email', async (req, res) => {
     console.error('[Wordle] Stats error:', e);
     res.status(500).json({ error: 'Failed to fetch stats' });
   }
+});
+
+/**
+ * Get today's daily challenge number
+ */
+app.get('/api/wordle/daily-number', (req, res) => {
+  const { getDailyNumber } = require('./utils/daily-word');
+  res.json({ dailyNumber: getDailyNumber() });
+});
+
+/**
+ * Check if user completed today's daily challenge
+ */
+app.get('/api/wordle/daily-completion/:email/:dailyNumber', async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) {
+    return res.status(500).json({ error: 'Database not configured' });
+  }
+
+  const email = decodeURIComponent(req.params.email);
+  const dailyNumber = parseInt(req.params.dailyNumber);
+
+  if (isNaN(dailyNumber)) {
+    return res.status(400).json({ error: 'Invalid daily number' });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('daily_challenge_completions')
+      .select('*')
+      .eq('player_email', email)
+      .eq('daily_number', dailyNumber)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      console.error('[Wordle] Daily completion check error:', error);
+      return res.status(500).json({ error: 'Failed to check completion' });
+    }
+
+    if (data) {
+      res.json({ completed: true, ...(data as object) });
+    } else {
+      res.json({ completed: false });
+    }
+  } catch (e) {
+    console.error('[Wordle] Daily completion error:', e);
+    res.status(500).json({ error: 'Failed to check completion' });
+  }
+});
+
+/**
+ * Get historical dailies with completion status for a user
+ * Returns recent 30 days by default, or all if ?all=true
+ */
+app.get('/api/wordle/historical-dailies/:email', async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  const { getDailyNumber, getDailyDate } = require('./utils/daily-word');
+
+  const email = decodeURIComponent(req.params.email);
+  const currentDailyNumber = getDailyNumber();
+  const limit = req.query.all === 'true' ? currentDailyNumber : 30;
+
+  // Build list of dailies with completion status
+  const dailies: Array<{
+    daily_number: number;
+    date: string;
+    completed: boolean;
+    won?: boolean;
+    guess_count?: number;
+    solve_time_ms?: number;
+  }> = [];
+
+  // Get user's completions
+  let completions: Record<number, { won: boolean; guess_count: number; solve_time_ms: number }> =
+    {};
+
+  if (supabase) {
+    try {
+      const { data } = await supabase
+        .from('daily_challenge_completions')
+        .select('daily_number, won, guess_count, solve_time_ms')
+        .eq('player_email', email);
+
+      if (data) {
+        completions = (
+          data as Array<{
+            daily_number: number;
+            won: boolean;
+            guess_count: number;
+            solve_time_ms: number;
+          }>
+        ).reduce(
+          (acc, row) => {
+            acc[row.daily_number] = {
+              won: row.won,
+              guess_count: row.guess_count,
+              solve_time_ms: row.solve_time_ms,
+            };
+            return acc;
+          },
+          {} as typeof completions
+        );
+      }
+    } catch (e) {
+      console.error('[Wordle] Failed to fetch completions:', e);
+    }
+  }
+
+  // Build dailies list (most recent first)
+  for (let i = currentDailyNumber; i >= Math.max(1, currentDailyNumber - limit + 1); i--) {
+    const completion = completions[i];
+    dailies.push({
+      daily_number: i,
+      date: getDailyDate(i),
+      completed: !!completion,
+      ...(completion || {}),
+    });
+  }
+
+  res.json({
+    current_daily: currentDailyNumber,
+    dailies,
+    total_completed: Object.keys(completions).length,
+    total_available: currentDailyNumber,
+  });
+});
+
+/**
+ * Get a random unplayed daily for a user
+ */
+app.get('/api/wordle/random-unplayed-daily/:email', async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  const { getDailyNumber, getDailyDate } = require('./utils/daily-word');
+
+  const email = decodeURIComponent(req.params.email);
+  const currentDailyNumber = getDailyNumber();
+
+  // Get user's completed daily numbers
+  let completedDailies: Set<number> = new Set();
+
+  if (supabase) {
+    try {
+      const { data } = await supabase
+        .from('daily_challenge_completions')
+        .select('daily_number')
+        .eq('player_email', email);
+
+      if (data) {
+        completedDailies = new Set(
+          (data as Array<{ daily_number: number }>).map((row) => row.daily_number)
+        );
+      }
+    } catch (e) {
+      console.error('[Wordle] Failed to fetch completions:', e);
+    }
+  }
+
+  // Find unplayed dailies (excluding today's - that's the main daily challenge)
+  const unplayedDailies: number[] = [];
+  for (let i = 1; i < currentDailyNumber; i++) {
+    if (!completedDailies.has(i)) {
+      unplayedDailies.push(i);
+    }
+  }
+
+  if (unplayedDailies.length === 0) {
+    return res.json({
+      found: false,
+      message: 'All historical dailies completed!',
+      total_completed: completedDailies.size,
+      total_available: currentDailyNumber - 1,
+    });
+  }
+
+  // Pick a random one
+  const randomIndex = Math.floor(Math.random() * unplayedDailies.length);
+  const selectedDaily = unplayedDailies[randomIndex];
+
+  res.json({
+    found: true,
+    daily_number: selectedDaily,
+    date: getDailyDate(selectedDaily),
+    remaining_unplayed: unplayedDailies.length,
+    total_completed: completedDailies.size,
+    total_available: currentDailyNumber - 1,
+  });
 });
 
 // ============================================================
