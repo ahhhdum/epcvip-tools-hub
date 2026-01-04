@@ -1,90 +1,164 @@
 # EPCVIP Tools Hub
 
-A retro-style game interface for accessing EPCVIP innovation tools. Built with KaPlay (Kaboom.js fork).
+A retro-style game interface for EPCVIP innovation tools, featuring multiplayer Wordle Battle.
 
-## Quick Start
+## Tech Stack
 
-```bash
-# Local development
-npx serve . -p 3333
-# Open http://localhost:3333
-```
+| Layer | Technology |
+|-------|------------|
+| Backend | TypeScript, Express, ws (WebSocket), Supabase |
+| Frontend - Game | Vanilla JS, KaPlay 3001 (Kaboom.js fork) |
+| Frontend - Wordle | Vanilla JS, CSS, ES Modules |
+| Database | PostgreSQL via Supabase |
+| Deployment | Railway (reverse proxy routing) |
+| Auth | JWT-based SSO + Supabase Auth |
+
+## Critical Warnings
+
+1. **RLS Required** - All new Supabase tables MUST have Row-Level Security policies
+2. **WebSocket Cleanup** - Always clean up Maps/Sets and intervals on disconnect
+3. **Service Key** - NEVER expose `SUPABASE_SERVICE_KEY` to client code
+4. **Parameterized Queries** - Never use string interpolation in Supabase queries
+5. **Console Logs** - Remove debug console.logs before committing
 
 ## Project Structure
 
 ```
-├── index.html          # Main game entry point
-├── sprite-test.html    # Standalone sprite animation tool
-├── js/
-│   ├── main.js         # KaPlay initialization, scene registration
-│   ├── config.js       # Game settings, colors, tool links
-│   ├── scenes/
-│   │   ├── loading.js  # Loading screen, asset loading
-│   │   ├── overworld.js# Main game world
-│   │   ├── pause.js    # Pause menu with tool links
-│   │   └── sprite-test.js # In-game sprite test (dev)
-│   ├── entities/
-│   │   ├── player.js   # Player sprite, movement, collision
-│   │   ├── building.js # Interactive buildings
-│   │   ├── collectible.js # Fritelle throwing mechanics
-│   │   └── decoration.js  # Flowers, trees, etc.
-│   └── systems/
-│       ├── input.js    # Virtual D-pad, keyboard handling
-│       ├── camera.js   # Camera following player
-│       ├── audio.js    # Sound effects
-│       ├── dialog.js   # In-game dialogs
-│       └── multiplayer.js # WebSocket multiplayer (optional)
-├── assets/
-│   └── sprites/        # Character sprites (Cute_Fantasy pack)
-└── server/             # Railway deployment config
+epcvip-tools-hub/
+├── server/                    # Node.js backend
+│   ├── src/
+│   │   ├── index.ts          # Express + WebSocket server, API routes
+│   │   ├── rooms/
+│   │   │   └── wordle-room.ts # Wordle game logic, room management
+│   │   └── utils/
+│   │       ├── daily-word.ts  # Daily word system (epoch: 2024-01-01)
+│   │       ├── room-codes.ts  # 6-char room code generator
+│   │       └── word-list.ts   # 666 common 5-letter words
+│   └── public/               # Static files (copied during build)
+│
+├── js/                        # KaPlay game frontend
+│   ├── main.js               # Entry point, scene registration
+│   ├── config.js             # Game settings, tool links
+│   ├── scenes/               # Loading, overworld, pause screens
+│   ├── entities/             # Player, buildings, collectibles
+│   └── systems/              # Input, camera, audio, multiplayer
+│
+├── wordle/                    # Wordle Battle frontend
+│   ├── index.html            # Game UI, auth modal, views
+│   ├── wordle.css            # Styles
+│   ├── wordle.js             # Game logic, WebSocket client
+│   └── valid-guesses.js      # 12K valid 5-letter words
+│
+├── tools/                     # Embedded tool iframes
+├── assets/                    # Sprites (Cute_Fantasy pack)
+├── STANDARDS.md              # Code standards (READ THIS)
+└── BACKLOG.md                # Feature backlog
 ```
 
-## Key Features
+## Key Commands
 
-- **Sprite-based player**: Uses Farmer_Bob.png with directional animations
-- **Building interactions**: Walk up and press Enter to open tool links
-- **Fritelle throwing**: Press Space/B to throw, collect powerups
-- **Multiplayer**: Optional WebSocket-based player sync
+```bash
+# Development
+npm run dev              # Start server with hot reload
+npm run build           # Compile TypeScript + copy static
 
-## Dev Tools
+# Quality
+npm run lint            # ESLint check
+npm run lint:fix        # Auto-fix ESLint issues
+npm run format          # Prettier formatting
+/audit                  # Comprehensive quality audit
+/review-recent          # Review recent changes
 
-### Sprite Animation Tool (`sprite-test.html`)
+# Server
+cd server && npm start  # Start production server
+```
 
-Standalone tool for analyzing and configuring sprite sheet animations.
+## Database Schema
 
-**Features:**
-- Visual grid of all sprite frames with labels
-- Animation preview with play/pause, speed control
-- Sequence builder (click frames to add)
-- Row presets for quick testing
-- Export as KaPlay config or frame array
-- FlipX toggle for mirrored animations
+| Table | Purpose |
+|-------|---------|
+| `wordle_stats` | Aggregate player stats (games, wins, streaks) |
+| `wordle_games` | Game records (room, word, mode, timestamps) |
+| `wordle_results` | Per-player results per game |
+| `daily_challenge_completions` | Daily challenge tracking |
+| `players` | Player profiles (from auth) |
 
-**Usage:**
-1. Open `http://localhost:3333/sprite-test.html`
-2. Adjust sprite path/dimensions at top of file if needed
-3. Click frames or use row presets to build sequences
-4. Export config for use in `loadSprite()` calls
+## Code Patterns
 
-**Current sprite config** (Farmer_Bob.png, 6x13 grid):
-| Row | Frames | Animation |
-|-----|--------|-----------|
-| 0 | 0-5 | idle-down |
-| 1 | 6-11 | idle-right |
-| 2 | 12-17 | idle-up |
-| 3 | 18-23 | walk-down |
-| 4 | 24-29 | walk-right |
-| 5 | 30-35 | walk-up |
-| 6 | 36-41 | hit/fall |
+### WebSocket Message Format
+```typescript
+// All messages have type + payload
+{ type: 'createRoom', playerName: 'Alice', playerEmail: 'alice@ex.com' }
+{ type: 'error', message: 'Room not found' }
+```
 
-## Deployment
+### Room Management Pattern
+```typescript
+class WordleRoomManager {
+  private rooms: Map<string, WordleRoom> = new Map();
+  private playerToRoom: Map<string, string> = new Map();
+  private socketToPlayer: Map<WebSocket, string> = new Map();
 
-Deployed on Railway with reverse proxy routing:
+  // Always clean up ALL maps on disconnect
+  handleDisconnect(socket: WebSocket): void {
+    const playerId = this.socketToPlayer.get(socket);
+    // Delete from all maps...
+  }
+}
+```
+
+### API Response Pattern
+```typescript
+// Success
+res.json({ data: result, meta: { count: 1 } });
+
+// Error
+res.status(400).json({ error: 'Invalid email', code: 'BAD_REQUEST' });
+```
+
+## Wordle Battle Features
+
+- **Solo Daily Challenge** - One attempt per day per user
+- **Historical Dailies** - Play missed past dailies
+- **Multiplayer Rooms** - 2-6 players, casual or competitive
+- **Real-time Progress** - See opponent boards (colors only)
+- **Stats Tracking** - Games, wins, streaks, solve times
+
+## Development Workflow
+
+1. **New Feature**: Add to BACKLOG.md, create plan in docs/
+2. **Implementation**: Follow STANDARDS.md, write tests for new code
+3. **Review**: Run `/review-recent` before committing
+4. **Commit**: Pre-commit hook runs lint + format
+5. **Deploy**: Push to main triggers Railway deploy
+
+## Deployment (Railway)
+
+Reverse proxy routes in `server/src/index.ts`:
 - `/` → Tools Hub game
-- `/ping-tree` → Ping Tree Compare tool
-- `/athena` → Athena Usage Monitor
+- `/ping-tree` → Ping Tree Compare (external)
+- `/athena` → Athena Usage Monitor (external)
+- `/validator` → Streamlit Validator (external)
 
-## Related
+## Documentation
 
-- Asset pack: Cute_Fantasy (see ASSETS.md)
-- Parent directory: `../CLAUDE.md`
+| Doc | Purpose |
+|-----|---------|
+| `STANDARDS.md` | Comprehensive code standards |
+| `BACKLOG.md` | Feature backlog and priorities |
+| `docs/WORDLE_BATTLE_PLAN.md` | Wordle feature design |
+| `docs/MULTIPLAYER_PLAN.md` | Multiplayer architecture |
+| `docs/AUTH_AND_PERSISTENCE_PLAN.md` | Auth design |
+| `ASSETS.md` | Sprite pack documentation |
+
+## Quick Reference
+
+- **Daily word epoch**: January 1, 2024
+- **Room codes**: 6 uppercase letters (A-Z, excludes confusing chars)
+- **Max players per room**: 6
+- **Max guesses per game**: 6
+- **Word length**: 5 letters
+
+---
+
+*See STANDARDS.md for detailed coding standards, anti-patterns, and testing guidelines.*
