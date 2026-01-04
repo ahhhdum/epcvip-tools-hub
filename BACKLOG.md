@@ -33,11 +33,14 @@
   - Random unplayed daily button
   - Recent 7 days quick access
   - Browse all with number input
-- [ ] **Granular guess tracking** - Store each guess with timestamp for analytics
+- [x] **Granular guess tracking** - Store each guess with timestamp for analytics
   - Per-guess timing (time since start, time since last guess)
   - Letter result tracking (greens, yellows, grays)
+  - Guess distribution in wordle_stats (guesses_1 through guesses_6)
 - [ ] **Starting word analytics** - Track favorite openers, success rates per starter
+  - Data available via `wordle_guesses WHERE guess_number = 1`
 - [ ] **Matchup history** - Head-to-head records against specific opponents
+  - Data available via `wordle_results` joined on `game_id`
 
 ### Medium Priority - User-Facing Stats
 - [ ] **Share results** - Copy Wordle-style emoji grid to clipboard
