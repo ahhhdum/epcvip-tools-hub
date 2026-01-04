@@ -2,30 +2,54 @@
  * Wordle Battle Room Manager
  *
  * Handles room creation, player management, and game logic.
+ * Refactored to use modular services for validation, timing, and persistence.
  */
 
 import { WebSocket } from 'ws';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import * as fs from 'fs';
 import * as path from 'path';
 import { generateUniqueRoomCode } from '../utils/room-codes';
 import { getRandomWord, isValidGuess } from '../utils/word-list';
-import { getDailyWord, getDailyNumber, WordMode } from '../utils/daily-word';
+import { getDailyNumber, getDailyWordByNumber, WordMode } from '../utils/daily-word';
 
-// Supabase client for stats persistence
-const SUPABASE_URL = process.env.SUPABASE_URL || '';
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || '';
+// Constants
+import {
+  MAX_GUESSES,
+  MAX_PLAYERS_PER_ROOM,
+  MIN_PLAYERS_FOR_MULTIPLAYER,
+  PLAYER_ID_PREFIX,
+  SOLO_START_DELAY_MS,
+  FORCED_WORDS_LOG_FILE,
+  LOGS_DIRECTORY,
+} from '../constants/wordle-constants';
 
-let supabase: SupabaseClient | null = null;
-function getSupabase(): SupabaseClient | null {
-  if (!supabase && SUPABASE_URL && SUPABASE_SERVICE_KEY) {
-    supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-  }
-  return supabase;
-}
+// Services
+import {
+  validateGuess,
+  isWinningResult,
+  isOutOfGuesses,
+  countCorrectLetters,
+  calculateScore,
+  normalizeGuess,
+  LetterResult,
+} from '../services/wordle-validator';
+import {
+  startCountdown,
+  clearCountdown,
+  startTimerSync,
+  stopTimerSync,
+  PlayerTimerData,
+} from '../services/wordle-timer';
+import {
+  hasCompletedDailyChallenge,
+  saveGameResults,
+  saveDailyChallengeCompletions,
+  GameResultData,
+  DailyChallengePlayerData,
+} from '../services/wordle-database';
 
-// Letter result types
-export type LetterResult = 'correct' | 'present' | 'absent';
+// Re-export LetterResult for consumers
+export type { LetterResult };
 
 // Game modes
 export type GameMode = 'casual' | 'competitive';
@@ -61,10 +85,20 @@ interface WordleRoom {
   creatorId: string;
   countdownTimer: NodeJS.Timeout | null;
   timerInterval: NodeJS.Timeout | null;
+  isDailyChallenge: boolean; // True if this is a daily challenge room
+  dailyNumber: number | null; // The specific daily number (for historical dailies)
+  isSolo: boolean; // True if this is a solo game (skip 2-player requirement)
 }
 
 // Player counter for unique IDs
 let playerCounter = 0;
+
+/**
+ * Generate a unique player ID
+ */
+function generatePlayerId(): string {
+  return `${PLAYER_ID_PREFIX}${++playerCounter}_${Date.now()}`;
+}
 
 /**
  * Wordle Room Manager
@@ -90,7 +124,7 @@ export class WordleRoomManager {
       return null;
     }
 
-    const playerId = `wp${++playerCounter}_${Date.now()}`;
+    const playerId = generatePlayerId();
 
     const player: WordlePlayer = {
       id: playerId,
@@ -118,6 +152,9 @@ export class WordleRoomManager {
       creatorId: playerId,
       countdownTimer: null,
       timerInterval: null,
+      isDailyChallenge: false,
+      dailyNumber: null,
+      isSolo: false,
     };
 
     this.rooms.set(roomCode, room);
@@ -132,6 +169,80 @@ export class WordleRoomManager {
 
     console.log(`[Wordle] Room ${roomCode} created by ${playerName}`);
     return { roomCode, playerId };
+  }
+
+  /**
+   * Create a daily challenge room (auth required, checks completion)
+   * @param dailyNumber The daily challenge number (can be today's or historical)
+   * @param solo If true, start game immediately without waiting for other players
+   */
+  async createDailyChallengeRoom(
+    socket: WebSocket,
+    playerName: string,
+    playerEmail: string | undefined,
+    dailyNumber: number,
+    solo: boolean = false
+  ): Promise<{ roomCode: string; playerId: string } | null> {
+    // Verify email provided (auth required for daily challenge)
+    if (!playerEmail) {
+      this.send(socket, { type: 'error', message: 'Login required for Daily Challenge' });
+      return null;
+    }
+
+    // Validate daily number is in valid range
+    const currentDailyNumber = getDailyNumber();
+    if (dailyNumber < 1 || dailyNumber > currentDailyNumber) {
+      this.send(socket, { type: 'error', message: 'Invalid daily number' });
+      return null;
+    }
+
+    const isHistorical = dailyNumber < currentDailyNumber;
+
+    // Check if already completed this daily
+    const alreadyCompleted = await hasCompletedDailyChallenge(playerEmail, dailyNumber);
+    if (alreadyCompleted) {
+      const message = isHistorical
+        ? `You've already completed Daily #${dailyNumber}`
+        : "You've already completed today's Daily Challenge";
+      this.send(socket, { type: 'error', message });
+      return null;
+    }
+
+    // Create room with daily challenge settings locked
+    const result = this.createRoom(socket, playerName, playerEmail);
+    if (result) {
+      const room = this.rooms.get(result.roomCode);
+      if (room) {
+        room.isDailyChallenge = true;
+        room.dailyNumber = dailyNumber;
+        room.wordMode = 'daily';
+        room.isSolo = solo;
+        const dailyType = isHistorical ? `Historical #${dailyNumber}` : `Today's #${dailyNumber}`;
+        console.log(
+          `[DAILY] ${solo ? 'Solo' : 'Multiplayer'} room ${result.roomCode} created by ${playerName} (${dailyType})`
+        );
+
+        // For solo mode: immediately start countdown
+        if (solo) {
+          console.log(`[DAILY] Solo mode - starting countdown immediately for ${playerEmail}`);
+          // Send roomJoined with isSolo flag so client knows to expect countdown
+          this.send(socket, {
+            type: 'roomJoined',
+            roomCode: result.roomCode,
+            playerId: result.playerId,
+            isHost: true,
+            players: [{ id: result.playerId, name: playerName, isReady: true, isCreator: true }],
+            gameMode: room.gameMode,
+            wordMode: room.wordMode,
+            dailyNumber: dailyNumber,
+            isSolo: true,
+          });
+          // Start countdown after a brief delay to let client receive roomJoined
+          setTimeout(() => this.startCountdown(room), SOLO_START_DELAY_MS);
+        }
+      }
+    }
+    return result;
   }
 
   /**
@@ -150,12 +261,15 @@ export class WordleRoomManager {
       return false;
     }
 
-    if (room.players.size >= 6) {
-      this.send(socket, { type: 'error', message: 'Room is full (max 6 players).' });
+    if (room.players.size >= MAX_PLAYERS_PER_ROOM) {
+      this.send(socket, {
+        type: 'error',
+        message: `Room is full (max ${MAX_PLAYERS_PER_ROOM} players).`,
+      });
       return false;
     }
 
-    const playerId = `wp${++playerCounter}_${Date.now()}`;
+    const playerId = generatePlayerId();
 
     const player: WordlePlayer = {
       id: playerId,
@@ -234,12 +348,11 @@ export class WordleRoomManager {
     // If room is empty, delete it
     if (room.players.size === 0) {
       // Clear any active countdown
-      if (room.countdownTimer) {
-        clearInterval(room.countdownTimer);
-        room.countdownTimer = null;
-      }
+      clearCountdown(room.countdownTimer);
+      room.countdownTimer = null;
       // Clear timer sync
-      this.stopTimerSync(room);
+      stopTimerSync(room.timerInterval);
+      room.timerInterval = null;
       this.rooms.delete(roomCode);
       console.log(`[Wordle] Room ${roomCode} deleted (empty)`);
       return;
@@ -354,31 +467,18 @@ export class WordleRoomManager {
    * Start the countdown and then the game
    */
   private startCountdown(room: WordleRoom): void {
-    let count = 3;
-
-    // Broadcast initial countdown
-    this.broadcastToRoom(room.code, {
-      type: 'countdown',
-      count,
-    });
-
-    room.countdownTimer = setInterval(() => {
-      count--;
-
-      if (count > 0) {
+    room.countdownTimer = startCountdown({
+      onTick: (count) => {
         this.broadcastToRoom(room.code, {
           type: 'countdown',
           count,
         });
-      } else {
-        // Countdown finished - start the game
-        if (room.countdownTimer) {
-          clearInterval(room.countdownTimer);
-          room.countdownTimer = null;
-        }
+      },
+      onComplete: () => {
+        room.countdownTimer = null;
         this.beginGame(room);
-      }
-    }, 1000);
+      },
+    });
   }
 
   /**
@@ -396,11 +496,18 @@ export class WordleRoomManager {
     }
 
     // Select word based on word mode
-    room.word = room.wordMode === 'daily' ? getDailyWord() : getRandomWord();
+    if (room.wordMode === 'daily') {
+      // Use specific daily number if set (historical), otherwise today's
+      const dailyNum = room.dailyNumber ?? getDailyNumber();
+      room.word = getDailyWordByNumber(dailyNum);
+    } else {
+      room.word = getRandomWord();
+    }
     room.gameState = 'playing';
     room.startTime = Date.now();
 
-    const wordModeInfo = room.wordMode === 'daily' ? `Daily #${getDailyNumber()}` : 'Random';
+    const wordModeInfo =
+      room.wordMode === 'daily' ? `Daily #${room.dailyNumber ?? getDailyNumber()}` : 'Random';
     console.log(`[Wordle] Game started in room ${room.code}, word: ${room.word} (${wordModeInfo})`);
 
     // Send game start to all players
@@ -422,58 +529,37 @@ export class WordleRoomManager {
 
   /**
    * Start broadcasting timer updates
+   *
+   * Uses the timer service with snapshot pattern to prevent race conditions
+   * when players disconnect during iteration.
    */
   private startTimerSync(room: WordleRoom): void {
     // Clear any existing timer
-    if (room.timerInterval) {
-      clearInterval(room.timerInterval);
-    }
+    stopTimerSync(room.timerInterval);
 
-    // Broadcast timer sync every second
-    room.timerInterval = setInterval(() => {
-      if (room.gameState !== 'playing' || !room.startTime) {
-        this.stopTimerSync(room);
-        return;
-      }
-
-      const now = Date.now();
-      const playerTimes: Record<
-        string,
-        { elapsed: number; finished: boolean; finishTime: number | null }
-      > = {};
-
-      for (const [id, player] of room.players) {
-        if (player.isFinished && player.finishTime) {
-          playerTimes[id] = {
-            elapsed: player.finishTime,
-            finished: true,
-            finishTime: player.finishTime,
-          };
-        } else {
-          playerTimes[id] = {
-            elapsed: now - room.startTime,
-            finished: false,
-            finishTime: null,
-          };
-        }
-      }
-
-      this.broadcastToRoom(room.code, {
-        type: 'timerSync',
-        gameTime: now - room.startTime,
-        playerTimes,
-      });
-    }, 1000);
+    room.timerInterval = startTimerSync({
+      getPlayers: () => room.players,
+      getStartTime: () => room.startTime,
+      isPlaying: () => room.gameState === 'playing',
+      onSync: (gameTime, playerTimes) => {
+        this.broadcastToRoom(room.code, {
+          type: 'timerSync',
+          gameTime,
+          playerTimes,
+        });
+      },
+      onStop: () => {
+        room.timerInterval = null;
+      },
+    });
   }
 
   /**
    * Stop timer sync
    */
-  private stopTimerSync(room: WordleRoom): void {
-    if (room.timerInterval) {
-      clearInterval(room.timerInterval);
-      room.timerInterval = null;
-    }
+  private stopRoomTimerSync(room: WordleRoom): void {
+    stopTimerSync(room.timerInterval);
+    room.timerInterval = null;
   }
 
   /**
@@ -500,8 +586,12 @@ export class WordleRoomManager {
       return;
     }
 
-    if (room.players.size < 2) {
-      this.send(socket, { type: 'error', message: 'Need at least 2 players to start.' });
+    // Skip player count check for solo rooms
+    if (!room.isSolo && room.players.size < MIN_PLAYERS_FOR_MULTIPLAYER) {
+      this.send(socket, {
+        type: 'error',
+        message: `Need at least ${MIN_PLAYERS_FOR_MULTIPLAYER} players to start.`,
+      });
       return;
     }
 
@@ -534,8 +624,8 @@ export class WordleRoomManager {
     const player = room.players.get(playerId);
     if (!player || player.isFinished) return;
 
-    // Validate guess
-    const guess = word.toUpperCase();
+    // Normalize and validate guess format
+    const guess = normalizeGuess(word);
     if (!isValidGuess(guess)) {
       this.send(socket, { type: 'error', message: 'Invalid guess. Must be 5 letters.' });
       return;
@@ -546,19 +636,19 @@ export class WordleRoomManager {
       this.logForcedWord(guess, player.name, player.email, roomCode);
     }
 
-    // Check if already used 6 guesses
-    if (player.guesses.length >= 6) {
+    // Check if already used all guesses
+    if (isOutOfGuesses(player.guesses.length)) {
       this.send(socket, { type: 'error', message: 'No more guesses remaining.' });
       return;
     }
 
-    // Validate guess against target word
-    const result = this.validateGuess(guess, room.word);
+    // Validate guess against target word using validator service
+    const result = validateGuess(guess, room.word);
     player.guesses.push(guess);
     player.guessResults.push(result);
 
-    const isWin = result.every((r) => r === 'correct');
-    const isLoss = !isWin && player.guesses.length >= 6;
+    const isWin = isWinningResult(result);
+    const isLoss = !isWin && isOutOfGuesses(player.guesses.length);
 
     if (isWin || isLoss) {
       player.isFinished = true;
@@ -566,10 +656,7 @@ export class WordleRoomManager {
       player.finishTime = Date.now() - (room.startTime || 0);
 
       if (isWin && room.gameMode === 'competitive') {
-        // Score = (7 - guesses) * 100 + time bonus
-        const guessBonus = (7 - player.guesses.length) * 100;
-        const timeBonus = Math.max(0, 60000 - player.finishTime) / 1000;
-        player.score = Math.round(guessBonus + timeBonus);
+        player.score = calculateScore(player.guesses.length, player.finishTime);
       }
     }
 
@@ -584,7 +671,7 @@ export class WordleRoomManager {
     });
 
     // Count greens for progress indicator
-    const greenCount = result.filter((r) => r === 'correct').length;
+    const greenCount = countCorrectLetters(result);
 
     // Broadcast progress to other players (colors only, not letters)
     this.broadcastToRoom(
@@ -610,36 +697,6 @@ export class WordleRoomManager {
   }
 
   /**
-   * Validate a guess against the target word
-   */
-  private validateGuess(guess: string, target: string): LetterResult[] {
-    const result: LetterResult[] = new Array(5).fill('absent');
-    const targetChars = target.split('');
-    const used = new Set<number>();
-
-    // First pass: mark exact matches
-    for (let i = 0; i < 5; i++) {
-      if (guess[i] === target[i]) {
-        result[i] = 'correct';
-        used.add(i);
-      }
-    }
-
-    // Second pass: mark present (in word but wrong position)
-    for (let i = 0; i < 5; i++) {
-      if (result[i] === 'correct') continue;
-
-      const foundIdx = targetChars.findIndex((c, j) => c === guess[i] && !used.has(j));
-      if (foundIdx >= 0) {
-        result[i] = 'present';
-        used.add(foundIdx);
-      }
-    }
-
-    return result;
-  }
-
-  /**
    * Log a forced word for dictionary review
    */
   private logForcedWord(
@@ -657,13 +714,13 @@ export class WordleRoomManager {
     };
 
     // Ensure logs directory exists
-    const logsDir = path.join(__dirname, '../../logs');
+    const logsDir = path.join(__dirname, `../../${LOGS_DIRECTORY}`);
     if (!fs.existsSync(logsDir)) {
       fs.mkdirSync(logsDir, { recursive: true });
     }
 
     // Append to JSONL file
-    const logPath = path.join(logsDir, 'forced-words.jsonl');
+    const logPath = path.join(logsDir, FORCED_WORDS_LOG_FILE);
     fs.appendFileSync(logPath, JSON.stringify(logEntry) + '\n');
 
     console.log(`[Wordle] Forced word logged: ${word} by ${playerName}`);
@@ -676,11 +733,13 @@ export class WordleRoomManager {
     room.gameState = 'finished';
 
     // Stop the timer sync
-    this.stopTimerSync(room);
+    this.stopRoomTimerSync(room);
 
-    // Build results
-    const results = Array.from(room.players.values())
-      .map((p, index) => ({
+    // Build results - snapshot players to avoid mutation during async
+    const playerSnapshot = Array.from(room.players.values());
+
+    const results: GameResultData[] = playerSnapshot
+      .map((p) => ({
         playerId: p.id,
         name: p.name,
         email: p.email,
@@ -688,6 +747,7 @@ export class WordleRoomManager {
         guesses: p.guesses.length,
         time: p.finishTime || 0,
         score: p.score,
+        finishPosition: 0, // Will be set after sorting
       }))
       .sort((a, b) => {
         // Sort by: won first, then by guesses (fewer is better), then by time
@@ -697,139 +757,43 @@ export class WordleRoomManager {
       });
 
     // Add finish position after sorting
-    const resultsWithPosition = results.map((r, idx) => ({
-      ...r,
-      finishPosition: idx + 1,
-    }));
+    results.forEach((r, idx) => {
+      r.finishPosition = idx + 1;
+    });
 
     this.broadcastToRoom(room.code, {
       type: 'gameEnded',
       word: room.word,
-      results: resultsWithPosition,
+      results,
       gameMode: room.gameMode,
     });
 
     console.log(`[Wordle] Game ended in room ${room.code}`);
 
-    // Save to database (async, don't block the response)
-    this.saveGameResults(room, resultsWithPosition).catch((err) => {
-      console.error('[Wordle] Failed to save game results:', err);
-    });
-  }
-
-  /**
-   * Save game results to database
-   */
-  private async saveGameResults(
-    room: WordleRoom,
-    results: Array<{
-      playerId: string;
-      name: string;
-      email: string | null;
-      won: boolean;
-      guesses: number;
-      time: number;
-      score: number;
-      finishPosition: number;
-    }>
-  ): Promise<void> {
-    const db = getSupabase();
-    if (!db) {
-      console.log('[Wordle] Database not configured, skipping stats save');
-      return;
-    }
-
-    try {
-      // Insert game record
-      const { data: game, error: gameError } = await db
-        .from('wordle_games')
-        .insert({
-          room_code: room.code,
-          word: room.word,
-          game_mode: room.gameMode,
-          started_at: room.startTime
-            ? new Date(room.startTime).toISOString()
-            : new Date().toISOString(),
-          ended_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
-
-      if (gameError) {
-        console.error('[Wordle] Failed to insert game:', gameError);
-        return;
+    // Save to database using service (async, don't block the response)
+    saveGameResults(room.code, room.word || '', room.gameMode, room.startTime, results).catch(
+      (err) => {
+        console.error('[Wordle] Failed to save game results:', err);
       }
+    );
 
-      // Insert player results
-      const resultRecords = results.map((r) => ({
-        game_id: game.id,
-        player_email: r.email,
-        player_name: r.name,
-        guesses: r.guesses,
-        solve_time_ms: r.time,
-        won: r.won,
-        score: r.score,
-        finish_position: r.finishPosition,
-      }));
+    // Save daily challenge completions if applicable
+    if (room.isDailyChallenge && room.word) {
+      const dailyNumber = room.dailyNumber ?? getDailyNumber();
 
-      const { error: resultsError } = await db.from('wordle_results').insert(resultRecords);
+      // Collect player data for daily completions (snapshot to avoid mutation)
+      const dailyPlayers: DailyChallengePlayerData[] = playerSnapshot
+        .filter((p) => p.email) // Only authenticated players
+        .map((p) => ({
+          email: p.email!,
+          guesses: p.guesses,
+          guessCount: p.guesses.length,
+          won: p.won,
+          solveTimeMs: p.finishTime,
+        }));
 
-      if (resultsError) {
-        console.error('[Wordle] Failed to insert results:', resultsError);
-      }
-
-      // Update stats for authenticated players
-      for (const r of results) {
-        if (r.email) {
-          await this.updatePlayerStats(db, r.email, r.won, r.guesses);
-        }
-      }
-
-      console.log(`[Wordle] Saved game ${game.id} with ${results.length} player results`);
-    } catch (err) {
-      console.error('[Wordle] Database error:', err);
-    }
-  }
-
-  /**
-   * Update aggregate stats for a player
-   */
-  private async updatePlayerStats(
-    db: SupabaseClient,
-    email: string,
-    won: boolean,
-    guesses: number
-  ): Promise<void> {
-    // Get existing stats or create new
-    const { data: existing } = await db
-      .from('wordle_stats')
-      .select('*')
-      .eq('player_email', email)
-      .single();
-
-    if (existing) {
-      // Update existing stats
-      const newStreak = won ? existing.current_streak + 1 : 0;
-      await db
-        .from('wordle_stats')
-        .update({
-          games_played: existing.games_played + 1,
-          games_won: existing.games_won + (won ? 1 : 0),
-          total_guesses: existing.total_guesses + guesses,
-          current_streak: newStreak,
-          best_streak: Math.max(existing.best_streak, newStreak),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('player_email', email);
-    } else {
-      // Create new stats record
-      await db.from('wordle_stats').insert({
-        player_email: email,
-        games_played: 1,
-        games_won: won ? 1 : 0,
-        total_guesses: guesses,
-        current_streak: won ? 1 : 0,
-        best_streak: won ? 1 : 0,
+      saveDailyChallengeCompletions(dailyNumber, room.word, dailyPlayers).catch((err) => {
+        console.error('[Wordle] Failed to save daily challenge completions:', err);
       });
     }
   }
@@ -875,6 +839,15 @@ export class WordleRoomManager {
       switch (msg.type) {
         case 'createRoom':
           this.createRoom(socket, msg.playerName, msg.playerEmail);
+          break;
+        case 'createDailyChallenge':
+          this.createDailyChallengeRoom(
+            socket,
+            msg.playerName,
+            msg.playerEmail,
+            msg.dailyNumber,
+            msg.solo ?? false
+          );
           break;
         case 'joinRoom':
           this.joinRoom(socket, msg.roomCode, msg.playerName, msg.playerEmail);
