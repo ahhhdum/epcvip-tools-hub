@@ -1927,26 +1927,42 @@ function renderPublicRooms() {
       wordLabel = room.wordMode === 'daily' ? 'Daily' : 'Random';
     }
 
+    // FEAT-002: Check if user already completed this daily
+    const isCompletedDaily =
+      room.dailyNumber && todayCompleted && room.dailyNumber === todaysDailyNumber;
+
+    // Add completed class if applicable
+    if (isCompletedDaily) {
+      item.classList.add('completed-daily');
+    }
+
+    // Build the button based on completion status
+    const buttonText = isCompletedDaily ? '✓ Completed' : 'Join';
+    const buttonDisabled = isCompletedDaily ? 'disabled' : '';
+
     item.innerHTML = `
       <div class="public-room-info">
         <div class="public-room-creator">${room.creatorName}'s Room</div>
         <div class="public-room-details">${modeLabel} • ${wordLabel}</div>
       </div>
       <span class="public-room-players">${room.playerCount}/${room.maxPlayers}</span>
-      <button class="public-room-join">Join</button>
+      <button class="public-room-join${isCompletedDaily ? ' completed' : ''}" ${buttonDisabled}>${buttonText}</button>
     `;
 
-    // Join button click
-    const joinBtn = item.querySelector('.public-room-join');
-    joinBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      joinPublicRoom(room.code, room.dailyNumber);
-    });
+    // Only add click handlers if not a completed daily
+    if (!isCompletedDaily) {
+      // Join button click
+      const joinBtn = item.querySelector('.public-room-join');
+      joinBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        joinPublicRoom(room.code, room.dailyNumber);
+      });
 
-    // Clicking the whole item also joins
-    item.addEventListener('click', () => {
-      joinPublicRoom(room.code, room.dailyNumber);
-    });
+      // Clicking the whole item also joins
+      item.addEventListener('click', () => {
+        joinPublicRoom(room.code, room.dailyNumber);
+      });
+    }
 
     elements.publicRoomsList.appendChild(item);
   }

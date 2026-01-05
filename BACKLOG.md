@@ -25,6 +25,64 @@
 
 ## Wordle Battle Backlog
 
+### Completed - Room Management Fixes (2026-01-04)
+
+- [x] **BUG-001: Prevent duplicate players during grace period**
+  - Fixed: `joinRoom()` now checks if player email already exists in room
+  - Redirects to `handleRejoin()` instead of creating new player entry
+  - Prevents inflated player counts when rejoining own room
+
+- [x] **BUG-002: Force room close on last player leave**
+  - Fixed: Added `forceCloseRoom()` method
+  - When last connected player leaves voluntarily, room closes immediately
+  - Clears all grace period timers for remaining disconnected players
+
+- [x] **FEAT-002: Visual indicator for completed dailies in lobby**
+  - Room cards show green border and reduced opacity for completed dailies
+  - "✓ Completed" button (disabled) instead of "Join"
+  - Prevents confusion when clicking rooms you can't join
+
+### Pending - Room Management (Sprint 2)
+
+- [ ] **BUG-003: Host "Close Room" functionality**
+  - Host should be able to close room with other players in it
+  - Notifies all players: "Host closed the room"
+  - Immediately terminates room regardless of player count
+  - Files: `wordle-room.ts`, `wordle.js`, `index.html`
+
+- [ ] **FEAT-001: Spectate mode for completed daily users**
+  - Users who completed today's daily can click "Watch" on public daily rooms
+  - Read-only view: see boards, no keyboard input
+  - Badge in room showing "Spectating"
+  - Count spectators separately from players
+  - Files: `wordle-room.ts`, `wordle.js`, `index.html`, `wordle.css`
+
+### Pending - Anti-Cheat (Sprint 3)
+
+- [ ] **FEAT-003: Daily attempt tracking (Score Doesn't Count)**
+  - Track `daily_attempts` in database with start time and room code
+  - If user joins room where attempt already exists, mark as "resumed"
+  - Resumed attempts don't count toward stats/leaderboards
+  - User informed: "Resumed attempt - won't affect stats"
+  - Files: migrations, `wordle-database.ts`, `wordle-room.ts`, `wordle.js`
+
+- [ ] **BUG-004: Race condition - Multiple daily rooms per user**
+  - Between async check and room creation, user can create duplicate attempts
+  - Fix: Server-side lock or database constraint on `(email, daily_number)`
+  - Files: `wordle-room.ts`, `wordle-database.ts`
+
+- [ ] **BUG-005: localStorage resume exploit**
+  - Users can clear localStorage to retry dailies
+  - Fix: Track daily attempt start server-side in database
+  - On room creation, check if attempt exists and send guesses from server
+  - Files: `wordle-database.ts`, `wordle-room.ts`, `wordle.js`
+
+### Edge Cases to Handle
+
+- [ ] **EDGE-001: Rapid guess submission (bot detection)** - Reject guesses with `timeSinceLastMs < 500`
+- [ ] **EDGE-003: Browser back button during game** - Add `beforeunload` handler, send `leaveRoom`
+- [ ] **EDGE-004: Network disconnect during guess submission** - Client retries, server deduplicates
+
 ### Completed - Security & UX Blockers (2025-01-04)
 
 - [x] **Server-Side Word Validation (Security)** - ✅ ALREADY SECURE

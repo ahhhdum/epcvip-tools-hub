@@ -326,6 +326,17 @@ export class WordleRoomManager {
       return false;
     }
 
+    // BUG-001 FIX: Check if player with same email already exists in room
+    // This prevents duplicate player entries during grace period
+    if (playerEmail) {
+      const existingPlayer = Array.from(room.players.values()).find((p) => p.email === playerEmail);
+      if (existingPlayer) {
+        console.log(`[Wordle] ${playerEmail} already in room ${roomCode}, redirecting to rejoin`);
+        this.handleRejoin(socket, roomCode, existingPlayer.id);
+        return true; // Handled via rejoin flow
+      }
+    }
+
     const playerId = generatePlayerId();
 
     const player: WordlePlayer = {
@@ -507,6 +518,44 @@ export class WordleRoomManager {
   }
 
   /**
+   * BUG-002 FIX: Force close a room immediately
+   *
+   * Used when the last connected player voluntarily leaves and there are
+   * only disconnected players in grace period remaining.
+   * Clears all grace period timers and deletes the room.
+   */
+  private forceCloseRoom(roomCode: string): void {
+    const room = this.rooms.get(roomCode);
+    if (!room) {
+      return;
+    }
+
+    // Clear all grace period timers for remaining players
+    for (const player of room.players.values()) {
+      if (player.reconnectTimer) {
+        clearTimeout(player.reconnectTimer);
+        player.reconnectTimer = null;
+      }
+      // Clean up player-to-room mapping
+      this.playerToRoom.delete(player.id);
+    }
+
+    // Clean up room timers
+    clearCountdown(room.countdownTimer);
+    room.countdownTimer = null;
+    stopTimerSync(room.timerInterval);
+    room.timerInterval = null;
+
+    // Delete the room
+    this.rooms.delete(roomCode);
+
+    // Update lobby
+    this.broadcastPublicRoomsList();
+
+    console.log(`[Wordle] Room ${roomCode} force closed (no connected players)`);
+  }
+
+  /**
    * Handle voluntary leave - player explicitly wants to leave the room
    *
    * Unlike disconnect (which has a grace period), voluntary leave is immediate.
@@ -569,6 +618,16 @@ export class WordleRoomManager {
 
     // Remove player immediately (no grace period for voluntary leave)
     this.removePlayerPermanently(roomCode, playerId);
+
+    // BUG-002 FIX: Force close room if no connected players remain
+    // This handles the case where disconnected players are in grace period
+    const roomAfterLeave = this.rooms.get(roomCode);
+    if (roomAfterLeave && getConnectedPlayerCount(roomAfterLeave) === 0) {
+      console.log(
+        `[Wordle] Room ${roomCode} has no connected players after voluntary leave, force closing`
+      );
+      this.forceCloseRoom(roomCode);
+    }
   }
 
   /**
