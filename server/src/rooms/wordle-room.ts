@@ -1372,6 +1372,7 @@ export class WordleRoomManager {
     maxPlayers: number;
     gameMode: GameMode;
     wordMode: WordMode;
+    dailyNumber: number | null;
   }[] {
     const publicRooms: {
       code: string;
@@ -1380,6 +1381,7 @@ export class WordleRoomManager {
       maxPlayers: number;
       gameMode: GameMode;
       wordMode: WordMode;
+      dailyNumber: number | null;
     }[] = [];
 
     for (const room of this.rooms.values()) {
@@ -1398,6 +1400,7 @@ export class WordleRoomManager {
           maxPlayers: MAX_PLAYERS_PER_ROOM,
           gameMode: room.gameMode,
           wordMode: room.wordMode,
+          dailyNumber: room.dailyNumber,
         });
       }
     }

@@ -35,6 +35,8 @@ let authUser = null; // { email, name, userId } if authenticated
 
 // Daily Challenge state
 let todaysDailyNumber = null;
+let todayCompleted = false; // True if user has completed today's daily
+let todayCompletionData = null; // Full completion data for word reveal
 
 // Historical Dailies state
 let historicalDailiesData = null; // Cached data from API
@@ -274,10 +276,12 @@ const elements = {
   // Daily Completed View
   dailyCompletedView: document.getElementById('dailyCompleted'),
   completedDailyNum: document.getElementById('completedDailyNum'),
+  completedWord: document.getElementById('completedWord'),
   completedGridContainer: document.getElementById('completedGridContainer'),
   completedGuesses: document.getElementById('completedGuesses'),
   completedTime: document.getElementById('completedTime'),
   completedResult: document.getElementById('completedResult'),
+  nextDailyCountdown: document.getElementById('nextDailyCountdown'),
   playRandomInstead: document.getElementById('playRandomInstead'),
   backFromDaily: document.getElementById('backFromDaily'),
 
@@ -554,10 +558,61 @@ async function checkDailyCompletion(email, dailyNumber) {
   return null;
 }
 
+/**
+ * Fetch today's daily challenge status for UI indicators
+ */
+async function fetchDailyStatus(email) {
+  try {
+    const response = await fetch(`/api/wordle/daily-status/${encodeURIComponent(email)}`);
+    if (response.ok) {
+      return await response.json();
+    }
+  } catch (e) {
+    console.warn('[Wordle] Failed to fetch daily status:', e);
+  }
+  return null;
+}
+
+/**
+ * Update daily button appearance based on completion status
+ */
+function updateDailyButtonState() {
+  if (!elements.dailyChallengeBtn) return;
+
+  if (todayCompleted) {
+    elements.dailyChallengeBtn.innerHTML = `<span class="daily-check">&#10003;</span> Daily #${todaysDailyNumber} Completed`;
+    elements.dailyChallengeBtn.classList.add('completed');
+  } else {
+    elements.dailyChallengeBtn.innerHTML = `Daily Challenge #<span id="dailyNum">${todaysDailyNumber || '---'}</span>`;
+    elements.dailyChallengeBtn.classList.remove('completed');
+  }
+}
+
+/**
+ * Calculate time until next daily resets (midnight UTC)
+ */
+function getTimeUntilNextDaily() {
+  const now = new Date();
+  const tomorrow = new Date(now);
+  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+  tomorrow.setUTCHours(0, 0, 0, 0);
+
+  const diff = tomorrow - now;
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+  return `${hours}h ${mins}m`;
+}
+
 function showDailyCompletionView(completion) {
   // Set header info
   if (elements.completedDailyNum) {
     elements.completedDailyNum.textContent = completion.daily_number;
+  }
+
+  // Show the word
+  if (elements.completedWord && completion.word) {
+    elements.completedWord.textContent = completion.word.toUpperCase();
   }
 
   // Set stats
@@ -571,6 +626,12 @@ function showDailyCompletionView(completion) {
   }
   if (elements.completedResult) {
     elements.completedResult.textContent = completion.won ? 'Won' : 'Lost';
+  }
+
+  // Show countdown to next daily
+  if (elements.nextDailyCountdown) {
+    const nextDaily = getTimeUntilNextDaily();
+    elements.nextDailyCountdown.textContent = `Next daily in ${nextDaily}`;
   }
 
   // Build the grid showing their previous guesses
@@ -1049,6 +1110,16 @@ async function init() {
     const stats = await fetchPlayerStats(authUser.email);
     if (stats) {
       displayStats(stats);
+    }
+
+    // Fetch today's daily status for button indicator
+    const dailyStatus = await fetchDailyStatus(authUser.email);
+    if (dailyStatus) {
+      todayCompleted = dailyStatus.completed;
+      if (dailyStatus.completed) {
+        todayCompletionData = dailyStatus;
+      }
+      updateDailyButtonState();
     }
   } else {
     // Guest or returning user - load saved name
@@ -1623,7 +1694,13 @@ function renderPublicRooms() {
     item.dataset.roomCode = room.code;
 
     const modeLabel = room.gameMode === 'competitive' ? 'Competitive' : 'Casual';
-    const wordLabel = room.wordMode === 'daily' ? 'Daily' : 'Random';
+    // Show daily number if available, otherwise just "Daily" or "Random"
+    let wordLabel;
+    if (room.wordMode === 'daily' && room.dailyNumber) {
+      wordLabel = `Daily #${room.dailyNumber}`;
+    } else {
+      wordLabel = room.wordMode === 'daily' ? 'Daily' : 'Random';
+    }
 
     item.innerHTML = `
       <div class="public-room-info">
@@ -1638,12 +1715,12 @@ function renderPublicRooms() {
     const joinBtn = item.querySelector('.public-room-join');
     joinBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      joinPublicRoom(room.code);
+      joinPublicRoom(room.code, room.dailyNumber);
     });
 
     // Clicking the whole item also joins
     item.addEventListener('click', () => {
-      joinPublicRoom(room.code);
+      joinPublicRoom(room.code, room.dailyNumber);
     });
 
     elements.publicRoomsList.appendChild(item);
@@ -1652,8 +1729,19 @@ function renderPublicRooms() {
 
 /**
  * Join a public room by code
+ * @param {string} code - Room code
+ * @param {number|null} dailyNumber - Daily number if room is a daily challenge
  */
-function joinPublicRoom(code) {
+async function joinPublicRoom(code, dailyNumber = null) {
+  // If room is a daily challenge and user is logged in, check if they already completed it
+  if (dailyNumber && authUser) {
+    const completion = await checkDailyCompletion(authUser.email, dailyNumber);
+    if (completion?.completed) {
+      showError(`You've already completed Daily #${dailyNumber}`);
+      return;
+    }
+  }
+
   const name = getPlayerName();
   localStorage.setItem('wordle_playerName', name);
 

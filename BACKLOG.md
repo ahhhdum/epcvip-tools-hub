@@ -25,6 +25,49 @@
 
 ## Wordle Battle Backlog
 
+### 🚨 URGENT - Security & UX Blockers
+
+#### 1. Server-Side Word Validation (Security)
+**Problem:** The word is sent to clients in `gameStarted` WebSocket message, exposing it to anyone with DevTools.
+- Users can see the answer immediately via Network tab
+- Enables cheating in competitive multiplayer
+- Blocks safe implementation of game cancellation
+
+**Solution:** Remove word from all client messages until game ends.
+- Server validates guesses and returns letter-by-letter results: `[{letter: 'A', result: 'correct'}, ...]`
+- Client renders results from server response, not local validation
+- Word only revealed in `gameEnded` message
+
+**Files:** `server/src/rooms/wordle-room.ts` (handleStartGame, handleGuess), `wordle/wordle.js` (guess validation)
+
+#### 2. Leave/Cancel Game During Play (UX)
+**Problem:** Once a game starts, there's no way to exit. Browser back button reconnects you to the same game.
+- Users are trapped if they accidentally start
+- No escape hatch for emergencies
+- Frustrating when you realize you clicked wrong mode
+
+**Solution:** Add "Leave Game" button during active play.
+- Button visible in game view header
+- Confirmation dialog: "Leave game? This will count as a loss."
+- For daily challenges (once server-side validation exists):
+  - If 0 guesses made: clean exit, daily not consumed
+  - If 1+ guesses made: counts as loss, daily marked complete
+- Notify other players: "PlayerX left the game"
+
+**Files:** `wordle/index.html`, `wordle/wordle.js`, `server/src/rooms/wordle-room.ts`
+
+#### 3. Daily Challenge Confirmation Modal (UX)
+**Problem:** Users can accidentally start a daily challenge with no warning that it's a one-time attempt.
+
+**Solution:** Add confirmation step before starting solo daily.
+- After clicking "Play Solo" on daily modal, show: "Once you make your first guess, this counts as your daily attempt. Ready to play?"
+- Options: "Start Game" / "Cancel"
+- Skip confirmation for multiplayer (social accountability)
+
+**Files:** `wordle/index.html`, `wordle/wordle.js`
+
+---
+
 ### Completed
 - [x] **Solo Daily Challenge** - Allow single player to complete daily without waiting for others
 

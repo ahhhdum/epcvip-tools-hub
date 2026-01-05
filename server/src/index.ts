@@ -273,6 +273,63 @@ app.get('/api/wordle/daily-number', (req, res) => {
 });
 
 /**
+ * Quick check for today's daily challenge status
+ * Lightweight endpoint for UI indicators
+ */
+app.get('/api/wordle/daily-status/:email', async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  const { getDailyNumber } = require('./utils/daily-word');
+
+  const email = decodeURIComponent(req.params.email);
+  if (!email) {
+    return res.status(400).json({ error: 'Email required' });
+  }
+
+  const dailyNumber = getDailyNumber();
+
+  if (!supabase) {
+    // No database configured - assume not completed
+    return res.json({ completed: false, dailyNumber });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('daily_challenge_completions')
+      .select('won, guess_count, solve_time_ms, word')
+      .eq('player_email', email)
+      .eq('daily_number', dailyNumber)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      console.error('[Wordle] Daily status check error:', error);
+      return res.status(500).json({ error: 'Failed to check status' });
+    }
+
+    if (data) {
+      const completion = data as {
+        won: boolean;
+        guess_count: number;
+        solve_time_ms: number | null;
+        word: string;
+      };
+      res.json({
+        completed: true,
+        dailyNumber,
+        won: completion.won,
+        guessCount: completion.guess_count,
+        solveTimeMs: completion.solve_time_ms,
+        word: completion.word,
+      });
+    } else {
+      res.json({ completed: false, dailyNumber });
+    }
+  } catch (e) {
+    console.error('[Wordle] Daily status error:', e);
+    res.status(500).json({ error: 'Failed to check status' });
+  }
+});
+
+/**
  * Check if user completed today's daily challenge
  */
 app.get('/api/wordle/daily-completion/:email/:dailyNumber', async (req, res) => {

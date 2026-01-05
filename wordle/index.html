@@ -262,6 +262,12 @@
         <h2>Daily Challenge #<span id="completedDailyNum">---</span></h2>
         <p class="completed-status">Completed Today</p>
 
+        <!-- Word reveal section -->
+        <div class="word-reveal-section">
+          <span class="word-reveal-label">The word was</span>
+          <span id="completedWord" class="revealed-word">-----</span>
+        </div>
+
         <div id="completedGridContainer" class="completed-grid-container">
           <!-- Grid will be built dynamically -->
         </div>
@@ -280,6 +286,8 @@
             <span class="stat-label">result</span>
           </div>
         </div>
+
+        <p id="nextDailyCountdown" class="next-daily-msg"></p>
 
         <div class="completion-actions">
           <button id="playRandomInstead" class="btn btn-primary">Play Random Game</button>
@@ -390,6 +398,7 @@
       <div class="modal-overlay"></div>
       <div class="modal-content daily-mode-modal">
         <h2>Daily Challenge #<span id="modalDailyNum">---</span></h2>
+        <p class="daily-mode-note">One attempt per account</p>
 
         <div class="mode-options">
           <button id="playSoloBtn" class="mode-option-btn primary">
