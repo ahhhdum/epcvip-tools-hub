@@ -42,6 +42,18 @@
   - "✓ Completed" button (disabled) instead of "Join"
   - Prevents confusion when clicking rooms you can't join
 
+- [x] **Room UI Improvements (Card-Based Layout)**
+  - Added card wrappers for Settings, Players, and Actions sections
+  - Unified button sizes (mode-btn, vis-btn: 12px 16px padding)
+  - Moved Leave Room into actions card next to Start Game
+  - Full-width Ready button with consistent styling
+
+- [x] **Pre-Creation Configuration Flow**
+  - New roomConfigView shown before room is created on server
+  - User configures mode, word selection, and visibility before creating
+  - Settings sent with createRoom message (no post-creation config needed)
+  - Server accepts gameMode/wordMode/isPublic in createRoom handler
+
 ### Pending - Room Management (Sprint 2)
 
 - [ ] **BUG-003: Host "Close Room" functionality**
@@ -387,27 +399,51 @@ Allow player to walk "behind" buildings and trees for proper 2D depth illusion.
 
 ## Priority 0: Code Quality & Standards
 
-### Latest Audit (2026-01-03)
-
-See `TECH_DEBT.md` for full audit results and remediation plan.
+### Latest Audit (2026-01-05)
 
 **Summary:**
-- 0 critical issues
-- 6 warnings (documented in TECH_DEBT.md)
-- 4 info items (backlogged)
+- 0 critical issues (vulnerability fixed)
+- 3 warnings (file complexity)
+- 0 ESLint errors (cleaned)
+
+**File Complexity Concerns:**
+| File | Lines | Functions | Status |
+|------|-------|-----------|--------|
+| `wordle/wordle.js` | 3129 | 112 | ⚠️ Needs splitting |
+| `server/src/rooms/wordle-room.ts` | 1611 | 66 | ⚠️ Needs splitting |
+| `wordle/wordle.css` | 2453 | - | ⚠️ Consider splitting |
 
 ### Immediate Remediation Tasks
 
-- [ ] **Fix `any` type** - `server/src/index.ts:211` - Change to `unknown` (5 min)
-- [ ] **ESLint warnings** - Fix 39 unused variable warnings (1-2 hours)
-- [ ] **Review console.logs** - Remove debug logs, keep production logs (30 min)
+- [x] **Fix npm vulnerability** - `qs` package updated via `npm audit fix`
+- [x] **ESLint clean** - 0 errors, 0 warnings
 
-### Near-Term Improvements
+### High Priority - File Splitting
 
-- [ ] **Split wordle-room.ts** - Extract timer, database, and message handlers (4-6 hours)
-  - Extract `WordleTimerManager` class
-  - Extract `WordleDatabaseService` for Supabase operations
-  - Extract `WordleMessageHandler` for message routing
+- [ ] **Split wordle.js (112 functions → 5-6 modules)**
+  - `wordle/js/auth.js` - Authentication (20+ functions)
+  - `wordle/js/daily.js` - Daily challenge logic (25+ functions)
+  - `wordle/js/room.js` - Room management (20+ functions)
+  - `wordle/js/game.js` - Game board/keyboard (20+ functions)
+  - `wordle/js/ui.js` - Views, toasts, modals (15+ functions)
+  - `wordle/js/websocket.js` - Connection handling (10+ functions)
+
+- [ ] **Split wordle-room.ts (66 methods → 4-5 services)**
+  - `RoomManager` - Room CRUD, player maps
+  - `GameController` - Game state, guesses, win conditions
+  - `TimerService` - Countdown, sync, grace periods
+  - `PlayerHandler` - Join, leave, disconnect, reconnect
+  - `BroadcastService` - Message distribution
+
+- [ ] **Split wordle.css (2453 lines → partials)**
+  - `wordle/css/variables.css` - Colors, spacing
+  - `wordle/css/base.css` - Reset, typography
+  - `wordle/css/layout.css` - Views, containers
+  - `wordle/css/components.css` - Cards, buttons, modals
+  - `wordle/css/game.css` - Grid, keyboard, boards
+
+### Medium Priority - Infrastructure
+
 - [ ] **Set up Jest** - Add test infrastructure for server (4 hours)
 - [ ] **ESLint 9 migration** - Migrate to flat config (2-3 hours)
 

@@ -36,7 +36,7 @@ let authUser = null; // { email, name, userId } if authenticated
 // Daily Challenge state
 let todaysDailyNumber = null;
 let todayCompleted = false; // True if user has completed today's daily
-let todayCompletionData = null; // Full completion data for word reveal
+let _todayCompletionData = null; // Full completion data for word reveal (future use)
 
 // Historical Dailies state
 let historicalDailiesData = null; // Cached data from API
@@ -1284,7 +1284,7 @@ async function init() {
     if (dailyStatus) {
       todayCompleted = dailyStatus.completed;
       if (dailyStatus.completed) {
-        todayCompletionData = dailyStatus;
+        _todayCompletionData = dailyStatus;
       }
       updateDailyButtonState();
     }
