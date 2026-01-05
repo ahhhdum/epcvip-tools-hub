@@ -481,6 +481,38 @@ body {
   opacity: 0.8;
 }
 
+/* Forgot Password */
+.forgot-password-link {
+  text-align: center;
+  margin-top: 12px;
+  font-size: 0.85rem;
+}
+
+.forgot-password-link a {
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.forgot-password-link a:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+/* Password Reset Forms */
+.reset-instructions {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.success-message {
+  color: var(--correct);
+  font-size: 0.9rem;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
 /* Daily Mode Selection Modal */
 .daily-mode-modal {
   max-width: 320px;
@@ -2643,4 +2675,618 @@ body {
     width: 40px;
     font-size: 0.7rem;
   }
+}
+
+/* ===========================================
+   Header Toolbar (Lobby Redesign Phase 1)
+   =========================================== */
+
+.header-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.header-title {
+  text-align: center;
+  flex: 1;
+}
+
+.header-title h1 {
+  margin: 0;
+}
+
+.header-title .tagline {
+  margin: 0;
+}
+
+.toolbar-btn {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.25rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.toolbar-btn:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.toolbar-btn.back-btn {
+  font-size: 1.5rem;
+}
+
+.toolbar-right {
+  display: flex;
+  gap: 4px;
+}
+
+/* ===========================================
+   Profile Dropdown
+   =========================================== */
+
+.profile-dropdown {
+  position: absolute;
+  top: 60px;
+  right: 10px;
+  width: 240px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  z-index: 200;
+  overflow: hidden;
+  animation: dropdownSlide 0.2s ease;
+}
+
+@keyframes dropdownSlide {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dropdown-content {
+  padding: 8px 0;
+}
+
+.dropdown-header {
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.profile-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.profile-email {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.dropdown-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+
+.dropdown-item {
+  width: 100%;
+  padding: 12px 16px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.dropdown-item-danger {
+  color: var(--danger);
+}
+
+.dropdown-item-danger:hover {
+  background: rgba(231, 76, 60, 0.1);
+}
+
+/* ===========================================
+   Simplified Lobby (Phase 3)
+   =========================================== */
+
+.lobby-simplified {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px 20px;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+/* Primary CTA - Daily Challenge */
+.btn-daily-large {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 24px 20px;
+  background: linear-gradient(135deg, #c9a227 0%, #9a7b1c 100%);
+  border: 2px solid #c9a227;
+  border-radius: 12px;
+  color: var(--text-primary);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.btn-daily-large:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(201, 162, 39, 0.35);
+}
+
+.btn-daily-large:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-daily-large .btn-icon {
+  font-size: 1.75rem;
+}
+
+.btn-daily-large .btn-text {
+  font-size: 1.15rem;
+}
+
+.btn-daily-large .btn-number {
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.btn-daily-large.completed {
+  background: linear-gradient(135deg, #538d4e 0%, #3a6b38 100%);
+  border-color: #538d4e;
+}
+
+/* Secondary CTA - Play With Friends */
+.btn-friends {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 18px 20px;
+  background: var(--accent);
+  border: 2px solid var(--accent);
+  border-radius: 12px;
+  color: var(--text-primary);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.btn-friends:hover {
+  background: #477841;
+  border-color: #477841;
+  transform: translateY(-1px);
+}
+
+.btn-friends .btn-icon {
+  font-size: 1.5rem;
+}
+
+.btn-friends .btn-text {
+  font-size: 1.05rem;
+}
+
+/* Tertiary CTA - Past Dailies */
+.btn-tertiary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 16px 20px;
+  background: var(--bg-secondary);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  color: var(--text-primary);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.btn-tertiary:hover {
+  border-color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.btn-tertiary .btn-icon {
+  font-size: 1.25rem;
+}
+
+.btn-tertiary .btn-text {
+  font-size: 0.95rem;
+}
+
+.btn-tertiary .btn-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+/* ===========================================
+   Compact Stats Strip
+   =========================================== */
+
+.stats-strip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 16px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.stats-strip:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
+.stats-separator {
+  opacity: 0.5;
+}
+
+/* ===========================================
+   Guest Prompt
+   =========================================== */
+
+.guest-prompt {
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin: 0;
+  padding-top: 8px;
+}
+
+.guest-prompt a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.guest-prompt a:hover {
+  text-decoration: underline;
+}
+
+/* ===========================================
+   Bottom Sheet (Play With Friends)
+   =========================================== */
+
+.bottom-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 250;
+  visibility: hidden;
+  opacity: 0;
+  transition: visibility 0s 0.3s, opacity 0.3s ease;
+}
+
+.bottom-sheet.visible {
+  visibility: visible;
+  opacity: 1;
+  transition: visibility 0s, opacity 0.3s ease;
+}
+
+.sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.sheet-container {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--bg);
+  border-radius: 16px 16px 0 0;
+  max-height: 85vh;
+  overflow-y: auto;
+  transform: translateY(100%);
+  transition: transform 0.3s ease;
+}
+
+.bottom-sheet.visible .sheet-container {
+  transform: translateY(0);
+}
+
+/* Desktop: Convert bottom sheet to centered modal */
+@media (min-width: 768px) {
+  .bottom-sheet .sheet-container {
+    position: fixed;
+    bottom: auto;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    max-width: 400px;
+    width: 90%;
+    border-radius: 16px;
+    max-height: 80vh;
+  }
+
+  .bottom-sheet.visible .sheet-container {
+    transform: translate(-50%, -50%);
+  }
+}
+
+.sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 1;
+}
+
+.sheet-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: var(--text-primary);
+}
+
+.sheet-close {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-secondary);
+  border: none;
+  border-radius: 50%;
+  font-size: 1.5rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sheet-close:hover {
+  background: var(--bg-tile);
+  color: var(--text-primary);
+}
+
+.sheet-content {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sheet-btn {
+  width: 100%;
+}
+
+.sheet-join-section {
+  display: flex;
+  gap: 10px;
+}
+
+.sheet-join-section input {
+  flex: 1;
+  padding: 14px 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 1rem;
+  text-transform: uppercase;
+}
+
+.sheet-join-section input::placeholder {
+  text-transform: none;
+  color: var(--text-secondary);
+}
+
+.sheet-join-section input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.sheet-join-section .btn {
+  padding: 14px 24px;
+}
+
+/* Public rooms in sheet */
+.bottom-sheet .public-rooms-section {
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+  margin-top: 8px;
+}
+
+.bottom-sheet .public-rooms-section h4 {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+/* ===========================================
+   Settings View
+   =========================================== */
+
+.settings-content {
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+.settings-content h2 {
+  font-size: 1.5rem;
+  margin-bottom: 24px;
+  color: var(--text-primary);
+}
+
+.settings-card {
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.settings-card label {
+  display: block;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+}
+
+.settings-card input[type="text"] {
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--bg-tile);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+.settings-card input[type="text"]:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.settings-hint {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-top: 8px;
+}
+
+.settings-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.toggle-btn {
+  padding: 8px 20px;
+  background: var(--accent);
+  border: none;
+  border-radius: 20px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.toggle-btn[aria-pressed="false"] {
+  background: var(--absent);
+}
+
+.toggle-btn:hover {
+  opacity: 0.9;
+}
+
+#backFromSettings {
+  margin-top: 24px;
+}
+
+/* ===========================================
+   Mobile Adjustments for Lobby Redesign
+   =========================================== */
+
+@media (max-width: 480px) {
+  .header-toolbar {
+    padding: 0 8px;
+  }
+
+  .toolbar-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 1.1rem;
+  }
+
+  .lobby-simplified {
+    padding: 16px 16px;
+    gap: 14px;
+  }
+
+  .btn-daily-large {
+    padding: 20px 16px;
+  }
+
+  .btn-daily-large .btn-icon {
+    font-size: 1.5rem;
+  }
+
+  .btn-daily-large .btn-text {
+    font-size: 1.05rem;
+  }
+
+  .btn-friends {
+    padding: 16px;
+  }
+
+  .btn-friends .btn-icon {
+    font-size: 1.3rem;
+  }
+
+  .btn-friends .btn-text {
+    font-size: 1rem;
+  }
+
+  .btn-tertiary {
+    padding: 14px 16px;
+  }
+
+  .stats-strip {
+    padding: 12px 14px;
+    font-size: 0.85rem;
+  }
+
+  .profile-dropdown {
+    right: 8px;
+    left: 8px;
+    width: auto;
+  }
+
+  .settings-content {
+    padding: 20px 16px;
+  }
+}
+
+/* Position dropdown relative to header */
+.header {
+  position: relative;
 }

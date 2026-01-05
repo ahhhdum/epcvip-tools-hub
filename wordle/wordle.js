@@ -200,6 +200,7 @@ const views = {
   dailyCompleted: document.getElementById('dailyCompleted'),
   historicalDailies: document.getElementById('historicalDailies'),
   stats: document.getElementById('statsView'),
+  settingsView: document.getElementById('settingsView'),
 };
 
 const elements = {
@@ -278,6 +279,22 @@ const elements = {
   closeModal: document.getElementById('closeModal'),
   authToggle: document.getElementById('authToggle'),
   switchToSignup: document.getElementById('switchToSignup'),
+  forgotPasswordLink: document.getElementById('forgotPasswordLink'),
+
+  // Password Reset
+  resetPasswordForm: document.getElementById('resetPasswordForm'),
+  resetEmail: document.getElementById('resetEmail'),
+  resetError: document.getElementById('resetError'),
+  resetSuccess: document.getElementById('resetSuccess'),
+  sendResetLink: document.getElementById('sendResetLink'),
+  backToLogin: document.getElementById('backToLogin'),
+
+  // Update Password (after reset link clicked)
+  updatePasswordForm: document.getElementById('updatePasswordForm'),
+  newPassword: document.getElementById('newPassword'),
+  confirmPassword: document.getElementById('confirmPassword'),
+  updateError: document.getElementById('updateError'),
+  updatePasswordBtn: document.getElementById('updatePasswordBtn'),
 
   // Daily Challenge
   dailyChallengeSection: document.getElementById('dailyChallengeSection'),
@@ -370,6 +387,44 @@ const elements = {
   statsFastestTime: document.getElementById('statsFastestTime'),
   statsAvgTime: document.getElementById('statsAvgTime'),
   distributionChart: document.getElementById('distributionChart'),
+
+  // Header Toolbar (Lobby Redesign)
+  backBtn: document.getElementById('backBtn'),
+  headerTitle: document.getElementById('headerTitle'),
+  settingsBtn: document.getElementById('settingsBtn'),
+  profileBtn: document.getElementById('profileBtn'),
+
+  // Profile Dropdown
+  profileDropdown: document.getElementById('profileDropdown'),
+  profileLoggedIn: document.getElementById('profileLoggedIn'),
+  profileLoggedOut: document.getElementById('profileLoggedOut'),
+  profileDisplayName: document.getElementById('profileDisplayName'),
+  profileEmail: document.getElementById('profileEmail'),
+  dropdownStats: document.getElementById('dropdownStats'),
+  dropdownLogout: document.getElementById('dropdownLogout'),
+  dropdownLogin: document.getElementById('dropdownLogin'),
+  dropdownSignup: document.getElementById('dropdownSignup'),
+  dropdownGuest: document.getElementById('dropdownGuest'),
+
+  // Simplified Lobby
+  playWithFriendsLobbyBtn: document.getElementById('playWithFriendsLobbyBtn'),
+  statsStrip: document.getElementById('statsStrip'),
+  statsWins: document.getElementById('statsWins'),
+  statsStreakStrip: document.getElementById('statsStreak'),
+  statsBestStrip: document.getElementById('statsBest'),
+  guestPrompt: document.getElementById('guestPrompt'),
+  loginPromptLink: document.getElementById('loginPromptLink'),
+
+  // Friends Bottom Sheet
+  friendsSheet: document.getElementById('friendsSheet'),
+  closeFriendsSheet: document.getElementById('closeFriendsSheet'),
+  sheetBackdrop: document.querySelector('.sheet-backdrop'),
+
+  // Settings View
+  settingsView: document.getElementById('settingsView'),
+  settingsName: document.getElementById('settingsName'),
+  soundToggle: document.getElementById('soundToggle'),
+  backFromSettings: document.getElementById('backFromSettings'),
 };
 
 // SSO Token Handling
@@ -429,18 +484,24 @@ async function fetchPlayerStats(email) {
 
 // Display player stats in lobby
 function displayStats(stats) {
-  if (!stats || !elements.playerStats) return;
+  if (!stats) return;
 
-  elements.statPlayed.textContent = stats.games_played || 0;
+  // Update old stats section (if it exists)
+  if (elements.playerStats) {
+    elements.statPlayed.textContent = stats.games_played || 0;
 
-  const winRate =
-    stats.games_played > 0 ? Math.round((stats.games_won / stats.games_played) * 100) : 0;
-  elements.statWinRate.textContent = `${winRate}%`;
+    const winRate =
+      stats.games_played > 0 ? Math.round((stats.games_won / stats.games_played) * 100) : 0;
+    elements.statWinRate.textContent = `${winRate}%`;
 
-  elements.statStreak.textContent = stats.current_streak || 0;
-  elements.statBestStreak.textContent = stats.best_streak || 0;
+    elements.statStreak.textContent = stats.current_streak || 0;
+    elements.statBestStreak.textContent = stats.best_streak || 0;
 
-  elements.playerStats.classList.remove('hidden');
+    elements.playerStats.classList.remove('hidden');
+  }
+
+  // Update new compact stats strip (lobby redesign)
+  updateStatsStripValues(stats);
 }
 
 /**
@@ -480,6 +541,7 @@ async function signup(email, password, displayName) {
     password,
     options: {
       data: { display_name: displayName, user_type: 'external' },
+      emailRedirectTo: `${window.location.origin}/wordle/`,
     },
   });
 
@@ -509,6 +571,70 @@ async function logout() {
   state.authUser = null;
   updateAuthUI();
   elements.playerStats.classList.add('hidden');
+}
+
+// Password Reset Functions
+async function requestPasswordReset(email) {
+  const client = getSupabase();
+  if (!client) throw new Error('Auth not available');
+
+  const { error } = await client.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/wordle/`,
+  });
+
+  if (error) throw error;
+  return true;
+}
+
+async function updatePassword(newPassword) {
+  const client = getSupabase();
+  if (!client) throw new Error('Auth not available');
+
+  const { error } = await client.auth.updateUser({ password: newPassword });
+  if (error) throw error;
+  return true;
+}
+
+function showForgotPasswordForm() {
+  // Hide login form, show reset form
+  elements.authForm.classList.add('hidden');
+  elements.authToggle.classList.add('hidden');
+  document.querySelector('.forgot-password-link').classList.add('hidden');
+  elements.resetPasswordForm.classList.remove('hidden');
+  elements.modalTitle.textContent = 'Reset Password';
+  elements.authError.classList.add('hidden');
+}
+
+function hideForgotPasswordForm() {
+  // Show login form, hide reset form
+  elements.authForm.classList.remove('hidden');
+  elements.authToggle.classList.remove('hidden');
+  document.querySelector('.forgot-password-link').classList.remove('hidden');
+  elements.resetPasswordForm.classList.add('hidden');
+  elements.modalTitle.textContent = 'Sign In';
+  elements.authError.classList.add('hidden');
+  elements.resetSuccess.classList.add('hidden');
+  elements.resetError.classList.add('hidden');
+}
+
+function showPasswordUpdateForm() {
+  // Show the update password form (after clicking reset link)
+  showAuthModal();
+  elements.authForm.classList.add('hidden');
+  elements.authToggle.classList.add('hidden');
+  document.querySelector('.forgot-password-link').classList.add('hidden');
+  elements.resetPasswordForm.classList.add('hidden');
+  elements.updatePasswordForm.classList.remove('hidden');
+  elements.modalTitle.textContent = 'Set New Password';
+  elements.authError.classList.add('hidden');
+}
+
+function hidePasswordUpdateForm() {
+  elements.updatePasswordForm.classList.add('hidden');
+  elements.authForm.classList.remove('hidden');
+  elements.authToggle.classList.remove('hidden');
+  document.querySelector('.forgot-password-link').classList.remove('hidden');
+  elements.modalTitle.textContent = 'Sign In';
 }
 
 async function checkExistingSession() {
@@ -546,17 +672,26 @@ async function checkExistingSession() {
 }
 
 function updateAuthUI() {
-  if (!elements.authPrompt || !elements.authStatus) return;
+  // Update old auth section (if it exists - legacy support)
+  if (elements.authPrompt && elements.authStatus) {
+    if (state.authUser) {
+      // Logged in - show status, hide prompt, show room actions
+      elements.authPrompt.classList.add('hidden');
+      elements.authStatus.classList.remove('hidden');
+      if (elements.userEmail) {
+        elements.userEmail.textContent = state.authUser.email;
+      }
+      if (elements.roomActionsSection) {
+        elements.roomActionsSection.classList.remove('hidden');
+      }
+    } else {
+      // Not logged in - show prompt, hide status, hide room actions (until guest chosen)
+      elements.authPrompt.classList.remove('hidden');
+      elements.authStatus.classList.add('hidden');
+    }
+  }
 
   if (state.authUser) {
-    // Logged in - show status, hide prompt, show room actions
-    elements.authPrompt.classList.add('hidden');
-    elements.authStatus.classList.remove('hidden');
-    elements.userEmail.textContent = state.authUser.email;
-    if (elements.roomActionsSection) {
-      elements.roomActionsSection.classList.remove('hidden');
-    }
-
     // Enable daily challenge for logged-in users
     if (elements.dailyChallengeSection) {
       elements.dailyChallengeSection.classList.remove('hidden');
@@ -572,11 +707,6 @@ function updateAuthUI() {
       elements.historicalDailiesBtn.classList.remove('hidden');
     }
   } else {
-    // Not logged in - show prompt, hide status, hide room actions (until guest chosen)
-    elements.authPrompt.classList.remove('hidden');
-    elements.authStatus.classList.add('hidden');
-    // Room actions stay hidden until user clicks "play as guest"
-
     // Disable daily challenge for guests
     if (elements.dailyChallengeBtn) {
       elements.dailyChallengeBtn.disabled = true;
@@ -590,6 +720,303 @@ function updateAuthUI() {
   if (elements.dailyNum && state.todaysDailyNumber) {
     elements.dailyNum.textContent = state.todaysDailyNumber;
   }
+
+  // Update profile dropdown UI (new lobby design)
+  updateProfileDropdown();
+
+  // Update stats strip
+  updateStatsStrip();
+
+  // Update guest prompt visibility
+  updateGuestPrompt();
+}
+
+// =============================================================================
+// Profile Dropdown & New Lobby UI Functions
+// =============================================================================
+
+/**
+ * Update the profile dropdown content based on auth state.
+ */
+function updateProfileDropdown() {
+  if (!elements.profileLoggedIn || !elements.profileLoggedOut) return;
+
+  if (state.authUser) {
+    // Logged in state
+    elements.profileLoggedIn.classList.remove('hidden');
+    elements.profileLoggedOut.classList.add('hidden');
+
+    if (elements.profileDisplayName) {
+      elements.profileDisplayName.textContent = state.authUser.name || 'Player';
+    }
+    if (elements.profileEmail) {
+      elements.profileEmail.textContent = state.authUser.email || '';
+    }
+  } else {
+    // Logged out state
+    elements.profileLoggedIn.classList.add('hidden');
+    elements.profileLoggedOut.classList.remove('hidden');
+  }
+}
+
+/**
+ * Toggle the profile dropdown visibility.
+ */
+function toggleProfileDropdown() {
+  if (!elements.profileDropdown) return;
+
+  const isVisible = !elements.profileDropdown.classList.contains('hidden');
+  if (isVisible) {
+    closeProfileDropdown();
+  } else {
+    elements.profileDropdown.classList.remove('hidden');
+    // Close on click outside
+    setTimeout(() => {
+      document.addEventListener('click', closeProfileDropdownOnOutsideClick);
+    }, 0);
+  }
+}
+
+function closeProfileDropdown() {
+  if (elements.profileDropdown) {
+    elements.profileDropdown.classList.add('hidden');
+  }
+  document.removeEventListener('click', closeProfileDropdownOnOutsideClick);
+}
+
+function closeProfileDropdownOnOutsideClick(e) {
+  if (
+    elements.profileDropdown &&
+    !elements.profileDropdown.contains(e.target) &&
+    !elements.profileBtn?.contains(e.target)
+  ) {
+    closeProfileDropdown();
+  }
+}
+
+/**
+ * Update the compact stats strip on the lobby.
+ */
+function updateStatsStrip() {
+  if (!elements.statsStrip) return;
+
+  // Only show stats strip for logged-in users with stats
+  if (state.authUser) {
+    elements.statsStrip.classList.remove('hidden');
+  } else {
+    elements.statsStrip.classList.add('hidden');
+  }
+}
+
+/**
+ * Update stats strip values from fetched stats.
+ */
+function updateStatsStripValues(stats) {
+  if (!stats) return;
+
+  if (elements.statsWins) {
+    elements.statsWins.textContent = `${stats.games_won || 0} wins`;
+  }
+  if (elements.statsStreakStrip) {
+    elements.statsStreakStrip.textContent = `🔥 ${stats.current_streak || 0}`;
+  }
+  if (elements.statsBestStrip) {
+    elements.statsBestStrip.textContent = `Best: ${stats.best_streak || 0}`;
+  }
+}
+
+/**
+ * Update guest prompt visibility.
+ */
+function updateGuestPrompt() {
+  if (!elements.guestPrompt) return;
+
+  if (state.authUser) {
+    elements.guestPrompt.classList.add('hidden');
+  } else {
+    elements.guestPrompt.classList.remove('hidden');
+  }
+}
+
+/**
+ * Open the "Play With Friends" bottom sheet.
+ */
+function openFriendsSheet() {
+  if (!elements.friendsSheet) return;
+  elements.friendsSheet.classList.remove('hidden');
+  elements.friendsSheet.classList.add('visible');
+  // Prevent body scroll when sheet is open
+  document.body.style.overflow = 'hidden';
+}
+
+/**
+ * Close the "Play With Friends" bottom sheet.
+ */
+function closeFriendsSheet() {
+  if (!elements.friendsSheet) return;
+  elements.friendsSheet.classList.remove('visible');
+  // Wait for animation to complete
+  setTimeout(() => {
+    elements.friendsSheet.classList.add('hidden');
+  }, 300);
+  document.body.style.overflow = '';
+}
+
+/**
+ * Show the Settings view.
+ */
+function showSettings() {
+  // Load current settings
+  const savedName = localStorage.getItem('wordle_playerName') || '';
+  if (elements.settingsName) {
+    elements.settingsName.value = savedName;
+  }
+
+  // Load sound setting
+  const soundEnabled = localStorage.getItem('wordle_soundEnabled') !== 'false';
+  if (elements.soundToggle) {
+    elements.soundToggle.textContent = soundEnabled ? 'On' : 'Off';
+    elements.soundToggle.setAttribute('aria-pressed', soundEnabled.toString());
+  }
+
+  showView('settingsView');
+}
+
+/**
+ * Save settings and return to lobby.
+ */
+function saveSettings() {
+  // Save name
+  if (elements.settingsName) {
+    const name = elements.settingsName.value.trim();
+    if (name) {
+      localStorage.setItem('wordle_playerName', name);
+      // Update the playerName input if it exists
+      if (elements.playerName) {
+        elements.playerName.value = name;
+      }
+    }
+  }
+
+  showView('lobby');
+}
+
+/**
+ * Toggle sound setting.
+ */
+function toggleSound() {
+  const currentEnabled = localStorage.getItem('wordle_soundEnabled') !== 'false';
+  const newEnabled = !currentEnabled;
+  localStorage.setItem('wordle_soundEnabled', newEnabled.toString());
+
+  if (elements.soundToggle) {
+    elements.soundToggle.textContent = newEnabled ? 'On' : 'Off';
+    elements.soundToggle.setAttribute('aria-pressed', newEnabled.toString());
+  }
+}
+
+/**
+ * Update header back button visibility based on current view.
+ */
+function updateBackButton(currentView) {
+  if (!elements.backBtn) return;
+
+  // Show back button on all views except lobby
+  const viewsWithBackButton = [
+    'waiting',
+    'game',
+    'results',
+    'roomConfig',
+    'settingsView',
+    'stats',
+    'historicalDailies',
+    'dailyCompleted',
+  ];
+
+  if (viewsWithBackButton.includes(currentView)) {
+    elements.backBtn.classList.remove('hidden');
+  } else {
+    elements.backBtn.classList.add('hidden');
+  }
+}
+
+/**
+ * Handle header back button click based on current view.
+ */
+function handleBackButton() {
+  const currentView = getCurrentView();
+
+  switch (currentView) {
+    case 'settingsView':
+      saveSettings();
+      break;
+    case 'stats':
+      showView('lobby');
+      break;
+    case 'historicalDailies':
+      showView('lobby');
+      // Clear cached data so it refreshes on next visit
+      state.historicalDailiesData = null;
+      break;
+    case 'dailyCompleted':
+      showView('lobby');
+      break;
+    case 'roomConfig':
+      showView('lobby');
+      break;
+    case 'waiting':
+      // Leave room
+      send({ type: 'leaveRoom' });
+      clearSession();
+      showView('lobby');
+      updateURLForLobby();
+      state.roomCode = null;
+      state.playerId = null;
+      state.isCreator = false;
+      subscribeLobby();
+      break;
+    case 'game':
+      // Leave game (with confirmation modal)
+      showLeaveConfirmModal();
+      break;
+    case 'results':
+      // Go back to lobby
+      if (state.roomCode) {
+        send({ type: 'leaveRoom' });
+        clearSession();
+      }
+      state.resetRoom();
+      showView('lobby');
+      updateURLForLobby();
+      subscribeLobby();
+      break;
+    default:
+      showView('lobby');
+  }
+}
+
+/**
+ * Get the current visible view.
+ */
+function getCurrentView() {
+  const views = [
+    'lobby',
+    'waiting',
+    'game',
+    'results',
+    'roomConfig',
+    'settingsView',
+    'stats',
+    'historicalDailies',
+    'dailyCompleted',
+  ];
+  for (const viewId of views) {
+    const el = document.getElementById(viewId);
+    if (el && !el.classList.contains('hidden')) {
+      return viewId;
+    }
+  }
+  return 'lobby';
 }
 
 // Daily Challenge Functions
@@ -1335,6 +1762,41 @@ async function handleAuthSubmit(e) {
 async function init() {
   // Fetch Supabase config from server
   await fetchSupabaseConfig();
+
+  // Set up auth state change listener (handles email confirmation redirects)
+  const client = getSupabase();
+  if (client) {
+    client.auth.onAuthStateChange(async (event, session) => {
+      console.log('[Wordle] Auth state changed:', event);
+      if (event === 'SIGNED_IN' && session?.user) {
+        // User just confirmed email or signed in
+        state.authUser = {
+          email: session.user.email,
+          name: session.user.user_metadata?.display_name || session.user.email.split('@')[0],
+        };
+        hideAuthModal();
+        updateAuthUI();
+
+        // Fetch and display stats
+        const stats = await fetchPlayerStats(state.authUser.email);
+        if (stats) displayStats(stats);
+
+        // Fetch daily status
+        const dailyStatus = await fetchDailyStatus(state.authUser.email);
+        if (dailyStatus) {
+          state.todayCompleted = dailyStatus.completed;
+          if (dailyStatus.completed) state.todayCompletionData = dailyStatus;
+          updateDailyButtonState();
+        }
+      } else if (event === 'SIGNED_OUT') {
+        state.authUser = null;
+        updateAuthUI();
+      } else if (event === 'PASSWORD_RECOVERY') {
+        // User clicked password reset link - show update password form
+        showPasswordUpdateForm();
+      }
+    });
+  }
 
   // Fetch today's daily number
   await fetchDailyNumber();
@@ -2330,8 +2792,14 @@ function handleReplacedByNewConnection(_msg) {
 // UI Helpers
 function showView(name) {
   for (const [key, view] of Object.entries(views)) {
-    view.classList.toggle('hidden', key !== name);
+    if (view) {
+      view.classList.toggle('hidden', key !== name);
+    }
   }
+  // Update header back button visibility
+  updateBackButton(name);
+  // Close profile dropdown when changing views
+  closeProfileDropdown();
 }
 
 function updatePlayerList(players, highlightPlayerId = null) {
@@ -2780,7 +3248,7 @@ function renderOpponentBoards() {
 function setupEventListeners() {
   // Lobby
   elements.createRoom.addEventListener('click', () => {
-    // Show config view instead of immediately creating room
+    closeFriendsSheet();
     resetPendingConfig();
     updateConfigButtons();
     showView('roomConfig');
@@ -3097,6 +3565,86 @@ function setupEventListeners() {
     });
   }
 
+  // Forgot Password link
+  if (elements.forgotPasswordLink) {
+    elements.forgotPasswordLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      showForgotPasswordForm();
+    });
+  }
+
+  // Back to Login from reset form
+  if (elements.backToLogin) {
+    elements.backToLogin.addEventListener('click', () => {
+      hideForgotPasswordForm();
+    });
+  }
+
+  // Reset Password form submit
+  if (elements.resetPasswordForm) {
+    elements.resetPasswordForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = elements.resetEmail.value.trim();
+      if (!email) return;
+
+      elements.sendResetLink.disabled = true;
+      elements.sendResetLink.textContent = 'Sending...';
+      elements.resetError.classList.add('hidden');
+      elements.resetSuccess.classList.add('hidden');
+
+      try {
+        await requestPasswordReset(email);
+        elements.resetSuccess.textContent = 'Check your email for the reset link!';
+        elements.resetSuccess.classList.remove('hidden');
+        elements.resetEmail.value = '';
+      } catch (error) {
+        elements.resetError.textContent = error.message || 'Failed to send reset link';
+        elements.resetError.classList.remove('hidden');
+      } finally {
+        elements.sendResetLink.disabled = false;
+        elements.sendResetLink.textContent = 'Send Reset Link';
+      }
+    });
+  }
+
+  // Update Password form submit (after clicking reset link)
+  if (elements.updatePasswordForm) {
+    elements.updatePasswordForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const newPass = elements.newPassword.value;
+      const confirmPass = elements.confirmPassword.value;
+
+      if (newPass !== confirmPass) {
+        elements.updateError.textContent = 'Passwords do not match';
+        elements.updateError.classList.remove('hidden');
+        return;
+      }
+
+      if (newPass.length < 6) {
+        elements.updateError.textContent = 'Password must be at least 6 characters';
+        elements.updateError.classList.remove('hidden');
+        return;
+      }
+
+      elements.updatePasswordBtn.disabled = true;
+      elements.updatePasswordBtn.textContent = 'Updating...';
+      elements.updateError.classList.add('hidden');
+
+      try {
+        await updatePassword(newPass);
+        hidePasswordUpdateForm();
+        hideAuthModal();
+        showError('Password updated successfully!', 'success');
+      } catch (error) {
+        elements.updateError.textContent = error.message || 'Failed to update password';
+        elements.updateError.classList.remove('hidden');
+      } finally {
+        elements.updatePasswordBtn.disabled = false;
+        elements.updatePasswordBtn.textContent = 'Update Password';
+      }
+    });
+  }
+
   // Daily Challenge events
   if (elements.dailyChallengeBtn) {
     elements.dailyChallengeBtn.addEventListener('click', handleDailyChallengeClick);
@@ -3244,6 +3792,123 @@ function setupEventListeners() {
   if (elements.backFromStats) {
     elements.backFromStats.addEventListener('click', () => {
       showView('lobby');
+    });
+  }
+
+  // ==========================================================================
+  // Header Toolbar & New Lobby UI Events (Lobby Redesign)
+  // ==========================================================================
+
+  // Header back button
+  if (elements.backBtn) {
+    elements.backBtn.addEventListener('click', handleBackButton);
+  }
+
+  // Settings button
+  if (elements.settingsBtn) {
+    elements.settingsBtn.addEventListener('click', showSettings);
+  }
+
+  // Profile button
+  if (elements.profileBtn) {
+    elements.profileBtn.addEventListener('click', toggleProfileDropdown);
+  }
+
+  // Profile dropdown actions
+  if (elements.dropdownStats) {
+    elements.dropdownStats.addEventListener('click', () => {
+      closeProfileDropdown();
+      showStatsView();
+    });
+  }
+
+  if (elements.dropdownLogout) {
+    elements.dropdownLogout.addEventListener('click', async () => {
+      closeProfileDropdown();
+      await logout();
+    });
+  }
+
+  if (elements.dropdownLogin) {
+    elements.dropdownLogin.addEventListener('click', () => {
+      closeProfileDropdown();
+      showAuthModal(false); // false = login mode
+    });
+  }
+
+  if (elements.dropdownSignup) {
+    elements.dropdownSignup.addEventListener('click', () => {
+      closeProfileDropdown();
+      showAuthModal(true); // true = signup mode
+    });
+  }
+
+  if (elements.dropdownGuest) {
+    elements.dropdownGuest.addEventListener('click', () => {
+      closeProfileDropdown();
+      // Hide the auth section and show room actions (same as playAsGuest button)
+      if (elements.authSection) {
+        elements.authSection.classList.add('hidden');
+      }
+      if (elements.roomActionsSection) {
+        elements.roomActionsSection.classList.remove('hidden');
+      }
+      if (elements.dailyChallengeSection) {
+        elements.dailyChallengeSection.classList.remove('hidden');
+      }
+    });
+  }
+
+  // Play With Friends button (opens bottom sheet)
+  if (elements.playWithFriendsLobbyBtn) {
+    elements.playWithFriendsLobbyBtn.addEventListener('click', openFriendsSheet);
+  }
+
+  // Friends sheet close button
+  if (elements.closeFriendsSheet) {
+    elements.closeFriendsSheet.addEventListener('click', closeFriendsSheet);
+  }
+
+  // Friends sheet backdrop click to close
+  if (elements.friendsSheet) {
+    const backdrop = elements.friendsSheet.querySelector('.sheet-backdrop');
+    if (backdrop) {
+      backdrop.addEventListener('click', closeFriendsSheet);
+    }
+  }
+
+  // Stats strip (opens stats view)
+  if (elements.statsStrip) {
+    elements.statsStrip.addEventListener('click', showStatsView);
+  }
+
+  // Guest prompt login link
+  if (elements.loginPromptLink) {
+    elements.loginPromptLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      showAuthModal(false); // false = login mode
+    });
+  }
+
+  // Settings view events
+  if (elements.soundToggle) {
+    elements.soundToggle.addEventListener('click', toggleSound);
+  }
+
+  if (elements.backFromSettings) {
+    elements.backFromSettings.addEventListener('click', saveSettings);
+  }
+
+  // Save name on blur in settings
+  if (elements.settingsName) {
+    elements.settingsName.addEventListener('blur', () => {
+      const name = elements.settingsName.value.trim();
+      if (name) {
+        localStorage.setItem('wordle_playerName', name);
+        if (elements.playerName) {
+          elements.playerName.value = name;
+        }
+      }
     });
   }
 

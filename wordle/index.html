@@ -8,105 +8,118 @@
 </head>
 <body>
   <div class="container">
-    <!-- Header -->
+    <!-- Header with Toolbar -->
     <header class="header">
-      <h1>Wordle Battle</h1>
-      <p class="tagline">Race to solve the word!</p>
+      <div class="header-toolbar">
+        <button id="backBtn" class="toolbar-btn back-btn hidden" aria-label="Go back">←</button>
+        <div class="header-title">
+          <h1 id="headerTitle">Wordle Battle</h1>
+          <p class="tagline">Race to solve the word!</p>
+        </div>
+        <div class="toolbar-right">
+          <button id="settingsBtn" class="toolbar-btn" aria-label="Settings">⚙️</button>
+          <button id="profileBtn" class="toolbar-btn" aria-label="Profile">👤</button>
+        </div>
+      </div>
     </header>
+
+    <!-- Profile Dropdown -->
+    <div id="profileDropdown" class="profile-dropdown hidden">
+      <div class="dropdown-content">
+        <!-- When logged in -->
+        <div id="profileLoggedIn" class="hidden">
+          <div class="dropdown-header">
+            <span class="profile-name" id="profileDisplayName">Guest</span>
+            <span class="profile-email" id="profileEmail"></span>
+          </div>
+          <div class="dropdown-divider"></div>
+          <button id="dropdownStats" class="dropdown-item">📊 View Stats</button>
+          <button id="dropdownLogout" class="dropdown-item dropdown-item-danger">Logout</button>
+        </div>
+        <!-- When not logged in -->
+        <div id="profileLoggedOut">
+          <div class="dropdown-header">
+            <span class="profile-name">Not signed in</span>
+          </div>
+          <div class="dropdown-divider"></div>
+          <button id="dropdownLogin" class="dropdown-item">Login</button>
+          <button id="dropdownSignup" class="dropdown-item">Sign Up</button>
+          <button id="dropdownGuest" class="dropdown-item">Play as Guest</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dropdown Overlay -->
+    <div id="dropdownOverlay" class="dropdown-overlay hidden"></div>
 
     <!-- Lobby View -->
     <div id="lobby" class="view">
-      <div class="lobby-content">
-        <!-- Auth Section -->
-        <div id="authSection" class="auth-section">
-          <!-- When NOT logged in -->
-          <div id="authPrompt" class="auth-prompt">
-            <p class="auth-message">
-              <strong>Login to save your stats!</strong><br>
-              <span class="auth-submessage">Track your wins, streaks, and compete on leaderboards.</span>
-            </p>
-            <div class="auth-buttons">
-              <button id="loginBtn" class="btn btn-primary">Login</button>
-              <button id="signupBtn" class="btn btn-secondary">Sign Up</button>
-            </div>
-            <p class="guest-option">or <a href="#" id="playAsGuest">play as guest</a></p>
-          </div>
+      <div class="lobby-content lobby-simplified">
+        <!-- Primary CTA: Daily Challenge -->
+        <button id="dailyChallengeBtn" class="btn btn-daily-large" disabled>
+          <span class="btn-icon">🎯</span>
+          <span class="btn-text">Daily Challenge</span>
+          <span class="btn-number">#<span id="dailyNum">---</span></span>
+        </button>
 
-          <!-- When logged in -->
-          <div id="authStatus" class="auth-status hidden">
-            <span class="auth-check">✓</span>
-            <span class="user-info"><strong id="userEmail"></strong></span>
-            <button id="logoutBtn" class="btn-link">Logout</button>
-          </div>
+        <!-- Secondary CTA: Play With Friends -->
+        <button id="playWithFriendsLobbyBtn" class="btn btn-friends">
+          <span class="btn-icon">👥</span>
+          <span class="btn-text">Play With Friends</span>
+        </button>
+
+        <!-- Tertiary CTA: Past Dailies -->
+        <button id="historicalDailiesBtn" class="btn btn-tertiary">
+          <span class="btn-icon">📅</span>
+          <span class="btn-text">Past Dailies</span>
+          <span class="btn-subtitle">Solo or with friends</span>
+        </button>
+
+        <!-- Compact Stats Strip -->
+        <button id="statsStrip" class="stats-strip hidden">
+          <span id="statsWins">0 wins</span>
+          <span class="stats-separator">·</span>
+          <span id="statsStreak">🔥 0</span>
+          <span class="stats-separator">·</span>
+          <span id="statsBest">Best: 0</span>
+        </button>
+
+        <!-- Guest prompt (shown when not logged in) -->
+        <p id="guestPrompt" class="guest-prompt">
+          <a href="#" id="loginPromptLink">Sign in</a> to save your progress
+        </p>
+      </div>
+    </div>
+
+    <!-- Play With Friends Bottom Sheet -->
+    <div id="friendsSheet" class="bottom-sheet hidden">
+      <div class="sheet-backdrop"></div>
+      <div class="sheet-container">
+        <div class="sheet-header">
+          <h3>Play With Friends</h3>
+          <button id="closeFriendsSheet" class="sheet-close" aria-label="Close">×</button>
         </div>
+        <div class="sheet-content">
+          <!-- Create Room -->
+          <button id="createRoom" class="btn btn-primary sheet-btn">Create Room</button>
 
-        <!-- Stats display (only for authenticated users) -->
-        <div id="playerStats" class="player-stats hidden">
-          <div class="stats-row">
-            <div class="stat">
-              <span class="stat-value" id="statPlayed">0</span>
-              <span class="stat-label">Played</span>
-            </div>
-            <div class="stat">
-              <span class="stat-value" id="statWinRate">0%</span>
-              <span class="stat-label">Win %</span>
-            </div>
-            <div class="stat">
-              <span class="stat-value" id="statStreak">0</span>
-              <span class="stat-label">Streak</span>
-            </div>
-            <div class="stat">
-              <span class="stat-value" id="statBestStreak">0</span>
-              <span class="stat-label">Best</span>
-            </div>
-          </div>
-          <button id="viewStatsBtn" class="btn btn-stats">📊 View Stats</button>
-        </div>
-
-        <!-- Daily Challenge Section -->
-        <div id="dailyChallengeSection" class="daily-challenge-section hidden">
-          <button id="dailyChallengeBtn" class="btn btn-daily" disabled>
-            Daily Challenge #<span id="dailyNum">---</span>
-          </button>
-          <button id="historicalDailiesBtn" class="btn btn-historical hidden">
-            📅 Historical Dailies
-          </button>
-          <p id="dailyGuestMsg" class="daily-guest-msg">Login to play Daily Challenge</p>
-        </div>
-
-        <!-- Room actions (hidden until auth choice made) -->
-        <div id="roomActionsSection" class="room-actions-section hidden">
-          <div class="name-input">
-            <label for="playerName">Your Name</label>
-            <input type="text" id="playerName" placeholder="Enter your name" maxlength="20" autocomplete="off">
+          <!-- Join with Code -->
+          <div class="sheet-join-section">
+            <input type="text" id="roomCodeInput" placeholder="Room Code" maxlength="6" autocomplete="off">
+            <button id="joinRoom" class="btn btn-secondary">Join</button>
           </div>
 
-          <!-- Public Rooms Section -->
-          <div id="publicRoomsSection" class="public-rooms-section">
-            <h3>Join a Room</h3>
+          <!-- Public Rooms (only if rooms exist) -->
+          <div id="publicRoomsSection" class="public-rooms-section hidden">
+            <h4>Public Rooms</h4>
             <div id="publicRoomsList" class="public-rooms-list"></div>
-            <p id="noPublicRooms" class="no-rooms-msg">No public rooms available</p>
-          </div>
-
-          <div class="divider-or">
-            <span>or create a custom game</span>
-          </div>
-
-          <div class="room-actions">
-            <button id="createRoom" class="btn btn-secondary">Create Room</button>
-
-            <div class="divider">
-              <span>or</span>
-            </div>
-
-            <div class="join-section">
-              <input type="text" id="roomCodeInput" placeholder="Room Code" maxlength="6" autocomplete="off">
-              <button id="joinRoom" class="btn btn-secondary">Join</button>
-            </div>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- Hidden: Player name stored in settings, used when creating/joining -->
+    <input type="hidden" id="playerName" value="">
 
     <!-- Room Configuration View (Pre-Creation) -->
     <div id="roomConfig" class="view hidden">
@@ -401,6 +414,31 @@
       </div>
     </div>
 
+    <!-- Settings View -->
+    <div id="settingsView" class="view hidden">
+      <div class="settings-content">
+        <h2>⚙️ Settings</h2>
+
+        <!-- Display Name -->
+        <div class="settings-card">
+          <label for="settingsName">Display Name</label>
+          <input type="text" id="settingsName" placeholder="Enter your name" maxlength="20" autocomplete="off">
+          <p class="settings-hint">This name is shown to other players</p>
+        </div>
+
+        <!-- Sound Settings (placeholder for future) -->
+        <div class="settings-card">
+          <label>Sound</label>
+          <div class="settings-toggle">
+            <span>Sound Effects</span>
+            <button id="soundToggle" class="toggle-btn" aria-pressed="true">On</button>
+          </div>
+        </div>
+
+        <button id="backFromSettings" class="btn btn-link">← Back to Lobby</button>
+      </div>
+    </div>
+
     <!-- Historical Dailies View -->
     <div id="historicalDailies" class="view hidden">
       <div class="historical-content">
@@ -495,6 +533,38 @@
         <p id="authToggle" class="auth-toggle">
           Don't have an account? <a href="#" id="switchToSignup">Sign up</a>
         </p>
+        <p class="forgot-password-link">
+          <a href="#" id="forgotPasswordLink">Forgot Password?</a>
+        </p>
+
+        <!-- Reset Password Form (request reset link) -->
+        <form id="resetPasswordForm" class="hidden">
+          <p class="reset-instructions">Enter your email and we'll send you a link to reset your password.</p>
+          <div class="form-group">
+            <input type="email" id="resetEmail" placeholder="Email" required autocomplete="email">
+          </div>
+          <p id="resetError" class="error-message hidden"></p>
+          <p id="resetSuccess" class="success-message hidden"></p>
+          <div class="modal-buttons">
+            <button type="submit" id="sendResetLink" class="btn btn-primary">Send Reset Link</button>
+            <button type="button" id="backToLogin" class="btn btn-secondary">Back to Login</button>
+          </div>
+        </form>
+
+        <!-- Update Password Form (set new password after clicking reset link) -->
+        <form id="updatePasswordForm" class="hidden">
+          <p class="reset-instructions">Enter your new password.</p>
+          <div class="form-group">
+            <input type="password" id="newPassword" placeholder="New Password" required minlength="6" autocomplete="new-password">
+          </div>
+          <div class="form-group">
+            <input type="password" id="confirmPassword" placeholder="Confirm Password" required minlength="6" autocomplete="new-password">
+          </div>
+          <p id="updateError" class="error-message hidden"></p>
+          <div class="modal-buttons">
+            <button type="submit" id="updatePasswordBtn" class="btn btn-primary">Update Password</button>
+          </div>
+        </form>
       </div>
     </div>
 
