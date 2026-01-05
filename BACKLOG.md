@@ -89,6 +89,14 @@
   - On room creation, check if attempt exists and send guesses from server
   - Files: `wordle-database.ts`, `wordle-room.ts`, `wordle.js`
 
+### Pending - UX Improvements
+
+- [ ] **UX-001: Clearer logged-out state indicator**
+  - Current: Only "Sign in to save your progress" text at bottom (too subtle)
+  - Desired: More obvious visual difference between logged-in and logged-out states
+  - Ideas: Different header style, prominent login banner, grayed out features
+  - Files: `wordle.js`, `wordle.css`, `index.html`
+
 ### Edge Cases to Handle
 
 - [ ] **EDGE-001: Rapid guess submission (bot detection)** - Reject guesses with `timeSinceLastMs < 500`
