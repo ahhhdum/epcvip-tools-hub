@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
   <title>Wordle Battle - EPCVIP</title>
-  <link rel="stylesheet" href="wordle.css">
+  <link rel="stylesheet" href="/wordle/wordle.css">
 </head>
 <body>
   <div class="container">
@@ -159,6 +159,7 @@
           <span class="label">Room Code</span>
           <span id="roomCode" class="code">------</span>
           <button id="copyCode" class="btn-icon" title="Copy code">📋</button>
+          <button id="copyLink" class="btn-icon" title="Copy shareable link">🔗</button>
         </div>
 
         <!-- Settings Card -->
@@ -523,6 +524,6 @@
     window.MULTIPLAYER_SERVER = `${protocol}//${window.location.host}`;
   </script>
 
-  <script type="module" src="wordle.js"></script>
+  <script type="module" src="/wordle/wordle.js"></script>
 </body>
 </html>

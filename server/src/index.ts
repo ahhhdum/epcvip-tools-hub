@@ -509,6 +509,12 @@ app.get('/api/wordle/random-unplayed-daily/:email', async (req, res) => {
 
 // ============================================================
 
+// Wordle room URL routing - serve index.html for /wordle/room/:code
+// This enables shareable room links like /wordle/room/ABC123
+app.get('/wordle/room/:code', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/wordle/index.html'));
+});
+
 // Serve static files from public directory (copied during build)
 const staticPath = path.join(__dirname, '../public');
 app.use(express.static(staticPath));

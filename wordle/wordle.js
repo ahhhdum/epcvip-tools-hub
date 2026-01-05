@@ -30,6 +30,80 @@ import { state } from './state/game-state.js';
 
 // Browser-specific variables (not in state)
 let socket = null;
+let pendingRoomJoin = null; // Room code from URL to join after connection
+
+// =============================================================================
+// URL-Based Room Sharing (Phase 2)
+// =============================================================================
+
+/**
+ * Parse room code from URL if present.
+ * Supports: /wordle/room/ABC123
+ */
+function parseRoomCodeFromURL() {
+  const path = window.location.pathname;
+  const match = path.match(/\/wordle\/room\/([A-Z0-9]+)/i);
+  if (match) {
+    return match[1].toUpperCase();
+  }
+  return null;
+}
+
+/**
+ * Update browser URL to reflect current room state.
+ * Uses history.pushState for seamless navigation.
+ */
+function updateURLForRoom(roomCode) {
+  const newPath = `/wordle/room/${roomCode}`;
+  if (window.location.pathname !== newPath) {
+    history.pushState({ view: 'waiting', roomCode }, '', newPath);
+  }
+}
+
+/**
+ * Reset URL to lobby (no room code).
+ */
+function updateURLForLobby() {
+  if (window.location.pathname !== '/wordle/' && window.location.pathname !== '/wordle') {
+    history.pushState({ view: 'lobby' }, '', '/wordle/');
+  }
+}
+
+/**
+ * Handle browser back/forward button navigation.
+ * When user presses back from a room URL, leave the room and show lobby.
+ */
+function setupPopstateHandler() {
+  window.addEventListener('popstate', (_e) => {
+    const roomCodeFromURL = parseRoomCodeFromURL();
+
+    if (!roomCodeFromURL && state.roomCode) {
+      // User pressed back from room URL to lobby
+      console.log('[Wordle] Browser back: leaving room');
+      send({ type: 'leaveRoom' });
+      clearSession();
+      showView('lobby');
+      state.roomCode = null;
+      state.playerId = null;
+      state.isCreator = false;
+      subscribeLobby();
+    } else if (roomCodeFromURL && roomCodeFromURL !== state.roomCode) {
+      // User navigated to a different room URL (forward/back to another room)
+      console.log('[Wordle] Browser navigation: joining room', roomCodeFromURL);
+      if (state.roomCode) {
+        send({ type: 'leaveRoom' });
+        clearSession();
+      }
+      const playerName = elements.playerName.value.trim() || 'Player';
+      send({
+        type: 'joinRoom',
+        roomCode: roomCodeFromURL,
+        playerName,
+        playerEmail: state.authUser?.email,
+      });
+    }
+  });
+}
 
 async function fetchSupabaseConfig() {
   if (state.supabaseConfig) return state.supabaseConfig;
@@ -137,6 +211,7 @@ const elements = {
   // Waiting
   roomCode: document.getElementById('roomCode'),
   copyCode: document.getElementById('copyCode'),
+  copyLink: document.getElementById('copyLink'),
   modeCasual: document.getElementById('modeCasual'),
   modeCompetitive: document.getElementById('modeCompetitive'),
   wordModeDaily: document.getElementById('wordModeDaily'),
@@ -362,6 +437,7 @@ function displayStats(stats) {
  */
 async function refreshStatsAndShowLobby() {
   showView('lobby');
+  updateURLForLobby(); // Reset URL to /wordle/
   if (state.authUser?.email) {
     const stats = await fetchPlayerStats(state.authUser.email);
     if (stats) {
@@ -1151,11 +1227,20 @@ async function init() {
   // Update auth UI
   updateAuthUI();
 
+  // Check for room code in URL (shareable link)
+  pendingRoomJoin = parseRoomCodeFromURL();
+  if (pendingRoomJoin) {
+    console.log('[Wordle] Room code from URL:', pendingRoomJoin);
+  }
+
   // Connect to WebSocket
   connect();
 
   // Event listeners
   setupEventListeners();
+
+  // Browser history navigation (back/forward buttons)
+  setupPopstateHandler();
 
   // Build grid
   buildGrid();
@@ -1172,10 +1257,34 @@ function connect() {
     console.log('[Wordle] Connected');
     updateConnectionStatus('connected');
 
-    // Try to rejoin if we have a saved session
+    // Priority 1: If URL has room code, handle that first
+    if (pendingRoomJoin) {
+      const session = getSession();
+
+      // Check if we have a session for this exact room
+      if (session && session.roomCode === pendingRoomJoin) {
+        // Rejoin existing session
+        console.log('[Wordle] Rejoining room from URL:', pendingRoomJoin);
+        attemptRejoin();
+      } else {
+        // Join as new player
+        console.log('[Wordle] Joining room from URL:', pendingRoomJoin);
+        const playerName = elements.playerName.value.trim() || 'Player';
+        send({
+          type: 'joinRoom',
+          roomCode: pendingRoomJoin,
+          playerName,
+          playerEmail: state.authUser?.email,
+        });
+      }
+      pendingRoomJoin = null; // Clear after handling
+      return;
+    }
+
+    // Priority 2: Try to rejoin if we have a saved session
     const hadSession = attemptRejoin();
 
-    // If no saved session, subscribe to lobby for public rooms
+    // Priority 3: If no saved session, subscribe to lobby for public rooms
     if (!hadSession) {
       subscribeLobby();
     }
@@ -1363,6 +1472,7 @@ function handleRoomCreated(msg) {
 
   showView('waiting');
   elements.roomCode.textContent = state.roomCode;
+  updateURLForRoom(state.roomCode); // Update URL for shareable link
   setupCreatorUI();
 
   state.playersInRoom = [
@@ -1401,6 +1511,7 @@ function handleRoomJoined(msg) {
 
   showView('waiting');
   elements.roomCode.textContent = state.roomCode;
+  updateURLForRoom(state.roomCode); // Update URL for shareable link
 
   if (state.isCreator) {
     setupCreatorUI();
@@ -2618,6 +2729,16 @@ function setupEventListeners() {
     }, 1500);
   });
 
+  elements.copyLink.addEventListener('click', () => {
+    const shareableLink = `${window.location.origin}/wordle/room/${state.roomCode}`;
+    navigator.clipboard.writeText(shareableLink);
+    elements.copyLink.textContent = '✓';
+    showToast('Link copied! Share it with friends', 'success');
+    setTimeout(() => {
+      elements.copyLink.textContent = '🔗';
+    }, 1500);
+  });
+
   elements.modeCasual.addEventListener('click', () => {
     if (state.isCreator) {
       send({ type: 'setGameMode', mode: 'casual' });
@@ -2679,6 +2800,7 @@ function setupEventListeners() {
     send({ type: 'leaveRoom' });
     clearSession();
     showView('lobby');
+    updateURLForLobby(); // Reset URL to /wordle/
     state.roomCode = null;
     state.playerId = null;
     state.isCreator = false;
