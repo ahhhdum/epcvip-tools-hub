@@ -20,77 +20,26 @@ import {
   getDailyProgress as getStoredDailyProgress,
   clearDailyProgress as clearStoredDailyProgress,
 } from './utils/wordle-storage.js';
+import { state } from './state/game-state.js';
 
-// State
+// =============================================================================
+// NOTE: Most state is now centralized in state/game-state.js
+// Access via: state.playerId, state.roomCode, state.allPlayersReady, etc.
+// See game-state.js for all available properties and computed getters.
+// =============================================================================
+
+// Browser-specific variables (not in state)
 let socket = null;
-let playerId = null;
-let roomCode = null;
-let isCreator = false;
-let isReady = false;
-let allPlayersReady = false;
-let gameMode = 'casual';
-let wordMode = 'daily'; // daily or random
-let dailyNumber = null;
-let gameState = 'lobby'; // lobby, waiting, playing, results
-let currentGuess = '';
-let guesses = [];
-let guessResults = [];
-const opponents = new Map();
-let _targetWord = null; // Server sends word, client validates guesses but never displays it
-let playersInRoom = [];
-let gameTimer = 0; // Current game timer in ms
-let playerTimes = {}; // Per-player timer data
-
-// Dictionary validation state
-let lastRejectedWord = null;
-let rejectionCount = 0;
-
-// Auth state (SSO from Tools Hub or direct login)
-let authUser = null; // { email, name, userId } if authenticated
-
-// Daily Challenge state
-let todaysDailyNumber = null;
-let todayCompleted = false; // True if user has completed today's daily
-let _todayCompletionData = null; // Full completion data for word reveal (future use)
-
-// Historical Dailies state
-let historicalDailiesData = null; // Cached data from API
-let selectedHistoricalDaily = null; // { daily_number, date } when selecting from list
-
-// Pending room config (before room creation)
-const pendingConfig = {
-  gameMode: 'casual',
-  wordMode: 'daily',
-  isPublic: true,
-};
-
-// Reconnection state
-let _isReconnecting = false; // True when attempting to rejoin a room (for future use)
-
-// Pending action (for confirmation modals)
-let pendingDailyAction = null; // { type: 'solo' | 'friends', dailyNumber }
-
-// Pending resume guesses (for continuing daily after leave)
-let pendingResumeGuesses = null; // { guesses: [], guessResults: [] }
-
-// Public rooms state
-let publicRooms = [];
-let isSubscribedToLobby = false;
-let isRoomPublic = true; // Default to public
-
-// Supabase client (initialized after fetching config)
-let supabase = null;
-let supabaseConfig = null;
 
 async function fetchSupabaseConfig() {
-  if (supabaseConfig) return supabaseConfig;
+  if (state.supabaseConfig) return state.supabaseConfig;
 
   try {
     const response = await fetch('/api/config');
     if (response.ok) {
       const config = await response.json();
-      supabaseConfig = config.supabase;
-      return supabaseConfig;
+      state.supabaseConfig = config.supabase;
+      return state.supabaseConfig;
     }
   } catch (e) {
     console.warn('[Wordle Auth] Failed to fetch config:', e);
@@ -99,26 +48,29 @@ async function fetchSupabaseConfig() {
 }
 
 function getSupabase() {
-  if (!supabase && supabaseConfig?.url && supabaseConfig?.anonKey) {
-    supabase = window.supabase.createClient(supabaseConfig.url, supabaseConfig.anonKey);
+  if (!state.supabase && state.supabaseConfig?.url && state.supabaseConfig?.anonKey) {
+    state.supabase = window.supabase.createClient(
+      state.supabaseConfig.url,
+      state.supabaseConfig.anonKey
+    );
   }
-  return supabase;
+  return state.supabase;
 }
 
 // =============================================================================
-// Daily Progress Wrappers (inject authUser.email)
+// Daily Progress Wrappers (inject state.authUser.email)
 // =============================================================================
 
 function saveDailyProgress(progress) {
-  saveStoredDailyProgress(progress, authUser?.email);
+  saveStoredDailyProgress(progress, state.authUser?.email);
 }
 
 function getDailyProgress(dailyNumber) {
-  return getStoredDailyProgress(dailyNumber, authUser?.email);
+  return getStoredDailyProgress(dailyNumber, state.authUser?.email);
 }
 
 function clearDailyProgress(dailyNumber) {
-  clearStoredDailyProgress(dailyNumber, authUser?.email);
+  clearStoredDailyProgress(dailyNumber, state.authUser?.email);
 }
 
 /**
@@ -131,7 +83,7 @@ function attemptRejoin() {
   }
 
   console.log('[Wordle] Attempting to rejoin room:', session.roomCode);
-  _isReconnecting = true;
+  state.isReconnecting = true;
   showReconnectingOverlay();
 
   send({
@@ -161,7 +113,7 @@ function hideReconnectingOverlay() {
   if (overlay) {
     overlay.classList.add('hidden');
   }
-  _isReconnecting = false;
+  state.isReconnecting = false;
 }
 
 // DOM Elements
@@ -404,6 +356,20 @@ function displayStats(stats) {
   elements.playerStats.classList.remove('hidden');
 }
 
+/**
+ * Refresh stats from server and show lobby view.
+ * Use this when returning from a completed game.
+ */
+async function refreshStatsAndShowLobby() {
+  showView('lobby');
+  if (state.authUser?.email) {
+    const stats = await fetchPlayerStats(state.authUser.email);
+    if (stats) {
+      displayStats(stats);
+    }
+  }
+}
+
 // Auth Functions
 let isSignupMode = false;
 
@@ -452,7 +418,7 @@ async function logout() {
   if (client) {
     await client.auth.signOut();
   }
-  authUser = null;
+  state.authUser = null;
   updateAuthUI();
   elements.playerStats.classList.add('hidden');
 }
@@ -494,11 +460,11 @@ async function checkExistingSession() {
 function updateAuthUI() {
   if (!elements.authPrompt || !elements.authStatus) return;
 
-  if (authUser) {
+  if (state.authUser) {
     // Logged in - show status, hide prompt, show room actions
     elements.authPrompt.classList.add('hidden');
     elements.authStatus.classList.remove('hidden');
-    elements.userEmail.textContent = authUser.email;
+    elements.userEmail.textContent = state.authUser.email;
     if (elements.roomActionsSection) {
       elements.roomActionsSection.classList.remove('hidden');
     }
@@ -533,8 +499,8 @@ function updateAuthUI() {
   }
 
   // Update daily number display
-  if (elements.dailyNum && todaysDailyNumber) {
-    elements.dailyNum.textContent = todaysDailyNumber;
+  if (elements.dailyNum && state.todaysDailyNumber) {
+    elements.dailyNum.textContent = state.todaysDailyNumber;
   }
 }
 
@@ -544,9 +510,9 @@ async function fetchDailyNumber() {
     const response = await fetch('/api/wordle/daily-number');
     if (response.ok) {
       const data = await response.json();
-      todaysDailyNumber = data.dailyNumber;
-      console.log('[Wordle] Daily number:', todaysDailyNumber);
-      return todaysDailyNumber;
+      state.todaysDailyNumber = data.dailyNumber;
+      console.log('[Wordle] Daily number:', state.todaysDailyNumber);
+      return state.todaysDailyNumber;
     }
   } catch (e) {
     console.warn('[Wordle] Failed to fetch daily number:', e);
@@ -589,11 +555,11 @@ async function fetchDailyStatus(email) {
 function updateDailyButtonState() {
   if (!elements.dailyChallengeBtn) return;
 
-  if (todayCompleted) {
-    elements.dailyChallengeBtn.innerHTML = `<span class="daily-check">&#10003;</span> Daily #${todaysDailyNumber} Completed`;
+  if (state.todayCompleted) {
+    elements.dailyChallengeBtn.innerHTML = `<span class="daily-check">&#10003;</span> Daily #${state.todaysDailyNumber} Completed`;
     elements.dailyChallengeBtn.classList.add('completed');
   } else {
-    elements.dailyChallengeBtn.innerHTML = `Daily Challenge #<span id="dailyNum">${todaysDailyNumber || '---'}</span>`;
+    elements.dailyChallengeBtn.innerHTML = `Daily Challenge #<span id="dailyNum">${state.todaysDailyNumber || '---'}</span>`;
     elements.dailyChallengeBtn.classList.remove('completed');
   }
 }
@@ -694,13 +660,13 @@ function buildCompletedGrid(guesses, word) {
 }
 
 async function handleDailyChallengeClick() {
-  if (!authUser || !todaysDailyNumber) {
+  if (!state.authUser || !state.todaysDailyNumber) {
     showError('Please login to play Daily Challenge');
     return;
   }
 
   // Check if already completed
-  const completion = await checkDailyCompletion(authUser.email, todaysDailyNumber);
+  const completion = await checkDailyCompletion(state.authUser.email, state.todaysDailyNumber);
 
   if (completion && completion.completed) {
     // Already completed - show results
@@ -714,7 +680,7 @@ async function handleDailyChallengeClick() {
 // Show the daily mode selection modal
 function showDailyModeModal() {
   if (elements.modalDailyNum) {
-    elements.modalDailyNum.textContent = todaysDailyNumber;
+    elements.modalDailyNum.textContent = state.todaysDailyNumber;
   }
   if (elements.dailyModeModal) {
     elements.dailyModeModal.classList.remove('hidden');
@@ -730,10 +696,10 @@ function hideDailyModeModal() {
 
 // Show the daily confirmation modal
 function showDailyConfirmModal(actionType) {
-  pendingDailyAction = { type: actionType, dailyNumber: todaysDailyNumber };
+  state.pendingDailyAction = { type: actionType, dailyNumber: state.todaysDailyNumber };
 
   if (elements.confirmDailyNum) {
-    elements.confirmDailyNum.textContent = todaysDailyNumber;
+    elements.confirmDailyNum.textContent = state.todaysDailyNumber;
   }
 
   // Hide the mode selection modal
@@ -755,7 +721,7 @@ function hideDailyConfirmModal() {
 function showLeaveConfirmModal() {
   // Update message based on progress
   if (elements.leaveConfirmMessage) {
-    const guessCount = guesses.length;
+    const guessCount = state.guesses.length;
     elements.leaveConfirmMessage.textContent =
       `You have ${guessCount} guess${guessCount !== 1 ? 'es' : ''} saved. ` +
       'Your progress will be preserved and you can resume later.';
@@ -778,7 +744,7 @@ function startDailyChallenge(solo, dailyNum = null) {
   hideDailyModeModal();
   hideDailyConfirmModal();
 
-  const targetDaily = dailyNum || todaysDailyNumber;
+  const targetDaily = dailyNum || state.todaysDailyNumber;
   const name = getPlayerName();
   localStorage.setItem('wordle_playerName', name);
 
@@ -788,12 +754,12 @@ function startDailyChallenge(solo, dailyNum = null) {
     console.log(
       `[DAILY] Resuming daily #${targetDaily} with ${savedProgress.guesses.length} guesses`
     );
-    pendingResumeGuesses = {
+    state.pendingResumeGuesses = {
       guesses: savedProgress.guesses,
       guessResults: savedProgress.guessResults,
     };
   } else {
-    pendingResumeGuesses = null;
+    state.pendingResumeGuesses = null;
   }
 
   console.log(`[DAILY] Starting ${solo ? 'solo' : 'friends'} daily challenge #${targetDaily}`);
@@ -801,7 +767,7 @@ function startDailyChallenge(solo, dailyNum = null) {
   send({
     type: 'createDailyChallenge',
     playerName: name,
-    playerEmail: authUser.email,
+    playerEmail: state.authUser.email,
     dailyNumber: targetDaily,
     solo: solo,
   });
@@ -812,15 +778,15 @@ function startDailyChallenge(solo, dailyNum = null) {
 // ============================================================
 
 async function fetchHistoricalDailies() {
-  if (!authUser?.email) return null;
+  if (!state.authUser?.email) return null;
 
   try {
     const response = await fetch(
-      `/api/wordle/historical-dailies/${encodeURIComponent(authUser.email)}`
+      `/api/wordle/historical-dailies/${encodeURIComponent(state.authUser.email)}`
     );
     if (response.ok) {
-      historicalDailiesData = await response.json();
-      return historicalDailiesData;
+      state.historicalDailiesData = await response.json();
+      return state.historicalDailiesData;
     }
   } catch (e) {
     console.warn('[Wordle] Failed to fetch historical dailies:', e);
@@ -829,11 +795,11 @@ async function fetchHistoricalDailies() {
 }
 
 async function fetchRandomUnplayedDaily() {
-  if (!authUser?.email) return null;
+  if (!state.authUser?.email) return null;
 
   try {
     const response = await fetch(
-      `/api/wordle/random-unplayed-daily/${encodeURIComponent(authUser.email)}`
+      `/api/wordle/random-unplayed-daily/${encodeURIComponent(state.authUser.email)}`
     );
     if (response.ok) {
       return await response.json();
@@ -846,29 +812,29 @@ async function fetchRandomUnplayedDaily() {
 
 async function showHistoricalDailiesView() {
   // Fetch data if not cached
-  if (!historicalDailiesData) {
+  if (!state.historicalDailiesData) {
     await fetchHistoricalDailies();
   }
 
-  if (!historicalDailiesData) {
+  if (!state.historicalDailiesData) {
     showError('Failed to load historical dailies');
     return;
   }
 
   // Update browse range text
   if (elements.browseRange) {
-    elements.browseRange.textContent = `Enter a daily number between 1 and ${historicalDailiesData.current_daily - 1}`;
+    elements.browseRange.textContent = `Enter a daily number between 1 and ${state.historicalDailiesData.current_daily - 1}`;
   }
 
   // Set max on input
   if (elements.browseDailyNumber) {
-    elements.browseDailyNumber.max = historicalDailiesData.current_daily - 1;
+    elements.browseDailyNumber.max = state.historicalDailiesData.current_daily - 1;
   }
 
   // Update random unplayed info
   if (elements.randomUnplayedInfo) {
-    const completed = historicalDailiesData.total_completed;
-    const available = historicalDailiesData.total_available - 1; // Exclude today
+    const completed = state.historicalDailiesData.total_completed;
+    const available = state.historicalDailiesData.total_available - 1; // Exclude today
     const remaining = available - completed;
     if (remaining > 0) {
       elements.randomUnplayedInfo.textContent = `${remaining} unplayed dailies available`;
@@ -887,12 +853,12 @@ async function showHistoricalDailiesView() {
 }
 
 function renderRecentDailies() {
-  if (!elements.recentDailiesList || !historicalDailiesData) return;
+  if (!elements.recentDailiesList || !state.historicalDailiesData) return;
 
   elements.recentDailiesList.innerHTML = '';
 
   // Get last 7 days excluding today (skip first item which is today)
-  const recentDailies = historicalDailiesData.dailies.slice(1, 8);
+  const recentDailies = state.historicalDailiesData.dailies.slice(1, 8);
 
   for (const daily of recentDailies) {
     const item = document.createElement('div');
@@ -933,7 +899,7 @@ async function handleRandomUnplayedClick() {
   }
 
   // Show mode selection for this daily
-  selectedHistoricalDaily = {
+  state.selectedHistoricalDaily = {
     daily_number: result.daily_number,
     date: result.date,
   };
@@ -948,13 +914,13 @@ function handleBrowseDailyGo() {
     return;
   }
 
-  if (dailyNum >= todaysDailyNumber) {
+  if (dailyNum >= state.todaysDailyNumber) {
     showError(`Daily #${dailyNum} hasn't happened yet`);
     return;
   }
 
   // Check if already completed
-  const daily = historicalDailiesData?.dailies.find((d) => d.daily_number === dailyNum);
+  const daily = state.historicalDailiesData?.dailies.find((d) => d.daily_number === dailyNum);
   if (daily?.completed) {
     showError(`You've already completed Daily #${dailyNum}`);
     return;
@@ -962,7 +928,7 @@ function handleBrowseDailyGo() {
 
   // Show mode selection
   const dateStr = daily?.date || calculateDateFromDailyNumber(dailyNum);
-  selectedHistoricalDaily = {
+  state.selectedHistoricalDaily = {
     daily_number: dailyNum,
     date: dateStr,
   };
@@ -975,7 +941,7 @@ function handleRecentDailyClick(daily) {
     return;
   }
 
-  selectedHistoricalDaily = {
+  state.selectedHistoricalDaily = {
     daily_number: daily.daily_number,
     date: daily.date,
   };
@@ -983,13 +949,15 @@ function handleRecentDailyClick(daily) {
 }
 
 function showHistoricalModeModal() {
-  if (!selectedHistoricalDaily) return;
+  if (!state.selectedHistoricalDaily) return;
 
   if (elements.historicalModalNum) {
-    elements.historicalModalNum.textContent = selectedHistoricalDaily.daily_number;
+    elements.historicalModalNum.textContent = state.selectedHistoricalDaily.daily_number;
   }
   if (elements.historicalModalDate) {
-    elements.historicalModalDate.textContent = formatDateForDisplay(selectedHistoricalDaily.date);
+    elements.historicalModalDate.textContent = formatDateForDisplay(
+      state.selectedHistoricalDaily.date
+    );
   }
   if (elements.historicalModeModal) {
     elements.historicalModeModal.classList.remove('hidden');
@@ -1000,14 +968,14 @@ function hideHistoricalModeModal() {
   if (elements.historicalModeModal) {
     elements.historicalModeModal.classList.add('hidden');
   }
-  selectedHistoricalDaily = null;
+  state.selectedHistoricalDaily = null;
 }
 
 function startHistoricalDaily(solo) {
-  if (!selectedHistoricalDaily) return;
+  if (!state.selectedHistoricalDaily) return;
 
-  // Store before hiding modal (which clears selectedHistoricalDaily)
-  const dailyNumber = selectedHistoricalDaily.daily_number;
+  // Store before hiding modal (which clears state.selectedHistoricalDaily)
+  const dailyNumber = state.selectedHistoricalDaily.daily_number;
 
   hideHistoricalModeModal();
 
@@ -1021,7 +989,7 @@ function startHistoricalDaily(solo) {
   send({
     type: 'createDailyChallenge',
     playerName: name,
-    playerEmail: authUser.email,
+    playerEmail: state.authUser.email,
     dailyNumber: dailyNumber,
     solo: solo,
   });
@@ -1104,25 +1072,25 @@ async function handleAuthSubmit(e) {
         }
       }
 
-      authUser = {
+      state.authUser = {
         email: user.email,
         name: name,
         userId: user.id,
       };
 
       // Update UI
-      elements.playerName.value = authUser.name;
-      localStorage.setItem('wordle_playerName', authUser.name);
+      elements.playerName.value = state.authUser.name;
+      localStorage.setItem('wordle_playerName', state.authUser.name);
       updateAuthUI();
       hideAuthModal();
 
       // Fetch and display stats
-      const stats = await fetchPlayerStats(authUser.email);
+      const stats = await fetchPlayerStats(state.authUser.email);
       if (stats) {
         displayStats(stats);
       }
 
-      console.log('[Wordle Auth] Logged in as:', authUser.email);
+      console.log('[Wordle Auth] Logged in as:', state.authUser.email);
     }
   } catch (error) {
     console.error('[Wordle Auth] Error:', error);
@@ -1144,31 +1112,31 @@ async function init() {
   await fetchDailyNumber();
 
   // Priority 1: Check for SSO token from Tools Hub
-  authUser = await checkSSOToken();
+  state.authUser = await checkSSOToken();
 
   // Priority 2: Check for existing Supabase session
-  if (!authUser) {
-    authUser = await checkExistingSession();
+  if (!state.authUser) {
+    state.authUser = await checkExistingSession();
   }
 
-  if (authUser) {
+  if (state.authUser) {
     // Authenticated user - pre-fill name and save
-    elements.playerName.value = authUser.name;
-    localStorage.setItem('wordle_playerName', authUser.name);
-    console.log('[Wordle] Logged in as:', authUser.name);
+    elements.playerName.value = state.authUser.name;
+    localStorage.setItem('wordle_playerName', state.authUser.name);
+    console.log('[Wordle] Logged in as:', state.authUser.name);
 
     // Fetch and display stats
-    const stats = await fetchPlayerStats(authUser.email);
+    const stats = await fetchPlayerStats(state.authUser.email);
     if (stats) {
       displayStats(stats);
     }
 
     // Fetch today's daily status for button indicator
-    const dailyStatus = await fetchDailyStatus(authUser.email);
+    const dailyStatus = await fetchDailyStatus(state.authUser.email);
     if (dailyStatus) {
-      todayCompleted = dailyStatus.completed;
+      state.todayCompleted = dailyStatus.completed;
       if (dailyStatus.completed) {
-        _todayCompletionData = dailyStatus;
+        state.todayCompletionData = dailyStatus;
       }
       updateDailyButtonState();
     }
@@ -1361,12 +1329,12 @@ function handleLeftRoom(msg) {
   clearSession();
 
   // Reset state
-  roomCode = null;
-  playerId = null;
-  isCreator = false;
-  guesses = [];
-  guessResults = [];
-  opponents.clear();
+  state.roomCode = null;
+  state.playerId = null;
+  state.isCreator = false;
+  state.guesses = [];
+  state.guessResults = [];
+  state.opponents.clear();
 
   // Return to lobby
   showView('lobby');
@@ -1375,44 +1343,33 @@ function handleLeftRoom(msg) {
 
 // Room Handlers
 function handleRoomCreated(msg) {
-  playerId = msg.playerId;
-  roomCode = msg.roomCode;
-  isCreator = true;
-  isReady = false;
-  allPlayersReady = false;
+  state.playerId = msg.playerId;
+  state.roomCode = msg.roomCode;
+  state.isCreator = true;
+  state.isReady = false;
+  // allPlayersReady is now computed from state.playersInRoom
 
   // Use settings from server (configured in pre-creation screen)
-  gameMode = msg.gameMode || 'casual';
-  wordMode = msg.wordMode || 'daily';
-  dailyNumber = msg.dailyNumber || null;
-  isRoomPublic = msg.isPublic !== undefined ? msg.isPublic : true;
+  state.gameMode = msg.gameMode || 'casual';
+  state.wordMode = msg.wordMode || 'daily';
+  state.dailyNumber = msg.dailyNumber || null;
+  state.isRoomPublic = msg.isPublic !== undefined ? msg.isPublic : true;
 
   // Unsubscribe from lobby (we're in a room now)
   unsubscribeLobby();
 
   // Save session for reconnection
-  saveSession(roomCode, playerId);
+  saveSession(state.roomCode, state.playerId);
 
   showView('waiting');
-  elements.roomCode.textContent = roomCode;
-  elements.startGame.classList.remove('hidden');
-  elements.waitingMessage.classList.add('hidden');
-  if (elements.closeRoom) elements.closeRoom.classList.remove('hidden');
+  elements.roomCode.textContent = state.roomCode;
+  setupCreatorUI();
 
-  // Settings are already configured - still allow changes in waiting room
-  elements.modeCasual.disabled = false;
-  elements.modeCompetitive.disabled = false;
-  if (elements.wordModeDaily) elements.wordModeDaily.disabled = false;
-  if (elements.wordModeRandom) elements.wordModeRandom.disabled = false;
-
-  // Show visibility selector for creator
-  if (elements.visibilitySelector) {
-    elements.visibilitySelector.classList.remove('hidden');
-  }
-
-  playersInRoom = [{ id: playerId, name: getPlayerName(), isCreator: true, isReady: false }];
-  updatePlayerList(playersInRoom);
-  updateModeButtons(gameMode);
+  state.playersInRoom = [
+    { id: state.playerId, name: getPlayerName(), isCreator: true, isReady: false },
+  ];
+  updatePlayerList(state.playersInRoom);
+  updateModeButtons(state.gameMode);
   updateWordModeButtons();
   updateVisibilityButtons();
   updateReadyButton();
@@ -1420,19 +1377,19 @@ function handleRoomCreated(msg) {
 }
 
 function handleRoomJoined(msg) {
-  playerId = msg.playerId;
-  roomCode = msg.roomCode;
-  isCreator = msg.isCreator;
-  gameMode = msg.gameMode || 'casual';
-  wordMode = msg.wordMode || 'daily';
-  isReady = false;
-  allPlayersReady = false;
+  state.playerId = msg.playerId;
+  state.roomCode = msg.roomCode;
+  state.isCreator = msg.isCreator;
+  state.gameMode = msg.gameMode || 'casual';
+  state.wordMode = msg.wordMode || 'daily';
+  state.isReady = false;
+  // allPlayersReady is now computed from state.playersInRoom
 
   // Unsubscribe from lobby (we're in a room now)
   unsubscribeLobby();
 
   // Save session for reconnection
-  saveSession(roomCode, playerId);
+  saveSession(state.roomCode, state.playerId);
 
   // For solo daily: skip waiting room, countdown will start automatically
   // The countdown overlay is position:fixed, so it shows over any view
@@ -1443,42 +1400,21 @@ function handleRoomJoined(msg) {
   }
 
   showView('waiting');
-  elements.roomCode.textContent = roomCode;
+  elements.roomCode.textContent = state.roomCode;
 
-  if (isCreator) {
-    elements.startGame.classList.remove('hidden');
-    elements.waitingMessage.classList.add('hidden');
-    if (elements.closeRoom) elements.closeRoom.classList.remove('hidden');
-    elements.modeCasual.disabled = false;
-    elements.modeCompetitive.disabled = false;
-    if (elements.wordModeDaily) elements.wordModeDaily.disabled = false;
-    if (elements.wordModeRandom) elements.wordModeRandom.disabled = false;
-    // Show visibility selector for creator
-    if (elements.visibilitySelector) {
-      elements.visibilitySelector.classList.remove('hidden');
-    }
+  if (state.isCreator) {
+    setupCreatorUI();
   } else {
-    elements.startGame.classList.add('hidden');
-    elements.waitingMessage.classList.remove('hidden');
-    if (elements.closeRoom) elements.closeRoom.classList.add('hidden');
-    // Disable mode buttons for non-creators
-    elements.modeCasual.disabled = true;
-    elements.modeCompetitive.disabled = true;
-    if (elements.wordModeDaily) elements.wordModeDaily.disabled = true;
-    if (elements.wordModeRandom) elements.wordModeRandom.disabled = true;
-    // Hide visibility selector for non-creators
-    if (elements.visibilitySelector) {
-      elements.visibilitySelector.classList.add('hidden');
-    }
+    setupNonCreatorUI();
   }
 
   // Store players with ready status
-  playersInRoom = msg.players.map((p) => ({
+  state.playersInRoom = msg.players.map((p) => ({
     ...p,
     isReady: p.isReady || false,
   }));
-  updatePlayerList(playersInRoom);
-  updateModeButtons(gameMode);
+  updatePlayerList(state.playersInRoom);
+  updateModeButtons(state.gameMode);
   updateWordModeButtons();
   updateVisibilityButtons();
   updateReadyButton();
@@ -1493,8 +1429,8 @@ function handlePlayerJoined(msg) {
     isCreator: msg.player.isCreator,
     isReady: msg.player.isReady || false,
   };
-  playersInRoom.push(newPlayer);
-  updatePlayerList(playersInRoom, msg.player.id);
+  state.playersInRoom.push(newPlayer);
+  updatePlayerList(state.playersInRoom, msg.player.id);
 
   // Show toast notification
   showInfoToast(`${msg.player.name} joined`);
@@ -1505,12 +1441,12 @@ function handlePlayerJoined(msg) {
 
 function handlePlayerLeft(msg) {
   // Find player name before removing
-  const leavingPlayer = playersInRoom.find((p) => p.id === msg.playerId);
+  const leavingPlayer = state.playersInRoom.find((p) => p.id === msg.playerId);
   const playerName = leavingPlayer?.name || 'A player';
 
   // Remove from players list
-  playersInRoom = playersInRoom.filter((p) => p.id !== msg.playerId);
-  updatePlayerList(playersInRoom);
+  state.playersInRoom = state.playersInRoom.filter((p) => p.id !== msg.playerId);
+  updatePlayerList(state.playersInRoom);
 
   // Show toast notification
   showInfoToast(`${playerName} left`);
@@ -1518,8 +1454,8 @@ function handlePlayerLeft(msg) {
   // Update start button
   updateStartButton();
 
-  // Remove from opponents in game
-  opponents.delete(msg.playerId);
+  // Remove from state.opponents in game
+  state.opponents.delete(msg.playerId);
   renderOpponentBoards();
 }
 
@@ -1534,10 +1470,10 @@ function handleRoomClosed(msg) {
 
   // Clean up state
   clearSession();
-  roomCode = null;
-  playerId = null;
-  isCreator = false;
-  playersInRoom = [];
+  state.roomCode = null;
+  state.playerId = null;
+  state.isCreator = false;
+  state.playersInRoom = [];
 
   // Return to lobby
   showView('lobby');
@@ -1545,46 +1481,40 @@ function handleRoomClosed(msg) {
 }
 
 function handleBecameCreator() {
-  isCreator = true;
-  elements.startGame.classList.remove('hidden');
-  elements.waitingMessage.classList.add('hidden');
-  if (elements.closeRoom) elements.closeRoom.classList.remove('hidden');
-  elements.modeCasual.disabled = false;
-  elements.modeCompetitive.disabled = false;
-
-  // Check if all players ready and update start button
-  allPlayersReady = playersInRoom.every((p) => p.isReady);
+  state.isCreator = true;
+  setupCreatorUI();
   updateStartButton();
 }
 
 function handleGameModeChanged(msg) {
-  gameMode = msg.mode;
-  updateModeButtons(gameMode);
+  state.gameMode = msg.mode;
+  updateModeButtons(state.gameMode);
 }
 
 function handleWordModeChanged(msg) {
-  wordMode = msg.mode;
-  dailyNumber = msg.dailyNumber;
+  state.wordMode = msg.mode;
+  state.dailyNumber = msg.dailyNumber;
   updateWordModeButtons();
 }
 
 function handlePlayerReadyChanged(msg) {
   // Update player in our list
-  const player = playersInRoom.find((p) => p.id === msg.playerId);
+  const player = state.playersInRoom.find((p) => p.id === msg.playerId);
   if (player) {
     player.isReady = msg.isReady;
-    updatePlayerList(playersInRoom);
+    updatePlayerList(state.playersInRoom);
   }
 
   // Update our own ready state if it's us
-  if (msg.playerId === playerId) {
-    isReady = msg.isReady;
+  if (msg.playerId === state.playerId) {
+    state.isReady = msg.isReady;
     updateReadyButton();
   }
 }
 
-function handleAllPlayersReadyStatus(msg) {
-  allPlayersReady = msg.allReady;
+function handleAllPlayersReadyStatus(_msg) {
+  // allPlayersReady is now computed from state.playersInRoom
+  // Server message is informational only - UI will recompute from source of truth
   updateStartButton();
 }
 
@@ -1603,17 +1533,17 @@ function handleCountdown(msg) {
 }
 
 function handleTimerSync(msg) {
-  gameTimer = msg.gameTime;
-  playerTimes = msg.playerTimes;
+  state.gameTimer = msg.gameTime;
+  state.playerTimes = msg.playerTimes;
 
   // Update main timer display
   if (elements.gameTimerDisplay) {
-    const myTime = playerTimes[playerId];
+    const myTime = state.playerTimes[state.playerId];
     if (myTime && myTime.finished) {
       elements.gameTimerDisplay.textContent = formatTime(myTime.finishTime);
       elements.gameTimerDisplay.classList.add('finished');
     } else {
-      elements.gameTimerDisplay.textContent = formatTime(gameTimer);
+      elements.gameTimerDisplay.textContent = formatTime(state.gameTimer);
       elements.gameTimerDisplay.classList.remove('finished');
     }
   }
@@ -1628,20 +1558,20 @@ function handleGameStarted(msg) {
   if (elements.countdownOverlay) {
     elements.countdownOverlay.classList.add('hidden');
   }
-  gameState = 'playing';
-  gameTimer = 0;
-  playerTimes = {};
-  currentGuess = '';
-  guesses = [];
-  guessResults = [];
-  lastRejectedWord = null;
-  rejectionCount = 0;
+  state.gamePhase = 'playing';
+  state.gameTimer = 0;
+  state.playerTimes = {};
+  state.currentGuess = '';
+  state.guesses = [];
+  state.guessResults = [];
+  state.lastRejectedWord = null;
+  state.rejectionCount = 0;
 
   // Initialize opponent boards
-  opponents.clear();
+  state.opponents.clear();
   for (const player of msg.players) {
-    if (player.id !== playerId) {
-      opponents.set(player.id, {
+    if (player.id !== state.playerId) {
+      state.opponents.set(player.id, {
         name: player.name,
         guesses: [],
         guessResults: [],
@@ -1658,8 +1588,8 @@ function handleGameStarted(msg) {
   elements.message.textContent = '';
 
   // If we have saved progress to resume, replay the guesses
-  if (pendingResumeGuesses && pendingResumeGuesses.guesses.length > 0) {
-    console.log(`[DAILY] Replaying ${pendingResumeGuesses.guesses.length} saved guesses`);
+  if (state.pendingResumeGuesses && state.pendingResumeGuesses.guesses.length > 0) {
+    console.log(`[DAILY] Replaying ${state.pendingResumeGuesses.guesses.length} saved guesses`);
     replayResumeGuesses();
   }
 }
@@ -1669,13 +1599,13 @@ function handleGameStarted(msg) {
  * Submits each guess with a small delay to allow UI updates
  */
 function replayResumeGuesses() {
-  if (!pendingResumeGuesses || pendingResumeGuesses.guesses.length === 0) {
-    pendingResumeGuesses = null;
+  if (!state.pendingResumeGuesses || state.pendingResumeGuesses.guesses.length === 0) {
+    state.pendingResumeGuesses = null;
     return;
   }
 
-  const guessesToReplay = [...pendingResumeGuesses.guesses];
-  pendingResumeGuesses = null;
+  const guessesToReplay = [...state.pendingResumeGuesses.guesses];
+  state.pendingResumeGuesses = null;
 
   let index = 0;
   function replayNext() {
@@ -1699,11 +1629,11 @@ function replayResumeGuesses() {
 }
 
 function handleGuessResult(msg) {
-  guesses.push(msg.word);
-  guessResults.push(msg.result);
+  state.guesses.push(msg.word);
+  state.guessResults.push(msg.result);
 
   // Update grid with results
-  const rowIndex = guesses.length - 1;
+  const rowIndex = state.guesses.length - 1;
   const row = elements.grid.children[rowIndex];
   for (let i = 0; i < 5; i++) {
     const tile = row.children[i];
@@ -1716,7 +1646,7 @@ function handleGuessResult(msg) {
     updateKeyboardKey(msg.word[i], msg.result[i]);
   }
 
-  currentGuess = '';
+  state.currentGuess = '';
 
   if (msg.isWin) {
     elements.message.textContent = 'You won!';
@@ -1728,7 +1658,7 @@ function handleGuessResult(msg) {
 }
 
 function handleOpponentGuess(msg) {
-  const opponent = opponents.get(msg.playerId);
+  const opponent = state.opponents.get(msg.playerId);
   if (!opponent) return;
 
   opponent.guessResults.push(msg.colors);
@@ -1739,12 +1669,12 @@ function handleOpponentGuess(msg) {
 }
 
 function handleGameEnded(msg) {
-  gameState = 'results';
-  _targetWord = msg.word;
+  state.gamePhase = 'results';
+  state.targetWord = msg.word;
 
   // Clear any saved daily progress since the game completed
-  if (dailyNumber) {
-    clearDailyProgress(dailyNumber);
+  if (state.dailyNumber) {
+    clearDailyProgress(state.dailyNumber);
   }
 
   showView('results');
@@ -1753,41 +1683,20 @@ function handleGameEnded(msg) {
   // Build results list
   elements.resultsList.innerHTML = '';
   msg.results.forEach((result, index) => {
-    const li = document.createElement('li');
-
-    let rankClass = '';
-    if (index === 0) rankClass = 'gold';
-    else if (index === 1) rankClass = 'silver';
-    else if (index === 2) rankClass = 'bronze';
-
-    const timeStr = result.time ? `${(result.time / 1000).toFixed(1)}s` : '-';
-    const statsStr =
-      gameMode === 'competitive'
-        ? `${result.guesses} guesses • ${timeStr} • ${result.score} pts`
-        : `${result.guesses} guesses • ${timeStr}`;
-
-    li.innerHTML = `
-      <span class="rank ${rankClass}">${index + 1}</span>
-      <div class="player-info">
-        <div class="player-name">${result.name}${result.playerId === playerId ? ' (You)' : ''}</div>
-        <div class="player-stats">${statsStr}</div>
-      </div>
-      <span class="result-badge ${result.won ? 'won' : 'lost'}">${result.won ? 'Solved' : 'Failed'}</span>
-    `;
-    elements.resultsList.appendChild(li);
+    elements.resultsList.appendChild(renderResultItem(result, index));
   });
 }
 
 function handleReturnedToLobby() {
-  gameState = 'waiting';
-  isReady = false;
-  allPlayersReady = false;
+  state.gamePhase = 'waiting';
+  state.isReady = false;
+  // allPlayersReady is now computed from state.playersInRoom, no assignment needed
 
   // Reset all players' ready status
-  playersInRoom = playersInRoom.map((p) => ({ ...p, isReady: false }));
+  state.playersInRoom = state.playersInRoom.map((p) => ({ ...p, isReady: false }));
 
   showView('waiting');
-  updatePlayerList(playersInRoom);
+  updatePlayerList(state.playersInRoom);
   updateReadyButton();
   updateStartButton();
 }
@@ -1800,9 +1709,9 @@ function handleReturnedToLobby() {
  * Subscribe to lobby updates for public rooms list
  */
 function subscribeLobby() {
-  if (isSubscribedToLobby) return;
+  if (state.isSubscribedToLobby) return;
   send({ type: 'subscribeLobby' });
-  isSubscribedToLobby = true;
+  state.isSubscribedToLobby = true;
   console.log('[Wordle] Subscribed to lobby');
 }
 
@@ -1810,9 +1719,9 @@ function subscribeLobby() {
  * Unsubscribe from lobby updates (when joining/creating a room)
  */
 function unsubscribeLobby() {
-  if (!isSubscribedToLobby) return;
+  if (!state.isSubscribedToLobby) return;
   send({ type: 'unsubscribeLobby' });
-  isSubscribedToLobby = false;
+  state.isSubscribedToLobby = false;
   console.log('[Wordle] Unsubscribed from lobby');
 }
 
@@ -1820,7 +1729,7 @@ function unsubscribeLobby() {
  * Handle public rooms list update from server
  */
 function handlePublicRoomsList(msg) {
-  publicRooms = msg.rooms || [];
+  state.publicRooms = msg.rooms || [];
   renderPublicRooms();
 }
 
@@ -1832,14 +1741,14 @@ function renderPublicRooms() {
 
   elements.publicRoomsList.innerHTML = '';
 
-  if (publicRooms.length === 0) {
+  if (state.publicRooms.length === 0) {
     elements.noPublicRooms.classList.remove('hidden');
     return;
   }
 
   elements.noPublicRooms.classList.add('hidden');
 
-  for (const room of publicRooms) {
+  for (const room of state.publicRooms) {
     const item = document.createElement('div');
     item.className = 'public-room-item';
     item.dataset.roomCode = room.code;
@@ -1855,7 +1764,7 @@ function renderPublicRooms() {
 
     // FEAT-002: Check if user already completed this daily
     const isCompletedDaily =
-      room.dailyNumber && todayCompleted && room.dailyNumber === todaysDailyNumber;
+      room.dailyNumber && state.todayCompleted && room.dailyNumber === state.todaysDailyNumber;
 
     // Add completed class if applicable
     if (isCompletedDaily) {
@@ -1901,8 +1810,8 @@ function renderPublicRooms() {
  */
 async function joinPublicRoom(code, dailyNumber = null) {
   // If room is a daily challenge and user is logged in, check if they already completed it
-  if (dailyNumber && authUser) {
-    const completion = await checkDailyCompletion(authUser.email, dailyNumber);
+  if (dailyNumber && state.authUser) {
+    const completion = await checkDailyCompletion(state.authUser.email, dailyNumber);
     if (completion?.completed) {
       showError(`You've already completed Daily #${dailyNumber}`);
       return;
@@ -1918,7 +1827,7 @@ async function joinPublicRoom(code, dailyNumber = null) {
     type: 'joinRoom',
     roomCode: code,
     playerName: name,
-    playerEmail: authUser?.email || null,
+    playerEmail: state.authUser?.email || null,
   });
 }
 
@@ -1926,7 +1835,7 @@ async function joinPublicRoom(code, dailyNumber = null) {
  * Handle room visibility changed (from server, when creator toggles)
  */
 function handleRoomVisibilityChanged(msg) {
-  isRoomPublic = msg.isPublic;
+  state.isRoomPublic = msg.isPublic;
   updateVisibilityButtons();
 }
 
@@ -1936,11 +1845,11 @@ function handleRoomVisibilityChanged(msg) {
 function updateVisibilityButtons() {
   if (!elements.visibilityPublic || !elements.visibilityPrivate) return;
 
-  elements.visibilityPublic.classList.toggle('active', isRoomPublic);
-  elements.visibilityPrivate.classList.toggle('active', !isRoomPublic);
+  elements.visibilityPublic.classList.toggle('active', state.isRoomPublic);
+  elements.visibilityPrivate.classList.toggle('active', !state.isRoomPublic);
 
   if (elements.visibilityHint) {
-    elements.visibilityHint.textContent = isRoomPublic
+    elements.visibilityHint.textContent = state.isRoomPublic
       ? 'Public rooms appear in lobby for others to join'
       : 'Private rooms require the room code to join';
   }
@@ -1957,49 +1866,37 @@ function handleRejoinWaiting(msg) {
   hideReconnectingOverlay();
 
   // Restore state
-  playerId = msg.playerId;
-  roomCode = msg.roomCode;
-  isCreator = msg.isCreator;
-  gameMode = msg.gameMode || 'casual';
-  wordMode = msg.wordMode || 'daily';
-  dailyNumber = msg.dailyNumber;
-  isReady = msg.isReady;
-  playersInRoom = msg.players;
-  gameState = 'waiting';
+  state.playerId = msg.playerId;
+  state.roomCode = msg.roomCode;
+  state.isCreator = msg.isCreator;
+  state.gameMode = msg.gameMode || 'casual';
+  state.wordMode = msg.wordMode || 'daily';
+  state.dailyNumber = msg.dailyNumber;
+  state.isReady = msg.isReady;
+  state.playersInRoom = msg.players;
+  state.gamePhase = 'waiting';
 
   // Update session with current data
-  saveSession(roomCode, playerId);
+  saveSession(state.roomCode, state.playerId);
 
   // Show waiting room
   showView('waiting');
-  elements.roomCode.textContent = roomCode;
+  elements.roomCode.textContent = state.roomCode;
 
-  if (isCreator) {
-    elements.startGame.classList.remove('hidden');
-    elements.waitingMessage.classList.add('hidden');
-    if (elements.closeRoom) elements.closeRoom.classList.remove('hidden');
-    elements.modeCasual.disabled = false;
-    elements.modeCompetitive.disabled = false;
-    if (elements.wordModeDaily) elements.wordModeDaily.disabled = false;
-    if (elements.wordModeRandom) elements.wordModeRandom.disabled = false;
+  if (state.isCreator) {
+    setupCreatorUI();
   } else {
-    elements.startGame.classList.add('hidden');
-    elements.waitingMessage.classList.remove('hidden');
-    if (elements.closeRoom) elements.closeRoom.classList.add('hidden');
-    elements.modeCasual.disabled = true;
-    elements.modeCompetitive.disabled = true;
-    if (elements.wordModeDaily) elements.wordModeDaily.disabled = true;
-    if (elements.wordModeRandom) elements.wordModeRandom.disabled = true;
+    setupNonCreatorUI();
   }
 
-  updatePlayerList(playersInRoom);
-  updateModeButtons(gameMode);
+  updatePlayerList(state.playersInRoom);
+  updateModeButtons(state.gameMode);
   updateWordModeButtons();
   updateReadyButton();
   updateStartButton();
 
   showToast('Reconnected!', 'success');
-  console.log('[Wordle] Rejoined waiting room:', roomCode);
+  console.log('[Wordle] Rejoined waiting room:', state.roomCode);
 }
 
 /**
@@ -2009,21 +1906,21 @@ function handleRejoinGame(msg) {
   hideReconnectingOverlay();
 
   // Restore state
-  playerId = msg.playerId;
-  roomCode = msg.roomCode;
-  gameMode = msg.gameMode || 'casual';
-  guesses = msg.guesses || [];
-  guessResults = msg.guessResults || [];
-  gameState = 'playing';
+  state.playerId = msg.playerId;
+  state.roomCode = msg.roomCode;
+  state.gameMode = msg.gameMode || 'casual';
+  state.guesses = msg.guesses || [];
+  state.guessResults = msg.guessResults || [];
+  state.gamePhase = 'playing';
 
   // Update session
-  saveSession(roomCode, playerId);
+  saveSession(state.roomCode, state.playerId);
 
-  // Restore opponents
-  opponents.clear();
+  // Restore state.opponents
+  state.opponents.clear();
   if (msg.opponents) {
     for (const opp of msg.opponents) {
-      opponents.set(opp.id, {
+      state.opponents.set(opp.id, {
         name: opp.name,
         guessResults: opp.guessResults || [],
         guessCount: opp.guessCount || 0,
@@ -2038,9 +1935,9 @@ function handleRejoinGame(msg) {
   buildGrid();
 
   // Restore grid state
-  for (let row = 0; row < guesses.length; row++) {
-    const guess = guesses[row];
-    const results = guessResults[row];
+  for (let row = 0; row < state.guesses.length; row++) {
+    const guess = state.guesses[row];
+    const results = state.guessResults[row];
     const rowEl = elements.grid.children[row];
 
     for (let col = 0; col < 5; col++) {
@@ -2051,9 +1948,9 @@ function handleRejoinGame(msg) {
   }
 
   // Restore keyboard state
-  for (let row = 0; row < guessResults.length; row++) {
-    const guess = guesses[row];
-    const results = guessResults[row];
+  for (let row = 0; row < state.guessResults.length; row++) {
+    const guess = state.guesses[row];
+    const results = state.guessResults[row];
     for (let i = 0; i < 5; i++) {
       const letter = guess[i].toLowerCase();
       const result = results[i];
@@ -2061,16 +1958,16 @@ function handleRejoinGame(msg) {
     }
   }
 
-  // Render opponents
+  // Render state.opponents
   renderOpponentBoards();
 
   // Calculate game timer from start time
   if (msg.gameStartTime) {
-    gameTimer = Date.now() - msg.gameStartTime;
+    state.gameTimer = Date.now() - msg.gameStartTime;
   }
 
   showToast('Reconnected to game!', 'success');
-  console.log('[Wordle] Rejoined active game:', roomCode);
+  console.log('[Wordle] Rejoined active game:', state.roomCode);
 }
 
 /**
@@ -2080,10 +1977,10 @@ function handleRejoinResults(msg) {
   hideReconnectingOverlay();
 
   // Restore state
-  roomCode = msg.roomCode;
-  _targetWord = msg.word;
-  gameMode = msg.gameMode || 'casual';
-  gameState = 'finished';
+  state.roomCode = msg.roomCode;
+  state.targetWord = msg.word;
+  state.gameMode = msg.gameMode || 'casual';
+  state.gamePhase = 'finished';
 
   // Clear session since game is over
   clearSession();
@@ -2092,32 +1989,14 @@ function handleRejoinResults(msg) {
   showView('results');
   elements.revealedWord.textContent = msg.word;
 
-  // Build results list (same as handleGameEnded)
+  // Build results list (uses shared renderResultItem function)
   elements.resultsList.innerHTML = '';
   msg.results.forEach((result, index) => {
-    const li = document.createElement('li');
-
-    let rankClass = '';
-    if (index === 0) rankClass = 'gold';
-    else if (index === 1) rankClass = 'silver';
-    else if (index === 2) rankClass = 'bronze';
-
-    const timeStr = result.time ? `${(result.time / 1000).toFixed(1)}s` : '-';
-    const statsStr =
-      gameMode === 'competitive'
-        ? `${result.guesses} guesses • ${timeStr} • ${result.score} pts`
-        : `${result.guesses} guesses • ${timeStr}`;
-
-    li.innerHTML = `
-      <span class="rank ${rankClass}">${index + 1}</span>
-      <span class="player-name">${result.name}${result.id === playerId ? ' (You)' : ''}</span>
-      <span class="player-stats">${result.won ? statsStr : 'Did not solve'}</span>
-    `;
-    elements.resultsList.appendChild(li);
+    elements.resultsList.appendChild(renderResultItem(result, index));
   });
 
   showToast('Reconnected to results', 'success');
-  console.log('[Wordle] Rejoined results screen:', roomCode);
+  console.log('[Wordle] Rejoined results screen:', state.roomCode);
 }
 
 /**
@@ -2149,10 +2028,10 @@ function handlePlayerDisconnected(msg) {
   console.log('[Wordle] Player disconnected:', msg.playerName);
 
   // Update player in list to show disconnected state
-  const player = playersInRoom.find((p) => p.id === msg.playerId);
+  const player = state.playersInRoom.find((p) => p.id === msg.playerId);
   if (player) {
     player.connectionState = 'disconnected';
-    updatePlayerList(playersInRoom);
+    updatePlayerList(state.playersInRoom);
   }
 
   // Show toast
@@ -2166,10 +2045,10 @@ function handlePlayerReconnected(msg) {
   console.log('[Wordle] Player reconnected:', msg.playerName);
 
   // Update player in list to show connected state
-  const player = playersInRoom.find((p) => p.id === msg.playerId);
+  const player = state.playersInRoom.find((p) => p.id === msg.playerId);
   if (player) {
     player.connectionState = 'connected';
-    updatePlayerList(playersInRoom);
+    updatePlayerList(state.playersInRoom);
   }
 
   showToast(`${msg.playerName} reconnected`, 'success');
@@ -2215,7 +2094,7 @@ function updatePlayerList(players, highlightPlayerId = null) {
 
     li.innerHTML = `
       ${readyIndicator}
-      <span class="player-name">${player.name}${player.id === playerId ? ' (You)' : ''}</span>
+      <span class="player-name">${player.name}${player.id === state.playerId ? ' (You)' : ''}</span>
       ${player.isCreator ? '<span class="host-badge">Host</span>' : ''}
     `;
     elements.players.appendChild(li);
@@ -2229,14 +2108,14 @@ function updateModeButtons(mode) {
 
 function updateWordModeButtons() {
   if (elements.wordModeDaily) {
-    elements.wordModeDaily.classList.toggle('active', wordMode === 'daily');
+    elements.wordModeDaily.classList.toggle('active', state.wordMode === 'daily');
   }
   if (elements.wordModeRandom) {
-    elements.wordModeRandom.classList.toggle('active', wordMode === 'random');
+    elements.wordModeRandom.classList.toggle('active', state.wordMode === 'random');
   }
   if (elements.dailyNumberDisplay) {
-    if (wordMode === 'daily' && dailyNumber) {
-      elements.dailyNumberDisplay.textContent = `#${dailyNumber}`;
+    if (state.wordMode === 'daily' && state.dailyNumber) {
+      elements.dailyNumberDisplay.textContent = `#${state.dailyNumber}`;
       elements.dailyNumberDisplay.classList.remove('hidden');
     } else {
       elements.dailyNumberDisplay.classList.add('hidden');
@@ -2246,39 +2125,39 @@ function updateWordModeButtons() {
 
 // Room Config View helpers
 function resetPendingConfig() {
-  pendingConfig.gameMode = 'casual';
-  pendingConfig.wordMode = 'daily';
-  pendingConfig.isPublic = true;
+  state.pendingConfig.gameMode = 'casual';
+  state.pendingConfig.wordMode = 'daily';
+  state.pendingConfig.isPublic = true;
 }
 
 function updateConfigButtons() {
   if (elements.configModeCasual) {
-    elements.configModeCasual.classList.toggle('active', pendingConfig.gameMode === 'casual');
+    elements.configModeCasual.classList.toggle('active', state.pendingConfig.gameMode === 'casual');
   }
   if (elements.configModeCompetitive) {
     elements.configModeCompetitive.classList.toggle(
       'active',
-      pendingConfig.gameMode === 'competitive'
+      state.pendingConfig.gameMode === 'competitive'
     );
   }
   if (elements.configWordDaily) {
-    elements.configWordDaily.classList.toggle('active', pendingConfig.wordMode === 'daily');
+    elements.configWordDaily.classList.toggle('active', state.pendingConfig.wordMode === 'daily');
   }
   if (elements.configWordRandom) {
-    elements.configWordRandom.classList.toggle('active', pendingConfig.wordMode === 'random');
+    elements.configWordRandom.classList.toggle('active', state.pendingConfig.wordMode === 'random');
   }
   if (elements.configVisPublic) {
-    elements.configVisPublic.classList.toggle('active', pendingConfig.isPublic === true);
+    elements.configVisPublic.classList.toggle('active', state.pendingConfig.isPublic === true);
   }
   if (elements.configVisPrivate) {
-    elements.configVisPrivate.classList.toggle('active', pendingConfig.isPublic === false);
+    elements.configVisPrivate.classList.toggle('active', state.pendingConfig.isPublic === false);
   }
 }
 
 function updateReadyButton() {
   if (!elements.readyBtn) return;
 
-  if (isReady) {
+  if (state.isReady) {
     elements.readyBtn.textContent = 'Not Ready';
     elements.readyBtn.classList.add('ready');
   } else {
@@ -2288,14 +2167,86 @@ function updateReadyButton() {
 }
 
 function updateStartButton() {
-  if (!elements.startGame || !isCreator) return;
+  if (!elements.startGame || !state.isCreator) return;
 
-  if (allPlayersReady) {
+  if (state.allPlayersReady) {
     elements.startGame.disabled = false;
     elements.startGame.classList.remove('disabled');
   } else {
     elements.startGame.disabled = true;
     elements.startGame.classList.add('disabled');
+  }
+}
+
+/**
+ * Render a single result list item.
+ * Handles both playerId and id field names for compatibility.
+ *
+ * @param {Object} result - Result object with name, won, guesses, time, score
+ * @param {number} index - Position in results list (0-based)
+ * @returns {HTMLLIElement} The rendered list item
+ */
+function renderResultItem(result, index) {
+  const li = document.createElement('li');
+
+  let rankClass = '';
+  if (index === 0) rankClass = 'gold';
+  else if (index === 1) rankClass = 'silver';
+  else if (index === 2) rankClass = 'bronze';
+
+  // Handle both playerId and id field names (server inconsistency)
+  const isMe = (result.playerId || result.id) === state.playerId;
+
+  const timeStr = result.time ? `${(result.time / 1000).toFixed(1)}s` : '-';
+  const statsStr =
+    state.gameMode === 'competitive'
+      ? `${result.guesses} guesses • ${timeStr} • ${result.score} pts`
+      : `${result.guesses} guesses • ${timeStr}`;
+
+  li.innerHTML = `
+    <span class="rank ${rankClass}">${index + 1}</span>
+    <div class="player-info">
+      <div class="player-name">${result.name}${isMe ? ' (You)' : ''}</div>
+      <div class="player-stats">${result.won ? statsStr : 'Did not solve'}</div>
+    </div>
+    <span class="result-badge ${result.won ? 'won' : 'lost'}">${result.won ? 'Solved' : 'Failed'}</span>
+  `;
+  return li;
+}
+
+/**
+ * Configure UI for room creator (host).
+ * Shows Start Game button, Close Room button, visibility selector,
+ * and enables game mode controls.
+ */
+function setupCreatorUI() {
+  elements.startGame?.classList.remove('hidden');
+  elements.waitingMessage?.classList.add('hidden');
+  if (elements.closeRoom) elements.closeRoom.classList.remove('hidden');
+  elements.modeCasual.disabled = false;
+  elements.modeCompetitive.disabled = false;
+  if (elements.wordModeDaily) elements.wordModeDaily.disabled = false;
+  if (elements.wordModeRandom) elements.wordModeRandom.disabled = false;
+  if (elements.visibilitySelector) {
+    elements.visibilitySelector.classList.remove('hidden');
+  }
+}
+
+/**
+ * Configure UI for non-creator player.
+ * Hides Start Game button, shows waiting message,
+ * and disables game mode controls.
+ */
+function setupNonCreatorUI() {
+  elements.startGame?.classList.add('hidden');
+  elements.waitingMessage?.classList.remove('hidden');
+  if (elements.closeRoom) elements.closeRoom.classList.add('hidden');
+  elements.modeCasual.disabled = true;
+  elements.modeCompetitive.disabled = true;
+  if (elements.wordModeDaily) elements.wordModeDaily.disabled = true;
+  if (elements.wordModeRandom) elements.wordModeRandom.disabled = true;
+  if (elements.visibilitySelector) {
+    elements.visibilitySelector.classList.add('hidden');
   }
 }
 
@@ -2355,14 +2306,14 @@ function buildGrid() {
 }
 
 function updateCurrentRow() {
-  const rowIndex = guesses.length;
+  const rowIndex = state.guesses.length;
   if (rowIndex >= 6) return;
 
   const row = elements.grid.children[rowIndex];
   for (let i = 0; i < 5; i++) {
     const tile = row.children[i];
-    tile.textContent = currentGuess[i] || '';
-    tile.classList.toggle('filled', !!currentGuess[i]);
+    tile.textContent = state.currentGuess[i] || '';
+    tile.classList.toggle('filled', !!state.currentGuess[i]);
   }
 }
 
@@ -2395,29 +2346,29 @@ function updateKeyboardKey(letter, result) {
 }
 
 function handleKeyPress(key) {
-  if (gameState !== 'playing') return;
-  if (guesses.length >= 6) return;
+  if (state.gamePhase !== 'playing') return;
+  if (state.guesses.length >= 6) return;
 
   if (key === 'ENTER') {
-    if (currentGuess.length === 5) {
+    if (state.currentGuess.length === 5) {
       // Dictionary validation
-      if (!VALID_GUESSES.has(currentGuess)) {
-        if (currentGuess === lastRejectedWord) {
-          rejectionCount++;
-          if (rejectionCount >= 2) {
+      if (!VALID_GUESSES.has(state.currentGuess)) {
+        if (state.currentGuess === state.lastRejectedWord) {
+          state.rejectionCount++;
+          if (state.rejectionCount >= 2) {
             // Third attempt - force submit
-            send({ type: 'guess', word: currentGuess, forced: true });
-            lastRejectedWord = null;
-            rejectionCount = 0;
-            currentGuess = '';
+            send({ type: 'guess', word: state.currentGuess, forced: true });
+            state.lastRejectedWord = null;
+            state.rejectionCount = 0;
+            state.currentGuess = '';
             return;
           }
           // Second attempt - warn them
           showGameMessage('Not recognized. Enter again to force.');
         } else {
           // First attempt with this word
-          lastRejectedWord = currentGuess;
-          rejectionCount = 0; // Will be 1 on second attempt, 2 on third
+          state.lastRejectedWord = state.currentGuess;
+          state.rejectionCount = 0; // Will be 1 on second attempt, 2 on third
           showGameMessage('Not in word list');
         }
         shakeCurrentRow();
@@ -2425,28 +2376,31 @@ function handleKeyPress(key) {
       }
 
       // Valid word - submit normally
-      send({ type: 'guess', word: currentGuess, forced: false });
-      lastRejectedWord = null;
-      rejectionCount = 0;
-      currentGuess = '';
+      send({ type: 'guess', word: state.currentGuess, forced: false });
+      state.lastRejectedWord = null;
+      state.rejectionCount = 0;
+      state.currentGuess = '';
     }
   } else if (key === 'BACKSPACE') {
-    currentGuess = currentGuess.slice(0, -1);
+    state.currentGuess = state.currentGuess.slice(0, -1);
     // Reset rejection if changing word
-    if (lastRejectedWord && currentGuess !== lastRejectedWord.slice(0, currentGuess.length)) {
-      lastRejectedWord = null;
-      rejectionCount = 0;
+    if (
+      state.lastRejectedWord &&
+      state.currentGuess !== state.lastRejectedWord.slice(0, state.currentGuess.length)
+    ) {
+      state.lastRejectedWord = null;
+      state.rejectionCount = 0;
     }
     updateCurrentRow();
-  } else if (/^[A-Z]$/.test(key) && currentGuess.length < 5) {
-    currentGuess += key;
+  } else if (/^[A-Z]$/.test(key) && state.currentGuess.length < 5) {
+    state.currentGuess += key;
     updateCurrentRow();
   }
 }
 
 // Visual feedback for invalid words
 function shakeCurrentRow() {
-  const rowIndex = guesses.length;
+  const rowIndex = state.guesses.length;
   if (rowIndex >= 6) return;
   const row = elements.grid.children[rowIndex];
   row.classList.add('shake');
@@ -2470,7 +2424,7 @@ function renderOpponentBoards() {
   elements.opponentBoards.innerHTML = '';
   const isMobile = isMobileView();
 
-  for (const [id, opponent] of opponents) {
+  for (const [id, opponent] of state.opponents) {
     const board = document.createElement('div');
     board.className = isMobile ? 'opponent-board compact' : 'opponent-board';
 
@@ -2480,7 +2434,7 @@ function renderOpponentBoards() {
 
     // Get timer for this opponent
     let timerDisplay = '';
-    const opponentTime = playerTimes[id];
+    const opponentTime = state.playerTimes[id];
     if (opponentTime) {
       const timeStr = formatTime(opponentTime.elapsed);
       const finishedClass = opponentTime.finished ? 'finished' : '';
@@ -2581,7 +2535,7 @@ function setupEventListeners() {
       type: 'joinRoom',
       roomCode: code,
       playerName: name,
-      playerEmail: authUser?.email || null,
+      playerEmail: state.authUser?.email || null,
     });
   });
 
@@ -2594,42 +2548,42 @@ function setupEventListeners() {
   // Room Config View (pre-creation)
   if (elements.configModeCasual) {
     elements.configModeCasual.addEventListener('click', () => {
-      pendingConfig.gameMode = 'casual';
+      state.pendingConfig.gameMode = 'casual';
       updateConfigButtons();
     });
   }
 
   if (elements.configModeCompetitive) {
     elements.configModeCompetitive.addEventListener('click', () => {
-      pendingConfig.gameMode = 'competitive';
+      state.pendingConfig.gameMode = 'competitive';
       updateConfigButtons();
     });
   }
 
   if (elements.configWordDaily) {
     elements.configWordDaily.addEventListener('click', () => {
-      pendingConfig.wordMode = 'daily';
+      state.pendingConfig.wordMode = 'daily';
       updateConfigButtons();
     });
   }
 
   if (elements.configWordRandom) {
     elements.configWordRandom.addEventListener('click', () => {
-      pendingConfig.wordMode = 'random';
+      state.pendingConfig.wordMode = 'random';
       updateConfigButtons();
     });
   }
 
   if (elements.configVisPublic) {
     elements.configVisPublic.addEventListener('click', () => {
-      pendingConfig.isPublic = true;
+      state.pendingConfig.isPublic = true;
       updateConfigButtons();
     });
   }
 
   if (elements.configVisPrivate) {
     elements.configVisPrivate.addEventListener('click', () => {
-      pendingConfig.isPublic = false;
+      state.pendingConfig.isPublic = false;
       updateConfigButtons();
     });
   }
@@ -2647,17 +2601,17 @@ function setupEventListeners() {
       send({
         type: 'createRoom',
         playerName: name,
-        playerEmail: authUser?.email || null,
-        gameMode: pendingConfig.gameMode,
-        wordMode: pendingConfig.wordMode,
-        isPublic: pendingConfig.isPublic,
+        playerEmail: state.authUser?.email || null,
+        gameMode: state.pendingConfig.gameMode,
+        wordMode: state.pendingConfig.wordMode,
+        isPublic: state.pendingConfig.isPublic,
       });
     });
   }
 
   // Waiting
   elements.copyCode.addEventListener('click', () => {
-    navigator.clipboard.writeText(roomCode);
+    navigator.clipboard.writeText(state.roomCode);
     elements.copyCode.textContent = '✓';
     setTimeout(() => {
       elements.copyCode.textContent = '📋';
@@ -2665,13 +2619,13 @@ function setupEventListeners() {
   });
 
   elements.modeCasual.addEventListener('click', () => {
-    if (isCreator) {
+    if (state.isCreator) {
       send({ type: 'setGameMode', mode: 'casual' });
     }
   });
 
   elements.modeCompetitive.addEventListener('click', () => {
-    if (isCreator) {
+    if (state.isCreator) {
       send({ type: 'setGameMode', mode: 'competitive' });
     }
   });
@@ -2679,7 +2633,7 @@ function setupEventListeners() {
   // Word mode buttons
   if (elements.wordModeDaily) {
     elements.wordModeDaily.addEventListener('click', () => {
-      if (isCreator) {
+      if (state.isCreator) {
         send({ type: 'setWordMode', mode: 'daily' });
       }
     });
@@ -2687,7 +2641,7 @@ function setupEventListeners() {
 
   if (elements.wordModeRandom) {
     elements.wordModeRandom.addEventListener('click', () => {
-      if (isCreator) {
+      if (state.isCreator) {
         send({ type: 'setWordMode', mode: 'random' });
       }
     });
@@ -2696,7 +2650,7 @@ function setupEventListeners() {
   // Visibility toggle buttons
   if (elements.visibilityPublic) {
     elements.visibilityPublic.addEventListener('click', () => {
-      if (isCreator && !isRoomPublic) {
+      if (state.isCreator && !state.isRoomPublic) {
         send({ type: 'setRoomVisibility', isPublic: true });
       }
     });
@@ -2704,7 +2658,7 @@ function setupEventListeners() {
 
   if (elements.visibilityPrivate) {
     elements.visibilityPrivate.addEventListener('click', () => {
-      if (isCreator && isRoomPublic) {
+      if (state.isCreator && state.isRoomPublic) {
         send({ type: 'setRoomVisibility', isPublic: false });
       }
     });
@@ -2713,7 +2667,7 @@ function setupEventListeners() {
   // Ready button
   if (elements.readyBtn) {
     elements.readyBtn.addEventListener('click', () => {
-      send({ type: 'setReady', ready: !isReady });
+      send({ type: 'setReady', ready: !state.isReady });
     });
   }
 
@@ -2725,9 +2679,9 @@ function setupEventListeners() {
     send({ type: 'leaveRoom' });
     clearSession();
     showView('lobby');
-    roomCode = null;
-    playerId = null;
-    isCreator = false;
+    state.roomCode = null;
+    state.playerId = null;
+    state.isCreator = false;
     // Resubscribe to lobby for public rooms
     subscribeLobby();
   });
@@ -2735,9 +2689,9 @@ function setupEventListeners() {
   // Close Room button (host only - kicks everyone)
   if (elements.closeRoom) {
     elements.closeRoom.addEventListener('click', () => {
-      if (!isCreator) return;
+      if (!state.isCreator) return;
       // Confirm before closing
-      if (playersInRoom.length > 1) {
+      if (state.playersInRoom.length > 1) {
         if (!confirm('This will kick all players from the room. Continue?')) {
           return;
         }
@@ -2751,7 +2705,7 @@ function setupEventListeners() {
   if (elements.leaveGameBtn) {
     elements.leaveGameBtn.addEventListener('click', () => {
       // For daily challenges with guesses, show confirmation
-      if (wordMode === 'daily' && guesses.length > 0) {
+      if (state.wordMode === 'daily' && state.guesses.length > 0) {
         showLeaveConfirmModal();
       } else {
         // Leave immediately
@@ -2790,7 +2744,7 @@ function setupEventListeners() {
 
   // Physical keyboard
   document.addEventListener('keydown', (e) => {
-    if (gameState !== 'playing') return;
+    if (state.gamePhase !== 'playing') return;
 
     if (e.key === 'Enter') {
       handleKeyPress('ENTER');
@@ -2809,10 +2763,10 @@ function setupEventListeners() {
   elements.backToLobby.addEventListener('click', () => {
     send({ type: 'leaveRoom' });
     clearSession();
-    showView('lobby');
-    roomCode = null;
-    playerId = null;
-    isCreator = false;
+    refreshStatsAndShowLobby();
+    state.roomCode = null;
+    state.playerId = null;
+    state.isCreator = false;
     // Resubscribe to lobby for public rooms
     subscribeLobby();
   });
@@ -2876,14 +2830,14 @@ function setupEventListeners() {
 
   if (elements.playRandomInstead) {
     elements.playRandomInstead.addEventListener('click', () => {
-      showView('lobby');
+      refreshStatsAndShowLobby();
       // Optionally auto-create a random game
     });
   }
 
   if (elements.backFromDaily) {
     elements.backFromDaily.addEventListener('click', () => {
-      showView('lobby');
+      refreshStatsAndShowLobby();
     });
   }
 
@@ -2908,9 +2862,9 @@ function setupEventListeners() {
   if (elements.confirmDailyStart) {
     elements.confirmDailyStart.addEventListener('click', () => {
       hideDailyConfirmModal();
-      if (pendingDailyAction) {
-        startDailyChallenge(pendingDailyAction.type === 'solo');
-        pendingDailyAction = null;
+      if (state.pendingDailyAction) {
+        startDailyChallenge(state.pendingDailyAction.type === 'solo');
+        state.pendingDailyAction = null;
       }
     });
   }
@@ -2918,7 +2872,7 @@ function setupEventListeners() {
   if (elements.confirmDailyCancel) {
     elements.confirmDailyCancel.addEventListener('click', () => {
       hideDailyConfirmModal();
-      pendingDailyAction = null;
+      state.pendingDailyAction = null;
     });
   }
 
@@ -2928,7 +2882,7 @@ function setupEventListeners() {
     if (overlay) {
       overlay.addEventListener('click', () => {
         hideDailyConfirmModal();
-        pendingDailyAction = null;
+        state.pendingDailyAction = null;
       });
     }
   }
@@ -2966,7 +2920,7 @@ function setupEventListeners() {
     // Enable/disable Go button based on valid input
     elements.browseDailyNumber.addEventListener('input', () => {
       const value = parseInt(elements.browseDailyNumber.value, 10);
-      const maxDaily = (todaysDailyNumber || 734) - 1;
+      const maxDaily = (state.todaysDailyNumber || 734) - 1;
       const isValid = value >= 1 && value <= maxDaily;
 
       if (elements.browseGoBtn) {
@@ -2979,7 +2933,7 @@ function setupEventListeners() {
     elements.backFromHistorical.addEventListener('click', () => {
       showView('lobby');
       // Clear cached data so it refreshes on next visit
-      historicalDailiesData = null;
+      state.historicalDailiesData = null;
     });
   }
 
@@ -3013,7 +2967,7 @@ function setupEventListeners() {
   window.addEventListener('resize', () => {
     clearTimeout(resizeTimeout);
     resizeTimeout = setTimeout(() => {
-      if (opponents.size > 0) {
+      if (state.opponents.size > 0) {
         renderOpponentBoards();
       }
     }, 150);

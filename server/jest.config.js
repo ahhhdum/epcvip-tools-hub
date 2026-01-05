@@ -1,7 +1,7 @@
 /** @type {import('jest').Config} */
 module.exports = {
   testEnvironment: 'node',
-  roots: ['<rootDir>/src', '<rootDir>/../wordle/utils'],
+  roots: ['<rootDir>/src', '<rootDir>/../wordle/utils', '<rootDir>/../wordle/state', '<rootDir>/../wordle/modules'],
   testMatch: ['**/*.test.ts', '**/*.test.js'],
   moduleFileExtensions: ['ts', 'js', 'json'],
   collectCoverageFrom: ['src/**/*.ts', '!src/**/*.test.ts', '!src/index.ts'],
