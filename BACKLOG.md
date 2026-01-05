@@ -25,48 +25,26 @@
 
 ## Wordle Battle Backlog
 
-### 🚨 URGENT - Security & UX Blockers
+### Completed - Security & UX Blockers (2025-01-04)
 
-#### 1. Server-Side Word Validation (Security)
-**Problem:** The word is sent to clients in `gameStarted` WebSocket message, exposing it to anyone with DevTools.
-- Users can see the answer immediately via Network tab
-- Enables cheating in competitive multiplayer
-- Blocks safe implementation of game cancellation
+- [x] **Server-Side Word Validation (Security)** - ✅ ALREADY SECURE
+  - Code analysis confirmed: word is NOT sent in `gameStarted` message
+  - Server validates guesses via `validateGuess()` and returns results
+  - Word only sent in `gameEnded` and `rejoinResults` (post-completion)
+  - No changes needed - architecture was already correct
 
-**Solution:** Remove word from all client messages until game ends.
-- Server validates guesses and returns letter-by-letter results: `[{letter: 'A', result: 'correct'}, ...]`
-- Client renders results from server response, not local validation
-- Word only revealed in `gameEnded` message
+- [x] **Leave/Cancel Game During Play (UX)**
+  - Added "Leave" button to game view header
+  - Server handles `leaveRoom` message properly
+  - For daily challenges: progress saved to localStorage for resumption
+  - Leave confirmation modal shows when leaving daily with guesses
+  - Other players notified via `playerLeft` broadcast
 
-**Files:** `server/src/rooms/wordle-room.ts` (handleStartGame, handleGuess), `wordle/wordle.js` (guess validation)
-
-#### 2. Leave/Cancel Game During Play (UX)
-**Problem:** Once a game starts, there's no way to exit. Browser back button reconnects you to the same game.
-- Users are trapped if they accidentally start
-- No escape hatch for emergencies
-- Frustrating when you realize you clicked wrong mode
-
-**Solution:** Add "Leave Game" button during active play.
-- Button visible in game view header
-- Confirmation dialog: "Leave game? This will count as a loss."
-- For daily challenges (once server-side validation exists):
-  - If 0 guesses made: clean exit, daily not consumed
-  - If 1+ guesses made: counts as loss, daily marked complete
-- Notify other players: "PlayerX left the game"
-
-**Files:** `wordle/index.html`, `wordle/wordle.js`, `server/src/rooms/wordle-room.ts`
-
-#### 3. Daily Challenge Confirmation Modal (UX)
-**Problem:** Users can accidentally start a daily challenge with no warning that it's a one-time attempt.
-
-**Solution:** Add confirmation step before starting solo daily.
-- After clicking "Play Solo" on daily modal, show: "Once you make your first guess, this counts as your daily attempt. Ready to play?"
-- Options: "Start Game" / "Cancel"
-- Skip confirmation for multiplayer (social accountability)
-
-**Files:** `wordle/index.html`, `wordle/wordle.js`
-
----
+- [x] **Daily Challenge Confirmation Modal (UX)**
+  - Added confirmation step before starting daily challenge
+  - Shows "Ready for Daily #XXX?" with warning about one-shot attempt
+  - User must explicitly confirm before game starts
+  - Cancel returns to mode selection
 
 ### Completed
 - [x] **Solo Daily Challenge** - Allow single player to complete daily without waiting for others

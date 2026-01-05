@@ -47,6 +47,15 @@ let _isReconnecting = false; // True when attempting to rejoin a room (for futur
 const SESSION_STORAGE_KEY = 'wordle_session';
 const SESSION_MAX_AGE_MS = 120000; // 2 minutes - matches server grace period
 
+// Daily progress storage (for resumption after leaving mid-game)
+const DAILY_PROGRESS_KEY = 'wordle_daily_progress';
+
+// Pending action (for confirmation modals)
+let pendingDailyAction = null; // { type: 'solo' | 'friends', dailyNumber }
+
+// Pending resume guesses (for continuing daily after leave)
+let pendingResumeGuesses = null; // { guesses: [], guessResults: [] }
+
 // Public rooms state
 let publicRooms = [];
 let isSubscribedToLobby = false;
@@ -136,6 +145,69 @@ function getSession() {
   } catch (e) {
     console.warn('[Wordle] Failed to get session:', e);
     return null;
+  }
+}
+
+// =============================================================================
+// Daily Progress Storage (for mid-game leave/resume)
+// =============================================================================
+
+/**
+ * Save daily challenge progress when leaving mid-game
+ * Progress is keyed by email+dailyNumber so users can resume their specific attempt
+ */
+function saveDailyProgress(progress) {
+  if (!progress || !authUser?.email) return;
+
+  try {
+    const key = `${DAILY_PROGRESS_KEY}_${authUser.email}_${progress.dailyNumber}`;
+    localStorage.setItem(
+      key,
+      JSON.stringify({
+        ...progress,
+        savedAt: Date.now(),
+      })
+    );
+    console.log(
+      `[Wordle] Daily #${progress.dailyNumber} progress saved (${progress.guesses.length} guesses)`
+    );
+  } catch (e) {
+    console.warn('[Wordle] Failed to save daily progress:', e);
+  }
+}
+
+/**
+ * Get saved daily progress for a specific daily challenge
+ */
+function getDailyProgress(dailyNumber) {
+  if (!authUser?.email) return null;
+
+  try {
+    const key = `${DAILY_PROGRESS_KEY}_${authUser.email}_${dailyNumber}`;
+    const data = localStorage.getItem(key);
+    if (!data) return null;
+
+    const progress = JSON.parse(data);
+    // Progress is valid indefinitely for daily challenges (unlike session which expires)
+    return progress;
+  } catch (e) {
+    console.warn('[Wordle] Failed to get daily progress:', e);
+    return null;
+  }
+}
+
+/**
+ * Clear daily progress after completion or explicit clear
+ */
+function clearDailyProgress(dailyNumber) {
+  if (!authUser?.email) return;
+
+  try {
+    const key = `${DAILY_PROGRESS_KEY}_${authUser.email}_${dailyNumber}`;
+    localStorage.removeItem(key);
+    console.log(`[Wordle] Daily #${dailyNumber} progress cleared`);
+  } catch (e) {
+    console.warn('[Wordle] Failed to clear daily progress:', e);
   }
 }
 
@@ -321,6 +393,21 @@ const elements = {
   visibilityPublic: document.getElementById('visibilityPublic'),
   visibilityPrivate: document.getElementById('visibilityPrivate'),
   visibilityHint: document.getElementById('visibilityHint'),
+
+  // Leave Game (during play)
+  leaveGameBtn: document.getElementById('leaveGameBtn'),
+
+  // Daily Confirmation Modal
+  dailyConfirmModal: document.getElementById('dailyConfirmModal'),
+  confirmDailyNum: document.getElementById('confirmDailyNum'),
+  confirmDailyStart: document.getElementById('confirmDailyStart'),
+  confirmDailyCancel: document.getElementById('confirmDailyCancel'),
+
+  // Leave Confirmation Modal
+  leaveConfirmModal: document.getElementById('leaveConfirmModal'),
+  leaveConfirmMessage: document.getElementById('leaveConfirmMessage'),
+  confirmLeave: document.getElementById('confirmLeave'),
+  cancelLeave: document.getElementById('cancelLeave'),
 };
 
 // SSO Token Handling
@@ -718,20 +805,81 @@ function hideDailyModeModal() {
   }
 }
 
-// Start daily challenge (solo or friends mode)
-function startDailyChallenge(solo) {
+// Show the daily confirmation modal
+function showDailyConfirmModal(actionType) {
+  pendingDailyAction = { type: actionType, dailyNumber: todaysDailyNumber };
+
+  if (elements.confirmDailyNum) {
+    elements.confirmDailyNum.textContent = todaysDailyNumber;
+  }
+
+  // Hide the mode selection modal
   hideDailyModeModal();
 
+  if (elements.dailyConfirmModal) {
+    elements.dailyConfirmModal.classList.remove('hidden');
+  }
+}
+
+// Hide the daily confirmation modal
+function hideDailyConfirmModal() {
+  if (elements.dailyConfirmModal) {
+    elements.dailyConfirmModal.classList.add('hidden');
+  }
+}
+
+// Show the leave confirmation modal
+function showLeaveConfirmModal() {
+  // Update message based on progress
+  if (elements.leaveConfirmMessage) {
+    const guessCount = guesses.length;
+    elements.leaveConfirmMessage.textContent =
+      `You have ${guessCount} guess${guessCount !== 1 ? 'es' : ''} saved. ` +
+      'Your progress will be preserved and you can resume later.';
+  }
+
+  if (elements.leaveConfirmModal) {
+    elements.leaveConfirmModal.classList.remove('hidden');
+  }
+}
+
+// Hide the leave confirmation modal
+function hideLeaveConfirmModal() {
+  if (elements.leaveConfirmModal) {
+    elements.leaveConfirmModal.classList.add('hidden');
+  }
+}
+
+// Start daily challenge (solo or friends mode)
+function startDailyChallenge(solo, dailyNum = null) {
+  hideDailyModeModal();
+  hideDailyConfirmModal();
+
+  const targetDaily = dailyNum || todaysDailyNumber;
   const name = getPlayerName();
   localStorage.setItem('wordle_playerName', name);
 
-  console.log(`[DAILY] Starting ${solo ? 'solo' : 'friends'} daily challenge`);
+  // Check for saved progress on this daily
+  const savedProgress = getDailyProgress(targetDaily);
+  if (savedProgress && savedProgress.guesses?.length > 0) {
+    console.log(
+      `[DAILY] Resuming daily #${targetDaily} with ${savedProgress.guesses.length} guesses`
+    );
+    pendingResumeGuesses = {
+      guesses: savedProgress.guesses,
+      guessResults: savedProgress.guessResults,
+    };
+  } else {
+    pendingResumeGuesses = null;
+  }
+
+  console.log(`[DAILY] Starting ${solo ? 'solo' : 'friends'} daily challenge #${targetDaily}`);
 
   send({
     type: 'createDailyChallenge',
     playerName: name,
     playerEmail: authUser.email,
-    dailyNumber: todaysDailyNumber,
+    dailyNumber: targetDaily,
     solo: solo,
   });
 }
@@ -1281,10 +1429,42 @@ function handleMessage(msg) {
       handleRoomVisibilityChanged(msg);
       break;
 
+    case 'leftRoom':
+      handleLeftRoom(msg);
+      break;
+
     case 'error':
       showError(msg.message);
       break;
   }
+}
+
+/**
+ * Handle confirmation that we've left the room
+ * Saves daily progress if applicable
+ */
+function handleLeftRoom(msg) {
+  console.log('[Wordle] Left room:', msg.roomCode);
+
+  // Save daily progress if we had any
+  if (msg.progress) {
+    saveDailyProgress(msg.progress);
+  }
+
+  // Clear session
+  clearSession();
+
+  // Reset state
+  roomCode = null;
+  playerId = null;
+  isCreator = false;
+  guesses = [];
+  guessResults = [];
+  opponents.clear();
+
+  // Return to lobby
+  showView('lobby');
+  subscribeLobby();
 }
 
 // Room Handlers
@@ -1550,6 +1730,46 @@ function handleGameStarted(msg) {
   renderOpponentBoards();
   resetKeyboard();
   elements.message.textContent = '';
+
+  // If we have saved progress to resume, replay the guesses
+  if (pendingResumeGuesses && pendingResumeGuesses.guesses.length > 0) {
+    console.log(`[DAILY] Replaying ${pendingResumeGuesses.guesses.length} saved guesses`);
+    replayResumeGuesses();
+  }
+}
+
+/**
+ * Replay saved guesses when resuming a daily challenge
+ * Submits each guess with a small delay to allow UI updates
+ */
+function replayResumeGuesses() {
+  if (!pendingResumeGuesses || pendingResumeGuesses.guesses.length === 0) {
+    pendingResumeGuesses = null;
+    return;
+  }
+
+  const guessesToReplay = [...pendingResumeGuesses.guesses];
+  pendingResumeGuesses = null;
+
+  let index = 0;
+  function replayNext() {
+    if (index >= guessesToReplay.length) return;
+
+    const guess = guessesToReplay[index];
+    console.log(`[DAILY] Replaying guess ${index + 1}: ${guess}`);
+
+    // Submit the guess
+    send({ type: 'guess', word: guess.toLowerCase(), forced: false });
+
+    index++;
+    // Wait a bit before next guess to allow server response and UI update
+    if (index < guessesToReplay.length) {
+      setTimeout(replayNext, 200);
+    }
+  }
+
+  // Start replaying with a small delay
+  setTimeout(replayNext, 100);
 }
 
 function handleGuessResult(msg) {
@@ -1595,6 +1815,11 @@ function handleOpponentGuess(msg) {
 function handleGameEnded(msg) {
   gameState = 'results';
   _targetWord = msg.word;
+
+  // Clear any saved daily progress since the game completed
+  if (dailyNumber) {
+    clearDailyProgress(dailyNumber);
+  }
 
   showView('results');
   elements.revealedWord.textContent = msg.word;
@@ -2497,6 +2722,39 @@ function setupEventListeners() {
     subscribeLobby();
   });
 
+  // Leave Game button (during gameplay)
+  if (elements.leaveGameBtn) {
+    elements.leaveGameBtn.addEventListener('click', () => {
+      // For daily challenges with guesses, show confirmation
+      if (wordMode === 'daily' && guesses.length > 0) {
+        showLeaveConfirmModal();
+      } else {
+        // Leave immediately
+        send({ type: 'leaveRoom' });
+      }
+    });
+  }
+
+  // Leave Confirmation Modal events
+  if (elements.confirmLeave) {
+    elements.confirmLeave.addEventListener('click', () => {
+      hideLeaveConfirmModal();
+      send({ type: 'leaveRoom' });
+    });
+  }
+
+  if (elements.cancelLeave) {
+    elements.cancelLeave.addEventListener('click', hideLeaveConfirmModal);
+  }
+
+  // Close leave confirm modal on overlay click
+  if (elements.leaveConfirmModal) {
+    const overlay = elements.leaveConfirmModal.querySelector('.modal-overlay');
+    if (overlay) {
+      overlay.addEventListener('click', hideLeaveConfirmModal);
+    }
+  }
+
   // Game keyboard
   elements.keyboard.addEventListener('click', (e) => {
     const key = e.target.dataset.key;
@@ -2607,18 +2865,47 @@ function setupEventListeners() {
   // Daily Mode Selection Modal events
   if (elements.playSoloBtn) {
     elements.playSoloBtn.addEventListener('click', () => {
-      startDailyChallenge(true);
+      showDailyConfirmModal('solo');
     });
   }
 
   if (elements.playWithFriendsBtn) {
     elements.playWithFriendsBtn.addEventListener('click', () => {
-      startDailyChallenge(false);
+      showDailyConfirmModal('friends');
     });
   }
 
   if (elements.cancelDailyMode) {
     elements.cancelDailyMode.addEventListener('click', hideDailyModeModal);
+  }
+
+  // Daily Confirmation Modal events
+  if (elements.confirmDailyStart) {
+    elements.confirmDailyStart.addEventListener('click', () => {
+      hideDailyConfirmModal();
+      if (pendingDailyAction) {
+        startDailyChallenge(pendingDailyAction.type === 'solo');
+        pendingDailyAction = null;
+      }
+    });
+  }
+
+  if (elements.confirmDailyCancel) {
+    elements.confirmDailyCancel.addEventListener('click', () => {
+      hideDailyConfirmModal();
+      pendingDailyAction = null;
+    });
+  }
+
+  // Close confirm modal on overlay click
+  if (elements.dailyConfirmModal) {
+    const overlay = elements.dailyConfirmModal.querySelector('.modal-overlay');
+    if (overlay) {
+      overlay.addEventListener('click', () => {
+        hideDailyConfirmModal();
+        pendingDailyAction = null;
+      });
+    }
   }
 
   // Close modal on overlay click

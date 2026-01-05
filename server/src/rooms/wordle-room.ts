@@ -507,6 +507,71 @@ export class WordleRoomManager {
   }
 
   /**
+   * Handle voluntary leave - player explicitly wants to leave the room
+   *
+   * Unlike disconnect (which has a grace period), voluntary leave is immediate.
+   * For daily challenges, we send back the current progress so the client
+   * can save it to localStorage for potential resumption.
+   */
+  handleLeaveRoom(socket: WebSocket): void {
+    const playerId = this.socketToPlayer.get(socket);
+    if (!playerId) {
+      this.send(socket, { type: 'error', message: 'Not in a room' });
+      return;
+    }
+
+    const roomCode = this.playerToRoom.get(playerId);
+    if (!roomCode) {
+      this.send(socket, { type: 'error', message: 'Not in a room' });
+      return;
+    }
+
+    const room = this.rooms.get(roomCode);
+    if (!room) {
+      this.send(socket, { type: 'error', message: 'Room not found' });
+      return;
+    }
+
+    const player = room.players.get(playerId);
+    if (!player) {
+      this.send(socket, { type: 'error', message: 'Player not found' });
+      return;
+    }
+
+    // For daily challenges, send progress so client can save for resumption
+    const progress =
+      room.isDailyChallenge && player.guesses.length > 0
+        ? {
+            dailyNumber: room.dailyNumber,
+            guesses: player.guesses,
+            guessResults: player.guessResults,
+            elapsedMs: room.startTime ? Date.now() - room.startTime : 0,
+          }
+        : null;
+
+    // Send confirmation with any progress data
+    this.send(socket, {
+      type: 'leftRoom',
+      roomCode,
+      progress,
+    });
+
+    console.log(
+      `[Wordle] ${player.name} voluntarily left ${roomCode}` +
+        (progress ? ` (${progress.guesses.length} guesses saved)` : '')
+    );
+
+    // Clear any reconnect timer (in case they were in grace period)
+    if (player.reconnectTimer) {
+      clearTimeout(player.reconnectTimer);
+      player.reconnectTimer = null;
+    }
+
+    // Remove player immediately (no grace period for voluntary leave)
+    this.removePlayerPermanently(roomCode, playerId);
+  }
+
+  /**
    * Handle player disconnect - start grace period instead of immediate removal
    *
    * When a player disconnects (close tab, refresh, network issue), they are
@@ -1297,6 +1362,9 @@ export class WordleRoomManager {
           break;
         case 'rejoin':
           this.handleRejoin(socket, msg.roomCode, msg.playerId);
+          break;
+        case 'leaveRoom':
+          this.handleLeaveRoom(socket);
           break;
         default:
           console.log(`[Wordle] Unknown message type: ${msg.type}`);

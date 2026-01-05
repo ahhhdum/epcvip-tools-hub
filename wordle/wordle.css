@@ -541,6 +541,53 @@ body {
   opacity: 0.8;
 }
 
+/* Confirmation Modal */
+.confirm-modal {
+  max-width: 340px;
+  text-align: center;
+}
+
+.confirm-modal h2 {
+  margin-bottom: 0.75rem;
+}
+
+.confirm-warning {
+  color: var(--gold);
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.confirm-note {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+  line-height: 1.4;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.confirm-actions .btn {
+  flex: 1;
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.btn-danger:hover {
+  background: #b71c1c;
+}
+
 /* Lobby View */
 .lobby-content {
   max-width: 400px;
@@ -1588,6 +1635,25 @@ body {
     font-size: 1.1rem;
     padding: 4px 0;
   }
+
+  /* Game header mobile adjustments */
+  .game-header {
+    max-width: 100%;
+    padding: 0 10px;
+  }
+
+  .btn-leave {
+    padding: 4px 8px;
+    font-size: 0.75rem;
+  }
+
+  .btn-leave .leave-text {
+    display: none;
+  }
+
+  .game-header::after {
+    width: 30px;
+  }
 }
 
 /* Small phones (iPhone SE, Mini, budget Android) */
@@ -1798,10 +1864,58 @@ body {
   margin: 0;
 }
 
+/* Game Header (timer + leave button) */
+.game-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 15px;
+  width: 100%;
+  max-width: 350px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.btn-leave {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid var(--text-secondary);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.btn-leave:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.btn-leave .leave-icon {
+  font-size: 1rem;
+}
+
+/* Spacer to balance the layout */
+.game-header::after {
+  content: '';
+  width: 70px; /* Approximate width of leave button */
+  flex-shrink: 0;
+}
+
 /* Timer Display */
 .timer-display {
   text-align: center;
-  margin-bottom: 15px;
+  flex-grow: 1;
+}
+
+/* Remove margin when inside game-header */
+.game-header .timer-display {
+  margin-bottom: 0;
 }
 
 .timer-display #gameTimer {

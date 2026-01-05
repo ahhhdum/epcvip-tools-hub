@@ -186,8 +186,14 @@
 
         <!-- Main game area (center) -->
         <div class="main-game">
-          <div class="timer-display">
-            <span id="gameTimer">0:00</span>
+          <div class="game-header">
+            <button id="leaveGameBtn" class="btn-leave" title="Leave Game">
+              <span class="leave-icon">←</span>
+              <span class="leave-text">Leave</span>
+            </button>
+            <div class="timer-display">
+              <span id="gameTimer">0:00</span>
+            </div>
           </div>
 
           <div id="grid" class="grid"></div>
@@ -415,6 +421,33 @@
         </div>
 
         <button id="cancelDailyMode" class="btn btn-link">Cancel</button>
+      </div>
+    </div>
+
+    <!-- Daily Confirmation Modal (shown before starting daily) -->
+    <div id="dailyConfirmModal" class="modal hidden">
+      <div class="modal-overlay"></div>
+      <div class="modal-content confirm-modal">
+        <h2>Ready for Daily #<span id="confirmDailyNum">---</span>?</h2>
+        <p class="confirm-warning">This is your ONE shot for today!</p>
+        <p class="confirm-note">Once you start, this counts as your daily attempt. No pressure... but also, pressure.</p>
+        <div class="confirm-actions">
+          <button id="confirmDailyStart" class="btn btn-primary">Let's Go!</button>
+          <button id="confirmDailyCancel" class="btn btn-secondary">Maybe Later</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Leave Game Confirmation Modal (for daily with progress) -->
+    <div id="leaveConfirmModal" class="modal hidden">
+      <div class="modal-overlay"></div>
+      <div class="modal-content confirm-modal">
+        <h2>Leave Game?</h2>
+        <p class="confirm-note" id="leaveConfirmMessage">Your progress will be saved. You can resume this daily later.</p>
+        <div class="confirm-actions">
+          <button id="confirmLeave" class="btn btn-danger">Leave</button>
+          <button id="cancelLeave" class="btn btn-secondary">Stay</button>
+        </div>
       </div>
     </div>
   </div>
