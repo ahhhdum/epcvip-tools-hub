@@ -60,6 +60,7 @@
               <span class="stat-label">Best</span>
             </div>
           </div>
+          <button id="viewStatsBtn" class="btn btn-stats">📊 View Stats</button>
         </div>
 
         <!-- Daily Challenge Section -->
@@ -351,6 +352,52 @@
           <button id="playRandomInstead" class="btn btn-primary">Play Random Game</button>
           <button id="backFromDaily" class="btn btn-secondary">Back to Lobby</button>
         </div>
+      </div>
+    </div>
+
+    <!-- Stats Dashboard View -->
+    <div id="statsView" class="view hidden">
+      <div class="stats-view-content">
+        <h2>📊 Your Stats</h2>
+        <p class="stats-subtitle">Track your Wordle Battle performance</p>
+
+        <!-- Stats Grid (2 rows x 3 cols) -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span class="stat-card-value" id="statsGamesPlayed">0</span>
+            <span class="stat-card-label">Played</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-card-value" id="statsWinRate">0%</span>
+            <span class="stat-card-label">Win %</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-card-value" id="statsCurrentStreak">0</span>
+            <span class="stat-card-label">🔥 Streak</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-card-value" id="statsBestStreak">0</span>
+            <span class="stat-card-label">Best Streak</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-card-value" id="statsFastestTime">--:--</span>
+            <span class="stat-card-label">⚡ Fastest</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-card-value" id="statsAvgTime">--:--</span>
+            <span class="stat-card-label">Average</span>
+          </div>
+        </div>
+
+        <!-- Guess Distribution -->
+        <div class="distribution-section">
+          <h3>Guess Distribution</h3>
+          <div id="distributionChart" class="distribution-chart">
+            <!-- Bars will be rendered by JavaScript -->
+          </div>
+        </div>
+
+        <button id="backFromStats" class="btn btn-link">← Back to Lobby</button>
       </div>
     </div>
 

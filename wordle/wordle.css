@@ -2451,3 +2451,196 @@ body {
   padding: 14px 24px;
   font-size: 1rem;
 }
+
+/* ===========================================
+   Stats Dashboard View
+   =========================================== */
+
+.stats-view-content {
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.stats-view-content h2 {
+  font-size: 1.75rem;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+}
+
+.stats-subtitle {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  margin-bottom: 32px;
+}
+
+/* Stats Grid - 2 rows x 3 columns */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+.stat-card {
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--border);
+}
+
+.stat-card-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.stat-card-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Guess Distribution Section */
+.distribution-section {
+  text-align: left;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 24px;
+  border: 1px solid var(--border);
+}
+
+.distribution-section h3 {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.distribution-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.distribution-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.distribution-label {
+  width: 16px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.distribution-bar-container {
+  flex: 1;
+  height: 24px;
+  display: flex;
+  align-items: center;
+}
+
+.distribution-bar {
+  height: 100%;
+  min-width: 24px;
+  background-color: var(--absent);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 8px;
+  transition: width 0.3s ease;
+}
+
+.distribution-bar.highlight {
+  background-color: var(--correct);
+}
+
+.distribution-bar.losses {
+  background-color: var(--danger);
+}
+
+.distribution-count {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.distribution-percent {
+  width: 50px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* Back button for stats view */
+#backFromStats {
+  margin-top: 8px;
+}
+
+/* View Stats Button in lobby */
+.btn-stats {
+  width: 100%;
+  padding: 12px 24px;
+  font-size: 1rem;
+  font-weight: 600;
+  background: var(--bg-tile);
+  color: var(--text-primary);
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 12px;
+}
+
+.btn-stats:hover {
+  border-color: var(--accent);
+  background-color: rgba(83, 141, 78, 0.15);
+}
+
+/* Responsive adjustments for stats view */
+@media (max-width: 480px) {
+  .stats-view-content {
+    padding: 20px 16px;
+  }
+
+  .stats-grid {
+    gap: 8px;
+  }
+
+  .stat-card {
+    padding: 12px 8px;
+  }
+
+  .stat-card-value {
+    font-size: 1.4rem;
+  }
+
+  .stat-card-label {
+    font-size: 0.65rem;
+  }
+
+  .distribution-section {
+    padding: 16px;
+  }
+
+  .distribution-percent {
+    width: 40px;
+    font-size: 0.7rem;
+  }
+}

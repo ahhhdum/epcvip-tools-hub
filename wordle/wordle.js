@@ -199,6 +199,7 @@ const views = {
   results: document.getElementById('results'),
   dailyCompleted: document.getElementById('dailyCompleted'),
   historicalDailies: document.getElementById('historicalDailies'),
+  stats: document.getElementById('statsView'),
 };
 
 const elements = {
@@ -358,6 +359,17 @@ const elements = {
   configVisPrivate: document.getElementById('configVisPrivate'),
   configCancel: document.getElementById('configCancel'),
   configCreate: document.getElementById('configCreate'),
+
+  // Stats Dashboard View
+  viewStatsBtn: document.getElementById('viewStatsBtn'),
+  backFromStats: document.getElementById('backFromStats'),
+  statsGamesPlayed: document.getElementById('statsGamesPlayed'),
+  statsWinRate: document.getElementById('statsWinRate'),
+  statsCurrentStreak: document.getElementById('statsCurrentStreak'),
+  statsBestStreak: document.getElementById('statsBestStreak'),
+  statsFastestTime: document.getElementById('statsFastestTime'),
+  statsAvgTime: document.getElementById('statsAvgTime'),
+  distributionChart: document.getElementById('distributionChart'),
 };
 
 // SSO Token Handling
@@ -958,6 +970,146 @@ function renderRecentDailies() {
 
     item.addEventListener('click', () => handleRecentDailyClick(daily));
     elements.recentDailiesList.appendChild(item);
+  }
+}
+
+// ============================================================================
+// Stats Dashboard View
+// ============================================================================
+
+/**
+ * Show the stats dashboard view with full stats and distribution chart.
+ */
+async function showStatsView() {
+  if (!state.authUser?.email) {
+    showError('Please log in to view your stats');
+    return;
+  }
+
+  // Fetch fresh stats
+  const stats = await fetchPlayerStats(state.authUser.email);
+
+  if (!stats) {
+    showError('Failed to load stats');
+    return;
+  }
+
+  // Update stat cards
+  if (elements.statsGamesPlayed) {
+    elements.statsGamesPlayed.textContent = stats.games_played || 0;
+  }
+
+  if (elements.statsWinRate) {
+    const winRate =
+      stats.games_played > 0 ? Math.round((stats.games_won / stats.games_played) * 100) : 0;
+    elements.statsWinRate.textContent = `${winRate}%`;
+  }
+
+  if (elements.statsCurrentStreak) {
+    elements.statsCurrentStreak.textContent = stats.current_streak || 0;
+  }
+
+  if (elements.statsBestStreak) {
+    elements.statsBestStreak.textContent = stats.best_streak || 0;
+  }
+
+  if (elements.statsFastestTime) {
+    elements.statsFastestTime.textContent = formatTimeMs(stats.fastest_solve_ms);
+  }
+
+  if (elements.statsAvgTime) {
+    elements.statsAvgTime.textContent = formatTimeMs(stats.avg_solve_time_ms);
+  }
+
+  // Render distribution chart
+  renderDistributionChart(stats);
+
+  showView('stats');
+}
+
+/**
+ * Format milliseconds as MM:SS or --:-- if null/0.
+ */
+function formatTimeMs(ms) {
+  if (!ms || ms === 0) return '--:--';
+
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
+
+/**
+ * Render the guess distribution chart.
+ */
+function renderDistributionChart(stats) {
+  if (!elements.distributionChart) return;
+
+  // Get distribution data
+  const distribution = [
+    { label: '1', count: stats.guesses_1 || 0 },
+    { label: '2', count: stats.guesses_2 || 0 },
+    { label: '3', count: stats.guesses_3 || 0 },
+    { label: '4', count: stats.guesses_4 || 0 },
+    { label: '5', count: stats.guesses_5 || 0 },
+    { label: '6', count: stats.guesses_6 || 0 },
+  ];
+
+  // Calculate losses (games played - games won)
+  const losses = (stats.games_played || 0) - (stats.games_won || 0);
+
+  // Find max for scaling
+  const allCounts = [...distribution.map((d) => d.count), losses];
+  const maxCount = Math.max(...allCounts, 1); // At least 1 to avoid division by zero
+  const totalGames = stats.games_played || 0;
+
+  // Clear existing content
+  elements.distributionChart.innerHTML = '';
+
+  // Render each row (1-6)
+  for (const item of distribution) {
+    const row = document.createElement('div');
+    row.className = 'distribution-row';
+
+    const widthPercent = maxCount > 0 ? (item.count / maxCount) * 100 : 0;
+    const gamePercent = totalGames > 0 ? Math.round((item.count / totalGames) * 100) : 0;
+
+    // Highlight the row with the most wins
+    const isHighlight = item.count === maxCount && item.count > 0;
+
+    row.innerHTML = `
+      <span class="distribution-label">${item.label}</span>
+      <div class="distribution-bar-container">
+        <div class="distribution-bar${isHighlight ? ' highlight' : ''}" style="width: ${Math.max(widthPercent, 8)}%">
+          <span class="distribution-count">${item.count}</span>
+        </div>
+      </div>
+      <span class="distribution-percent">${gamePercent}%</span>
+    `;
+
+    elements.distributionChart.appendChild(row);
+  }
+
+  // Add losses row if any
+  if (losses > 0) {
+    const lossRow = document.createElement('div');
+    lossRow.className = 'distribution-row';
+
+    const widthPercent = (losses / maxCount) * 100;
+    const gamePercent = totalGames > 0 ? Math.round((losses / totalGames) * 100) : 0;
+
+    lossRow.innerHTML = `
+      <span class="distribution-label">X</span>
+      <div class="distribution-bar-container">
+        <div class="distribution-bar losses" style="width: ${Math.max(widthPercent, 8)}%">
+          <span class="distribution-count">${losses}</span>
+        </div>
+      </div>
+      <span class="distribution-percent">${gamePercent}%</span>
+    `;
+
+    elements.distributionChart.appendChild(lossRow);
   }
 }
 
@@ -3082,6 +3234,17 @@ function setupEventListeners() {
     if (overlay) {
       overlay.addEventListener('click', hideHistoricalModeModal);
     }
+  }
+
+  // Stats Dashboard View events
+  if (elements.viewStatsBtn) {
+    elements.viewStatsBtn.addEventListener('click', showStatsView);
+  }
+
+  if (elements.backFromStats) {
+    elements.backFromStats.addEventListener('click', () => {
+      showView('lobby');
+    });
   }
 
   // Re-render opponent boards on resize (debounced)
