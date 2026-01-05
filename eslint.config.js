@@ -73,6 +73,7 @@ export default [
   // Main config for JS files
   {
     files: ['js/**/*.js', 'tools/js/**/*.js', 'wordle/**/*.js'],
+    ignores: ['**/*.test.js'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
@@ -87,6 +88,23 @@ export default [
       'no-undef': 'error',
       'no-console': 'off', // Allow console for debugging
       'prefer-const': 'warn',
+    },
+  },
+
+  // Test files - Jest globals
+  {
+    files: ['**/*.test.js'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: {
+        ...globals.node,
+        ...globals.jest,
+      },
+    },
+    rules: {
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      'no-undef': 'error',
     },
   },
 

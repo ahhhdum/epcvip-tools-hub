@@ -5,6 +5,21 @@
  */
 
 import { VALID_GUESSES } from './valid-guesses.js';
+import {
+  formatTime,
+  computeBestKnownState,
+  countFilledRows,
+  calculateDateFromDailyNumber,
+  formatDateForDisplay,
+} from './utils/wordle-utils.js';
+import {
+  saveSession,
+  clearSession,
+  getSession,
+  saveDailyProgress as saveStoredDailyProgress,
+  getDailyProgress as getStoredDailyProgress,
+  clearDailyProgress as clearStoredDailyProgress,
+} from './utils/wordle-storage.js';
 
 // State
 let socket = null;
@@ -51,11 +66,6 @@ const pendingConfig = {
 
 // Reconnection state
 let _isReconnecting = false; // True when attempting to rejoin a room (for future use)
-const SESSION_STORAGE_KEY = 'wordle_session';
-const SESSION_MAX_AGE_MS = 120000; // 2 minutes - matches server grace period
-
-// Daily progress storage (for resumption after leaving mid-game)
-const DAILY_PROGRESS_KEY = 'wordle_daily_progress';
 
 // Pending action (for confirmation modals)
 let pendingDailyAction = null; // { type: 'solo' | 'friends', dailyNumber }
@@ -96,126 +106,19 @@ function getSupabase() {
 }
 
 // =============================================================================
-// Session Storage (for reconnection)
+// Daily Progress Wrappers (inject authUser.email)
 // =============================================================================
 
-/**
- * Save session data when joining a room
- * This allows reconnection if the page is refreshed or connection is lost
- */
-function saveSession(roomCodeValue, playerIdValue) {
-  try {
-    const session = {
-      roomCode: roomCodeValue,
-      playerId: playerIdValue,
-      savedAt: Date.now(),
-    };
-    localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
-    console.log('[Wordle] Session saved:', session.roomCode);
-  } catch (e) {
-    console.warn('[Wordle] Failed to save session:', e);
-  }
-}
-
-/**
- * Clear session data when intentionally leaving a room
- */
-function clearSession() {
-  try {
-    localStorage.removeItem(SESSION_STORAGE_KEY);
-    console.log('[Wordle] Session cleared');
-  } catch (e) {
-    console.warn('[Wordle] Failed to clear session:', e);
-  }
-}
-
-/**
- * Get session data if it exists and is still valid
- * @returns {Object|null} Session object or null if expired/missing
- */
-function getSession() {
-  try {
-    const data = localStorage.getItem(SESSION_STORAGE_KEY);
-    if (!data) return null;
-
-    const session = JSON.parse(data);
-    const age = Date.now() - session.savedAt;
-
-    // Session expired
-    if (age > SESSION_MAX_AGE_MS) {
-      console.log('[Wordle] Session expired, clearing');
-      clearSession();
-      return null;
-    }
-
-    return session;
-  } catch (e) {
-    console.warn('[Wordle] Failed to get session:', e);
-    return null;
-  }
-}
-
-// =============================================================================
-// Daily Progress Storage (for mid-game leave/resume)
-// =============================================================================
-
-/**
- * Save daily challenge progress when leaving mid-game
- * Progress is keyed by email+dailyNumber so users can resume their specific attempt
- */
 function saveDailyProgress(progress) {
-  if (!progress || !authUser?.email) return;
-
-  try {
-    const key = `${DAILY_PROGRESS_KEY}_${authUser.email}_${progress.dailyNumber}`;
-    localStorage.setItem(
-      key,
-      JSON.stringify({
-        ...progress,
-        savedAt: Date.now(),
-      })
-    );
-    console.log(
-      `[Wordle] Daily #${progress.dailyNumber} progress saved (${progress.guesses.length} guesses)`
-    );
-  } catch (e) {
-    console.warn('[Wordle] Failed to save daily progress:', e);
-  }
+  saveStoredDailyProgress(progress, authUser?.email);
 }
 
-/**
- * Get saved daily progress for a specific daily challenge
- */
 function getDailyProgress(dailyNumber) {
-  if (!authUser?.email) return null;
-
-  try {
-    const key = `${DAILY_PROGRESS_KEY}_${authUser.email}_${dailyNumber}`;
-    const data = localStorage.getItem(key);
-    if (!data) return null;
-
-    const progress = JSON.parse(data);
-    // Progress is valid indefinitely for daily challenges (unlike session which expires)
-    return progress;
-  } catch (e) {
-    console.warn('[Wordle] Failed to get daily progress:', e);
-    return null;
-  }
+  return getStoredDailyProgress(dailyNumber, authUser?.email);
 }
 
-/**
- * Clear daily progress after completion or explicit clear
- */
 function clearDailyProgress(dailyNumber) {
-  if (!authUser?.email) return;
-
-  try {
-    const key = `${DAILY_PROGRESS_KEY}_${authUser.email}_${dailyNumber}`;
-    localStorage.removeItem(key);
-    console.log(`[Wordle] Daily #${dailyNumber} progress cleared`);
-  } catch (e) {
-    console.warn('[Wordle] Failed to clear daily progress:', e);
-  }
+  clearStoredDailyProgress(dailyNumber, authUser?.email);
 }
 
 /**
@@ -1016,19 +919,6 @@ function renderRecentDailies() {
   }
 }
 
-function formatDateForDisplay(dateStr) {
-  const date = new Date(dateStr + 'T00:00:00');
-  const today = new Date();
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-
-  if (date.toDateString() === yesterday.toDateString()) {
-    return 'Yesterday';
-  }
-
-  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-}
-
 async function handleRandomUnplayedClick() {
   const result = await fetchRandomUnplayedDaily();
 
@@ -1077,13 +967,6 @@ function handleBrowseDailyGo() {
     date: dateStr,
   };
   showHistoricalModeModal();
-}
-
-function calculateDateFromDailyNumber(dailyNum) {
-  // Epoch is 2024-01-01
-  const epoch = new Date('2024-01-01T00:00:00Z');
-  const date = new Date(epoch.getTime() + (dailyNum - 1) * 24 * 60 * 60 * 1000);
-  return date.toISOString().split('T')[0];
 }
 
 function handleRecentDailyClick(daily) {
@@ -1717,14 +1600,6 @@ function handleCountdown(msg) {
       elements.countdownNumber.classList.remove('pulse');
     }, 500);
   }
-}
-
-// Timer helper
-function formatTime(ms) {
-  const totalSeconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 }
 
 function handleTimerSync(msg) {
@@ -2589,32 +2464,6 @@ function showGameMessage(text) {
 // Opponent Boards
 function isMobileView() {
   return window.innerWidth <= 768;
-}
-
-// Compute best known state per position from all guesses
-function computeBestKnownState(guessResults) {
-  const bestState = ['', '', '', '', '']; // empty = unknown
-
-  for (const row of guessResults) {
-    if (!row) continue;
-    for (let col = 0; col < 5; col++) {
-      const result = row[col];
-      if (result === 'correct') {
-        // Green always wins
-        bestState[col] = 'correct';
-      } else if (result === 'present' && bestState[col] !== 'correct') {
-        // Yellow only if not already green
-        bestState[col] = 'present';
-      }
-    }
-  }
-
-  return bestState;
-}
-
-// Count filled rows (guesses made)
-function countFilledRows(guessResults) {
-  return guessResults.filter((row) => row && row.length > 0).length;
 }
 
 function renderOpponentBoards() {

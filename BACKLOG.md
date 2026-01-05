@@ -56,11 +56,11 @@
 
 ### Pending - Room Management (Sprint 2)
 
-- [ ] **BUG-003: Host "Close Room" functionality**
-  - Host should be able to close room with other players in it
+- [x] **BUG-003: Host "Close Room" functionality**
+  - Host can close room with other players in it
   - Notifies all players: "Host closed the room"
   - Immediately terminates room regardless of player count
-  - Files: `wordle-room.ts`, `wordle.js`, `index.html`
+  - Confirmation prompt when other players present
 
 - [ ] **FEAT-001: Spectate mode for completed daily users**
   - Users who completed today's daily can click "Watch" on public daily rooms
@@ -420,20 +420,22 @@ Allow player to walk "behind" buildings and trees for proper 2D depth illusion.
 
 ### High Priority - File Splitting
 
-- [ ] **Split wordle.js (112 functions → 5-6 modules)**
-  - `wordle/js/auth.js` - Authentication (20+ functions)
-  - `wordle/js/daily.js` - Daily challenge logic (25+ functions)
-  - `wordle/js/room.js` - Room management (20+ functions)
-  - `wordle/js/game.js` - Game board/keyboard (20+ functions)
-  - `wordle/js/ui.js` - Views, toasts, modals (15+ functions)
-  - `wordle/js/websocket.js` - Connection handling (10+ functions)
+- [~] **Split wordle.js (3175 lines → modular structure)** - IN PROGRESS
+  - [x] `wordle/utils/wordle-utils.js` (89 lines) - Pure utility functions with tests
+  - [x] `wordle/utils/wordle-storage.js` (146 lines) - Session/progress storage with tests
+  - [ ] `wordle/js/auth.js` - Authentication (20+ functions)
+  - [ ] `wordle/js/daily.js` - Daily challenge logic (25+ functions)
+  - [ ] `wordle/js/room.js` - Room management (20+ functions)
+  - [ ] `wordle/js/game.js` - Game board/keyboard (20+ functions)
+  - [ ] `wordle/js/ui.js` - Views, toasts, modals (15+ functions)
+  - [ ] `wordle/js/websocket.js` - Connection handling (10+ functions)
 
-- [ ] **Split wordle-room.ts (66 methods → 4-5 services)**
-  - `RoomManager` - Room CRUD, player maps
-  - `GameController` - Game state, guesses, win conditions
-  - `TimerService` - Countdown, sync, grace periods
-  - `PlayerHandler` - Join, leave, disconnect, reconnect
-  - `BroadcastService` - Message distribution
+- [x] **Split wordle-room.ts (1611 lines → 5 focused modules)**
+  - `wordle-room.ts` (618 lines) - Coordinator, room CRUD, message dispatch
+  - `wordle-game-controller.ts` (525 lines) - Game lifecycle
+  - `wordle-player-handler.ts` (575 lines) - Player lifecycle, reconnection
+  - `wordle-lobby-manager.ts` (98 lines) - Public room listing
+  - `wordle-room-types.ts` (118 lines) - Shared types and interfaces
 
 - [ ] **Split wordle.css (2453 lines → partials)**
   - `wordle/css/variables.css` - Colors, spacing
