@@ -1,2 +1,5 @@
 node_modules/
 supabase/.temp/
+
+# Playwright test browser profile (session data)
+.playwright-wordle-test/

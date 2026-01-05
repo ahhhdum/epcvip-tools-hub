@@ -80,6 +80,13 @@
             <input type="text" id="playerName" placeholder="Enter your name" maxlength="20" autocomplete="off">
           </div>
 
+          <!-- Public Rooms Section -->
+          <div id="publicRoomsSection" class="public-rooms-section">
+            <h3>Join a Room</h3>
+            <div id="publicRoomsList" class="public-rooms-list"></div>
+            <p id="noPublicRooms" class="no-rooms-msg">No public rooms available</p>
+          </div>
+
           <div class="divider-or">
             <span>or create a custom game</span>
           </div>
@@ -123,6 +130,15 @@
             <button id="wordModeDaily" class="mode-btn active" data-mode="daily">Daily Challenge</button>
             <button id="wordModeRandom" class="mode-btn" data-mode="random">Random</button>
           </div>
+        </div>
+
+        <div id="visibilitySelector" class="visibility-selector hidden">
+          <label>Room Visibility</label>
+          <div class="visibility-buttons">
+            <button id="visibilityPublic" class="vis-btn active" data-visibility="public">Public</button>
+            <button id="visibilityPrivate" class="vis-btn" data-visibility="private">Private</button>
+          </div>
+          <p class="visibility-hint" id="visibilityHint">Public rooms appear in lobby for others to join</p>
         </div>
 
         <div class="player-list">

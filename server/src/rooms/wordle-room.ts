@@ -104,6 +104,7 @@ interface WordleRoom {
   dailyNumber: number | null; // The specific daily number (for historical dailies)
   isSolo: boolean; // True if this is a solo game (skip 2-player requirement)
   gameId: string | null; // Database game ID for tracking guesses
+  isPublic: boolean; // True if room is visible in public rooms list (default: true)
 }
 
 // Player counter for unique IDs
@@ -148,6 +149,7 @@ export class WordleRoomManager {
   private rooms: Map<string, WordleRoom> = new Map();
   private playerToRoom: Map<string, string> = new Map();
   private socketToPlayer: Map<WebSocket, string> = new Map();
+  private lobbySubscribers: Set<WebSocket> = new Set();
 
   /**
    * Create a new room
@@ -155,7 +157,8 @@ export class WordleRoomManager {
   createRoom(
     socket: WebSocket,
     playerName: string,
-    playerEmail?: string
+    playerEmail?: string,
+    isPublic: boolean = true
   ): { roomCode: string; playerId: string } | null {
     const existingCodes = new Set(this.rooms.keys());
     const roomCode = generateUniqueRoomCode(existingCodes);
@@ -205,6 +208,7 @@ export class WordleRoomManager {
       dailyNumber: null,
       isSolo: false,
       gameId: null,
+      isPublic, // Visible in lobby (default true)
     };
 
     this.rooms.set(roomCode, room);
@@ -216,6 +220,9 @@ export class WordleRoomManager {
       roomCode,
       playerId,
     });
+
+    // Notify lobby subscribers about new room
+    this.broadcastPublicRoomsList();
 
     console.log(`[Wordle] Room ${roomCode} created by ${playerName}`);
     return { roomCode, playerId };
@@ -377,6 +384,9 @@ export class WordleRoomManager {
       playerId
     );
 
+    // Update lobby (player count changed)
+    this.broadcastPublicRoomsList();
+
     console.log(`[Wordle] ${playerName} joined room ${roomCode}`);
     return true;
   }
@@ -458,6 +468,8 @@ export class WordleRoomManager {
       stopTimerSync(room.timerInterval);
       room.timerInterval = null;
       this.rooms.delete(roomCode);
+      // Update lobby (room removed)
+      this.broadcastPublicRoomsList();
       console.log(`[Wordle] Room ${roomCode} deleted (empty)`);
       return;
     }
@@ -481,6 +493,9 @@ export class WordleRoomManager {
     // Notify remaining connected players that player has left
     this.broadcastToRoom(roomCode, { type: 'playerLeft', playerId });
 
+    // Update lobby (player count changed)
+    this.broadcastPublicRoomsList();
+
     // Check if game should end (only connected players count for active games)
     if (room.gameState === 'playing') {
       const connectedCount = getConnectedPlayerCount(room);
@@ -499,6 +514,9 @@ export class WordleRoomManager {
    * don't reconnect within the grace period, they are permanently removed.
    */
   handleDisconnect(socket: WebSocket): void {
+    // Clean up lobby subscription if any
+    this.lobbySubscribers.delete(socket);
+
     const playerId = this.socketToPlayer.get(socket);
     if (!playerId) return;
 
@@ -705,6 +723,9 @@ export class WordleRoomManager {
       players,
       gameMode: room.gameMode,
     });
+
+    // Update lobby (room no longer joinable)
+    this.broadcastPublicRoomsList();
 
     // Start timer sync interval (broadcasts every second)
     this.startTimerSync(room);
@@ -1041,6 +1062,9 @@ export class WordleRoomManager {
     }
 
     this.broadcastToRoom(roomCode, { type: 'returnedToLobby' });
+
+    // Update lobby (room is joinable again)
+    this.broadcastPublicRoomsList();
   }
 
   // ===========================================================================
@@ -1230,7 +1254,16 @@ export class WordleRoomManager {
 
       switch (msg.type) {
         case 'createRoom':
-          this.createRoom(socket, msg.playerName, msg.playerEmail);
+          this.createRoom(socket, msg.playerName, msg.playerEmail, msg.isPublic ?? true);
+          break;
+        case 'subscribeLobby':
+          this.subscribeLobby(socket);
+          break;
+        case 'unsubscribeLobby':
+          this.unsubscribeLobby(socket);
+          break;
+        case 'setRoomVisibility':
+          this.setRoomVisibility(socket, msg.isPublic);
           break;
         case 'createDailyChallenge':
           this.createDailyChallengeRoom(
@@ -1305,5 +1338,131 @@ export class WordleRoomManager {
         player.socket.send(data);
       }
     }
+  }
+
+  // ===========================================================================
+  // Lobby / Public Rooms
+  // ===========================================================================
+
+  /**
+   * Subscribe a socket to lobby updates (public room list)
+   */
+  subscribeLobby(socket: WebSocket): void {
+    this.lobbySubscribers.add(socket);
+    // Send current list immediately
+    this.sendPublicRoomsList(socket);
+    console.log(`[Wordle] Lobby subscriber added (total: ${this.lobbySubscribers.size})`);
+  }
+
+  /**
+   * Unsubscribe a socket from lobby updates
+   */
+  unsubscribeLobby(socket: WebSocket): void {
+    this.lobbySubscribers.delete(socket);
+    console.log(`[Wordle] Lobby subscriber removed (total: ${this.lobbySubscribers.size})`);
+  }
+
+  /**
+   * Get list of joinable public rooms
+   */
+  private getPublicRooms(): {
+    code: string;
+    creatorName: string;
+    playerCount: number;
+    maxPlayers: number;
+    gameMode: GameMode;
+    wordMode: WordMode;
+  }[] {
+    const publicRooms: {
+      code: string;
+      creatorName: string;
+      playerCount: number;
+      maxPlayers: number;
+      gameMode: GameMode;
+      wordMode: WordMode;
+    }[] = [];
+
+    for (const room of this.rooms.values()) {
+      // Only show public rooms that are waiting and not full
+      if (
+        room.isPublic &&
+        room.gameState === 'waiting' &&
+        !room.isSolo &&
+        room.players.size < MAX_PLAYERS_PER_ROOM
+      ) {
+        const creator = room.players.get(room.creatorId);
+        publicRooms.push({
+          code: room.code,
+          creatorName: creator?.name || 'Unknown',
+          playerCount: room.players.size,
+          maxPlayers: MAX_PLAYERS_PER_ROOM,
+          gameMode: room.gameMode,
+          wordMode: room.wordMode,
+        });
+      }
+    }
+
+    return publicRooms;
+  }
+
+  /**
+   * Send public rooms list to a single socket
+   */
+  private sendPublicRoomsList(socket: WebSocket): void {
+    if (socket.readyState !== WebSocket.OPEN) return;
+
+    const rooms = this.getPublicRooms();
+    socket.send(JSON.stringify({ type: 'publicRoomsList', rooms }));
+  }
+
+  /**
+   * Broadcast public rooms list to all lobby subscribers
+   */
+  broadcastPublicRoomsList(): void {
+    if (this.lobbySubscribers.size === 0) return;
+
+    const rooms = this.getPublicRooms();
+    const data = JSON.stringify({ type: 'publicRoomsList', rooms });
+
+    for (const socket of this.lobbySubscribers) {
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(data);
+      } else {
+        // Clean up closed sockets
+        this.lobbySubscribers.delete(socket);
+      }
+    }
+  }
+
+  /**
+   * Set room visibility (public/private) - creator only
+   */
+  setRoomVisibility(socket: WebSocket, isPublic: boolean): void {
+    const playerId = this.socketToPlayer.get(socket);
+    if (!playerId) return;
+
+    const roomCode = this.playerToRoom.get(playerId);
+    if (!roomCode) return;
+
+    const room = this.rooms.get(roomCode);
+    if (!room) return;
+
+    const player = room.players.get(playerId);
+    if (!player?.isCreator) {
+      this.send(socket, { type: 'error', message: 'Only the room creator can change visibility.' });
+      return;
+    }
+
+    room.isPublic = isPublic;
+
+    // Notify room members
+    this.broadcastToRoom(roomCode, { type: 'roomVisibilityChanged', isPublic });
+
+    // Update lobby subscribers
+    this.broadcastPublicRoomsList();
+
+    console.log(
+      `[Wordle] Room ${roomCode} visibility changed to ${isPublic ? 'public' : 'private'}`
+    );
   }
 }

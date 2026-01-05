@@ -2039,3 +2039,131 @@ body {
   margin-top: -12px;
   margin-bottom: 20px;
 }
+
+/* Public Rooms Section */
+.public-rooms-section {
+  margin-bottom: 20px;
+}
+
+.public-rooms-section h3 {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.public-rooms-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.public-room-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  background-color: var(--bg-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.public-room-item:hover {
+  border-color: var(--accent);
+  background-color: rgba(83, 141, 78, 0.1);
+}
+
+.public-room-info {
+  flex: 1;
+  text-align: left;
+}
+
+.public-room-creator {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+
+.public-room-details {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.public-room-players {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-right: 12px;
+}
+
+.public-room-join {
+  padding: 6px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background-color: var(--accent);
+  color: var(--text-primary);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.public-room-join:hover {
+  opacity: 0.9;
+}
+
+.no-rooms-msg {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-style: italic;
+  text-align: center;
+  padding: 16px;
+  background-color: var(--bg-secondary);
+  border-radius: 8px;
+  border: 1px dashed var(--border);
+}
+
+/* Visibility Selector (Waiting Room) */
+.visibility-selector {
+  margin-bottom: 20px;
+}
+
+.visibility-selector label {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin-bottom: 10px;
+}
+
+.visibility-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.vis-btn {
+  flex: 1;
+  padding: 10px;
+  font-size: 0.9rem;
+  background-color: var(--bg-tile);
+  border: 2px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.vis-btn.active {
+  border-color: var(--accent);
+  background-color: rgba(83, 141, 78, 0.2);
+}
+
+.vis-btn:hover:not(.active) {
+  border-color: var(--text-secondary);
+}
+
+.visibility-hint {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 8px;
+  text-align: center;
+}

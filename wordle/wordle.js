@@ -45,6 +45,11 @@ let _isReconnecting = false; // True when attempting to rejoin a room (for futur
 const SESSION_STORAGE_KEY = 'wordle_session';
 const SESSION_MAX_AGE_MS = 120000; // 2 minutes - matches server grace period
 
+// Public rooms state
+let publicRooms = [];
+let isSubscribedToLobby = false;
+let isRoomPublic = true; // Default to public
+
 // Supabase client (initialized after fetching config)
 let supabase = null;
 let supabaseConfig = null;
@@ -301,6 +306,17 @@ const elements = {
   historicalSoloBtn: document.getElementById('historicalSoloBtn'),
   historicalMultiBtn: document.getElementById('historicalMultiBtn'),
   cancelHistoricalMode: document.getElementById('cancelHistoricalMode'),
+
+  // Public Rooms
+  publicRoomsSection: document.getElementById('publicRoomsSection'),
+  publicRoomsList: document.getElementById('publicRoomsList'),
+  noPublicRooms: document.getElementById('noPublicRooms'),
+
+  // Visibility Toggle (waiting room)
+  visibilitySelector: document.getElementById('visibilitySelector'),
+  visibilityPublic: document.getElementById('visibilityPublic'),
+  visibilityPrivate: document.getElementById('visibilityPrivate'),
+  visibilityHint: document.getElementById('visibilityHint'),
 };
 
 // SSO Token Handling
@@ -1067,7 +1083,12 @@ function connect() {
     updateConnectionStatus('connected');
 
     // Try to rejoin if we have a saved session
-    attemptRejoin();
+    const hadSession = attemptRejoin();
+
+    // If no saved session, subscribe to lobby for public rooms
+    if (!hadSession) {
+      subscribeLobby();
+    }
   };
 
   socket.onclose = () => {
@@ -1181,6 +1202,14 @@ function handleMessage(msg) {
       handleReplacedByNewConnection(msg);
       break;
 
+    // Public rooms messages
+    case 'publicRoomsList':
+      handlePublicRoomsList(msg);
+      break;
+    case 'roomVisibilityChanged':
+      handleRoomVisibilityChanged(msg);
+      break;
+
     case 'error':
       showError(msg.message);
       break;
@@ -1196,6 +1225,10 @@ function handleRoomCreated(msg) {
   allPlayersReady = false;
   wordMode = 'daily';
   dailyNumber = null;
+  isRoomPublic = true; // Default to public
+
+  // Unsubscribe from lobby (we're in a room now)
+  unsubscribeLobby();
 
   // Save session for reconnection
   saveSession(roomCode, playerId);
@@ -1211,10 +1244,16 @@ function handleRoomCreated(msg) {
   if (elements.wordModeDaily) elements.wordModeDaily.disabled = false;
   if (elements.wordModeRandom) elements.wordModeRandom.disabled = false;
 
+  // Show visibility selector for creator
+  if (elements.visibilitySelector) {
+    elements.visibilitySelector.classList.remove('hidden');
+  }
+
   playersInRoom = [{ id: playerId, name: getPlayerName(), isCreator: true, isReady: false }];
   updatePlayerList(playersInRoom);
   updateModeButtons(gameMode);
   updateWordModeButtons();
+  updateVisibilityButtons();
   updateReadyButton();
   updateStartButton();
 }
@@ -1227,6 +1266,9 @@ function handleRoomJoined(msg) {
   wordMode = msg.wordMode || 'daily';
   isReady = false;
   allPlayersReady = false;
+
+  // Unsubscribe from lobby (we're in a room now)
+  unsubscribeLobby();
 
   // Save session for reconnection
   saveSession(roomCode, playerId);
@@ -1249,6 +1291,10 @@ function handleRoomJoined(msg) {
     elements.modeCompetitive.disabled = false;
     if (elements.wordModeDaily) elements.wordModeDaily.disabled = false;
     if (elements.wordModeRandom) elements.wordModeRandom.disabled = false;
+    // Show visibility selector for creator
+    if (elements.visibilitySelector) {
+      elements.visibilitySelector.classList.remove('hidden');
+    }
   } else {
     elements.startGame.classList.add('hidden');
     elements.waitingMessage.classList.remove('hidden');
@@ -1257,6 +1303,10 @@ function handleRoomJoined(msg) {
     elements.modeCompetitive.disabled = true;
     if (elements.wordModeDaily) elements.wordModeDaily.disabled = true;
     if (elements.wordModeRandom) elements.wordModeRandom.disabled = true;
+    // Hide visibility selector for non-creators
+    if (elements.visibilitySelector) {
+      elements.visibilitySelector.classList.add('hidden');
+    }
   }
 
   // Store players with ready status
@@ -1267,6 +1317,7 @@ function handleRoomJoined(msg) {
   updatePlayerList(playersInRoom);
   updateModeButtons(gameMode);
   updateWordModeButtons();
+  updateVisibilityButtons();
   updateReadyButton();
   updateStartButton();
 }
@@ -1517,6 +1568,127 @@ function handleReturnedToLobby() {
   updatePlayerList(playersInRoom);
   updateReadyButton();
   updateStartButton();
+}
+
+// =============================================================================
+// Public Rooms (Lobby) Functions
+// =============================================================================
+
+/**
+ * Subscribe to lobby updates for public rooms list
+ */
+function subscribeLobby() {
+  if (isSubscribedToLobby) return;
+  send({ type: 'subscribeLobby' });
+  isSubscribedToLobby = true;
+  console.log('[Wordle] Subscribed to lobby');
+}
+
+/**
+ * Unsubscribe from lobby updates (when joining/creating a room)
+ */
+function unsubscribeLobby() {
+  if (!isSubscribedToLobby) return;
+  send({ type: 'unsubscribeLobby' });
+  isSubscribedToLobby = false;
+  console.log('[Wordle] Unsubscribed from lobby');
+}
+
+/**
+ * Handle public rooms list update from server
+ */
+function handlePublicRoomsList(msg) {
+  publicRooms = msg.rooms || [];
+  renderPublicRooms();
+}
+
+/**
+ * Render the public rooms list in the lobby
+ */
+function renderPublicRooms() {
+  if (!elements.publicRoomsList || !elements.noPublicRooms) return;
+
+  elements.publicRoomsList.innerHTML = '';
+
+  if (publicRooms.length === 0) {
+    elements.noPublicRooms.classList.remove('hidden');
+    return;
+  }
+
+  elements.noPublicRooms.classList.add('hidden');
+
+  for (const room of publicRooms) {
+    const item = document.createElement('div');
+    item.className = 'public-room-item';
+    item.dataset.roomCode = room.code;
+
+    const modeLabel = room.gameMode === 'competitive' ? 'Competitive' : 'Casual';
+    const wordLabel = room.wordMode === 'daily' ? 'Daily' : 'Random';
+
+    item.innerHTML = `
+      <div class="public-room-info">
+        <div class="public-room-creator">${room.creatorName}'s Room</div>
+        <div class="public-room-details">${modeLabel} • ${wordLabel}</div>
+      </div>
+      <span class="public-room-players">${room.playerCount}/${room.maxPlayers}</span>
+      <button class="public-room-join">Join</button>
+    `;
+
+    // Join button click
+    const joinBtn = item.querySelector('.public-room-join');
+    joinBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      joinPublicRoom(room.code);
+    });
+
+    // Clicking the whole item also joins
+    item.addEventListener('click', () => {
+      joinPublicRoom(room.code);
+    });
+
+    elements.publicRoomsList.appendChild(item);
+  }
+}
+
+/**
+ * Join a public room by code
+ */
+function joinPublicRoom(code) {
+  const name = getPlayerName();
+  localStorage.setItem('wordle_playerName', name);
+
+  unsubscribeLobby();
+
+  send({
+    type: 'joinRoom',
+    roomCode: code,
+    playerName: name,
+    playerEmail: authUser?.email || null,
+  });
+}
+
+/**
+ * Handle room visibility changed (from server, when creator toggles)
+ */
+function handleRoomVisibilityChanged(msg) {
+  isRoomPublic = msg.isPublic;
+  updateVisibilityButtons();
+}
+
+/**
+ * Update visibility toggle buttons in waiting room
+ */
+function updateVisibilityButtons() {
+  if (!elements.visibilityPublic || !elements.visibilityPrivate) return;
+
+  elements.visibilityPublic.classList.toggle('active', isRoomPublic);
+  elements.visibilityPrivate.classList.toggle('active', !isRoomPublic);
+
+  if (elements.visibilityHint) {
+    elements.visibilityHint.textContent = isRoomPublic
+      ? 'Public rooms appear in lobby for others to join'
+      : 'Private rooms require the room code to join';
+  }
 }
 
 // =============================================================================
@@ -2198,6 +2370,23 @@ function setupEventListeners() {
     });
   }
 
+  // Visibility toggle buttons
+  if (elements.visibilityPublic) {
+    elements.visibilityPublic.addEventListener('click', () => {
+      if (isCreator && !isRoomPublic) {
+        send({ type: 'setRoomVisibility', isPublic: true });
+      }
+    });
+  }
+
+  if (elements.visibilityPrivate) {
+    elements.visibilityPrivate.addEventListener('click', () => {
+      if (isCreator && isRoomPublic) {
+        send({ type: 'setRoomVisibility', isPublic: false });
+      }
+    });
+  }
+
   // Ready button
   if (elements.readyBtn) {
     elements.readyBtn.addEventListener('click', () => {
@@ -2211,10 +2400,13 @@ function setupEventListeners() {
 
   elements.leaveRoom.addEventListener('click', () => {
     send({ type: 'leaveRoom' });
+    clearSession();
     showView('lobby');
     roomCode = null;
     playerId = null;
     isCreator = false;
+    // Resubscribe to lobby for public rooms
+    subscribeLobby();
   });
 
   // Game keyboard
@@ -2245,10 +2437,13 @@ function setupEventListeners() {
 
   elements.backToLobby.addEventListener('click', () => {
     send({ type: 'leaveRoom' });
+    clearSession();
     showView('lobby');
     roomCode = null;
     playerId = null;
     isCreator = false;
+    // Resubscribe to lobby for public rooms
+    subscribeLobby();
   });
 
   // Auth events
