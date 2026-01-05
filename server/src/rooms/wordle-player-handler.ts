@@ -206,6 +206,62 @@ export class WordlePlayerHandler {
     console.log(`[Wordle] Room ${roomCode} force closed (no connected players)`);
   }
 
+  /**
+   * Handle host closing the room
+   *
+   * Only the room creator can close the room. All players are notified
+   * and kicked back to the lobby immediately.
+   */
+  handleCloseRoom(socket: WebSocket): void {
+    const playerId = this.socketToPlayer.get(socket);
+    if (!playerId) {
+      this.send(socket, { type: 'error', message: 'Not in a room' });
+      return;
+    }
+
+    const roomCode = this.playerToRoom.get(playerId);
+    if (!roomCode) {
+      this.send(socket, { type: 'error', message: 'Not in a room' });
+      return;
+    }
+
+    const room = this.rooms.get(roomCode);
+    if (!room) {
+      this.send(socket, { type: 'error', message: 'Room not found' });
+      return;
+    }
+
+    const player = room.players.get(playerId);
+    if (!player) {
+      this.send(socket, { type: 'error', message: 'Player not found' });
+      return;
+    }
+
+    // Only the host can close the room
+    if (!player.isCreator) {
+      this.send(socket, { type: 'error', message: 'Only the host can close the room' });
+      return;
+    }
+
+    console.log(`[Wordle] Host ${player.name} closing room ${roomCode}`);
+
+    // Notify all players that the room was closed by host
+    this.broadcastToRoom(roomCode, {
+      type: 'roomClosed',
+      reason: 'hostClosed',
+      message: 'The host closed the room',
+    });
+
+    // Clean up socket mappings for all players
+    for (const p of room.players.values()) {
+      this.socketToPlayer.delete(p.socket!);
+      this.playerToRoom.delete(p.id);
+    }
+
+    // Force close the room
+    this.forceCloseRoom(roomCode);
+  }
+
   // ===========================================================================
   // Leave and Disconnect
   // ===========================================================================

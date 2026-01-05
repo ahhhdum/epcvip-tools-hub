@@ -293,6 +293,7 @@ const elements = {
   startGame: document.getElementById('startGame'),
   waitingMessage: document.getElementById('waitingMessage'),
   leaveRoom: document.getElementById('leaveRoom'),
+  closeRoom: document.getElementById('closeRoom'),
   countdownOverlay: document.getElementById('countdownOverlay'),
   countdownNumber: document.getElementById('countdownNumber'),
 
@@ -1380,6 +1381,9 @@ function handleMessage(msg) {
     case 'playerLeft':
       handlePlayerLeft(msg);
       break;
+    case 'roomClosed':
+      handleRoomClosed(msg);
+      break;
     case 'becameCreator':
       handleBecameCreator();
       break;
@@ -1510,6 +1514,7 @@ function handleRoomCreated(msg) {
   elements.roomCode.textContent = roomCode;
   elements.startGame.classList.remove('hidden');
   elements.waitingMessage.classList.add('hidden');
+  if (elements.closeRoom) elements.closeRoom.classList.remove('hidden');
 
   // Settings are already configured - still allow changes in waiting room
   elements.modeCasual.disabled = false;
@@ -1560,6 +1565,7 @@ function handleRoomJoined(msg) {
   if (isCreator) {
     elements.startGame.classList.remove('hidden');
     elements.waitingMessage.classList.add('hidden');
+    if (elements.closeRoom) elements.closeRoom.classList.remove('hidden');
     elements.modeCasual.disabled = false;
     elements.modeCompetitive.disabled = false;
     if (elements.wordModeDaily) elements.wordModeDaily.disabled = false;
@@ -1571,6 +1577,7 @@ function handleRoomJoined(msg) {
   } else {
     elements.startGame.classList.add('hidden');
     elements.waitingMessage.classList.remove('hidden');
+    if (elements.closeRoom) elements.closeRoom.classList.add('hidden');
     // Disable mode buttons for non-creators
     elements.modeCasual.disabled = true;
     elements.modeCompetitive.disabled = true;
@@ -1633,10 +1640,32 @@ function handlePlayerLeft(msg) {
   renderOpponentBoards();
 }
 
+/**
+ * Handle room closed by host
+ */
+function handleRoomClosed(msg) {
+  console.log('[Wordle] Room closed:', msg.message);
+
+  // Show notification
+  showInfoToast(msg.message || 'Room was closed');
+
+  // Clean up state
+  clearSession();
+  roomCode = null;
+  playerId = null;
+  isCreator = false;
+  playersInRoom = [];
+
+  // Return to lobby
+  showView('lobby');
+  subscribeLobby();
+}
+
 function handleBecameCreator() {
   isCreator = true;
   elements.startGame.classList.remove('hidden');
   elements.waitingMessage.classList.add('hidden');
+  if (elements.closeRoom) elements.closeRoom.classList.remove('hidden');
   elements.modeCasual.disabled = false;
   elements.modeCompetitive.disabled = false;
 
@@ -2073,6 +2102,7 @@ function handleRejoinWaiting(msg) {
   if (isCreator) {
     elements.startGame.classList.remove('hidden');
     elements.waitingMessage.classList.add('hidden');
+    if (elements.closeRoom) elements.closeRoom.classList.remove('hidden');
     elements.modeCasual.disabled = false;
     elements.modeCompetitive.disabled = false;
     if (elements.wordModeDaily) elements.wordModeDaily.disabled = false;
@@ -2080,6 +2110,7 @@ function handleRejoinWaiting(msg) {
   } else {
     elements.startGame.classList.add('hidden');
     elements.waitingMessage.classList.remove('hidden');
+    if (elements.closeRoom) elements.closeRoom.classList.add('hidden');
     elements.modeCasual.disabled = true;
     elements.modeCompetitive.disabled = true;
     if (elements.wordModeDaily) elements.wordModeDaily.disabled = true;
@@ -2851,6 +2882,21 @@ function setupEventListeners() {
     // Resubscribe to lobby for public rooms
     subscribeLobby();
   });
+
+  // Close Room button (host only - kicks everyone)
+  if (elements.closeRoom) {
+    elements.closeRoom.addEventListener('click', () => {
+      if (!isCreator) return;
+      // Confirm before closing
+      if (playersInRoom.length > 1) {
+        if (!confirm('This will kick all players from the room. Continue?')) {
+          return;
+        }
+      }
+      send({ type: 'closeRoom' });
+      // The roomClosed handler will clean up state
+    });
+  }
 
   // Leave Game button (during gameplay)
   if (elements.leaveGameBtn) {

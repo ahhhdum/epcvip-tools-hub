@@ -362,6 +362,13 @@ export class WordleRoomManager {
   }
 
   /**
+   * Handle host closing the room - kicks all players
+   */
+  handleCloseRoom(socket: WebSocket): void {
+    this.playerHandler.handleCloseRoom(socket);
+  }
+
+  /**
    * Set game mode
    */
   setGameMode(socket: WebSocket, mode: GameMode): void {
@@ -516,6 +523,9 @@ export class WordleRoomManager {
           break;
         case 'leaveRoom':
           this.handleLeaveRoom(socket);
+          break;
+        case 'closeRoom':
+          this.handleCloseRoom(socket);
           break;
         default:
           console.log(`[Wordle] Unknown message type: ${msg.type}`);
