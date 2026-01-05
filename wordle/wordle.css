@@ -743,7 +743,7 @@ body {
 
 .mode-btn {
   flex: 1;
-  padding: 10px;
+  padding: 12px 16px;
   font-size: 0.9rem;
   background-color: var(--bg-tile);
   border: 2px solid var(--border);
@@ -751,6 +751,7 @@ body {
   color: var(--text-primary);
   cursor: pointer;
   transition: all 0.2s;
+  min-width: 0; /* Allow shrinking in flex */
 }
 
 .mode-btn.active {
@@ -764,27 +765,10 @@ body {
 }
 
 .player-list {
-  margin-bottom: 20px;
-}
-
-.player-list h3 {
-  font-size: 1rem;
-  color: var(--text-secondary);
-  margin-bottom: 10px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.player-count {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  font-weight: normal;
-}
-
-.player-list ul {
   list-style: none;
-  background-color: var(--bg-secondary);
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-tile);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -823,14 +807,13 @@ body {
   border-radius: 4px;
 }
 
-.waiting-actions {
-  text-align: center;
-  margin-bottom: 20px;
-}
-
 .waiting-msg {
   color: var(--text-secondary);
   font-style: italic;
+  font-size: 0.9rem;
+  text-align: center;
+  margin-top: 12px;
+  margin-bottom: 0;
 }
 
 /* Game View */
@@ -1712,7 +1695,8 @@ body {
 }
 
 .btn-ready {
-  padding: 14px 32px;
+  width: 100%;
+  padding: 14px 24px;
   font-size: 1.1rem;
   font-weight: 600;
   background-color: var(--bg-tile);
@@ -1721,7 +1705,7 @@ body {
   color: var(--text-primary);
   cursor: pointer;
   transition: all 0.2s;
-  min-width: 150px;
+  margin-bottom: 12px;
 }
 
 .btn-ready:hover {
@@ -2276,7 +2260,7 @@ body {
 
 .vis-btn {
   flex: 1;
-  padding: 10px;
+  padding: 12px 16px;
   font-size: 0.9rem;
   background-color: var(--bg-tile);
   border: 2px solid var(--border);
@@ -2284,6 +2268,7 @@ body {
   color: var(--text-primary);
   cursor: pointer;
   transition: all 0.2s;
+  min-width: 0; /* Allow shrinking in flex */
 }
 
 .vis-btn.active {
@@ -2350,4 +2335,119 @@ body {
   font-size: 0.9rem;
   margin: 16px 0;
   text-align: center;
+}
+
+/* ===========================================
+   Waiting Room Card Layout (Phase 1 UI Update)
+   =========================================== */
+
+/* Card wrapper for grouped content */
+.waiting-card {
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.waiting-card-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Actions card with slightly different emphasis */
+.actions-card {
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 8px;
+}
+
+/* Secondary actions row (Start Game + Leave Room side by side) */
+.secondary-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.secondary-actions .btn {
+  flex: 1;
+  padding: 12px 16px;
+  font-size: 0.95rem;
+}
+
+/* Leave button outline style (placed in actions card) */
+.btn-leave-outline {
+  background: transparent;
+  border: 2px solid var(--absent);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-leave-outline:hover {
+  border-color: #c0392b;
+  color: #c0392b;
+}
+
+/* ===========================================
+   Room Config View (Phase 2: Pre-Creation)
+   =========================================== */
+
+.config-content {
+  max-width: 500px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 20px;
+}
+
+.view-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.view-header h2 {
+  font-size: 1.5rem;
+  color: var(--text-primary);
+  margin: 0 0 8px 0;
+}
+
+.view-subtitle {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.config-card {
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.config-card label {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin-bottom: 10px;
+}
+
+.config-hint {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 8px;
+  text-align: center;
+}
+
+.config-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.config-actions .btn {
+  flex: 1;
+  padding: 14px 24px;
+  font-size: 1rem;
 }

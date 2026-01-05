@@ -158,7 +158,9 @@ export class WordleRoomManager {
     socket: WebSocket,
     playerName: string,
     playerEmail?: string,
-    isPublic: boolean = true
+    isPublic: boolean = true,
+    gameMode: GameMode = 'casual',
+    wordMode: WordMode = 'daily'
   ): { roomCode: string; playerId: string } | null {
     const existingCodes = new Set(this.rooms.keys());
     const roomCode = generateUniqueRoomCode(existingCodes);
@@ -197,15 +199,15 @@ export class WordleRoomManager {
       code: roomCode,
       players: new Map([[playerId, player]]),
       gameState: 'waiting',
-      gameMode: 'casual',
-      wordMode: 'daily',
+      gameMode,
+      wordMode,
       word: null,
       startTime: null,
       creatorId: playerId,
       countdownTimer: null,
       timerInterval: null,
-      isDailyChallenge: false,
-      dailyNumber: null,
+      isDailyChallenge: wordMode === 'daily',
+      dailyNumber: wordMode === 'daily' ? getDailyNumber() : null,
       isSolo: false,
       gameId: null,
       isPublic, // Visible in lobby (default true)
@@ -219,6 +221,10 @@ export class WordleRoomManager {
       type: 'roomCreated',
       roomCode,
       playerId,
+      gameMode,
+      wordMode,
+      dailyNumber: room.dailyNumber,
+      isPublic,
     });
 
     // Notify lobby subscribers about new room
@@ -1378,7 +1384,14 @@ export class WordleRoomManager {
 
       switch (msg.type) {
         case 'createRoom':
-          this.createRoom(socket, msg.playerName, msg.playerEmail, msg.isPublic ?? true);
+          this.createRoom(
+            socket,
+            msg.playerName,
+            msg.playerEmail,
+            msg.isPublic ?? true,
+            msg.gameMode ?? 'casual',
+            msg.wordMode ?? 'daily'
+          );
           break;
         case 'subscribeLobby':
           this.subscribeLobby(socket);

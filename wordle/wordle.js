@@ -42,6 +42,13 @@ let todayCompletionData = null; // Full completion data for word reveal
 let historicalDailiesData = null; // Cached data from API
 let selectedHistoricalDaily = null; // { daily_number, date } when selecting from list
 
+// Pending room config (before room creation)
+const pendingConfig = {
+  gameMode: 'casual',
+  wordMode: 'daily',
+  isPublic: true,
+};
+
 // Reconnection state
 let _isReconnecting = false; // True when attempting to rejoin a room (for future use)
 const SESSION_STORAGE_KEY = 'wordle_session';
@@ -257,6 +264,7 @@ function hideReconnectingOverlay() {
 // DOM Elements
 const views = {
   lobby: document.getElementById('lobby'),
+  roomConfig: document.getElementById('roomConfig'),
   waiting: document.getElementById('waiting'),
   game: document.getElementById('game'),
   results: document.getElementById('results'),
@@ -408,6 +416,17 @@ const elements = {
   leaveConfirmMessage: document.getElementById('leaveConfirmMessage'),
   confirmLeave: document.getElementById('confirmLeave'),
   cancelLeave: document.getElementById('cancelLeave'),
+
+  // Room Config View (pre-creation)
+  roomConfigView: document.getElementById('roomConfig'),
+  configModeCasual: document.getElementById('configModeCasual'),
+  configModeCompetitive: document.getElementById('configModeCompetitive'),
+  configWordDaily: document.getElementById('configWordDaily'),
+  configWordRandom: document.getElementById('configWordRandom'),
+  configVisPublic: document.getElementById('configVisPublic'),
+  configVisPrivate: document.getElementById('configVisPrivate'),
+  configCancel: document.getElementById('configCancel'),
+  configCreate: document.getElementById('configCreate'),
 };
 
 // SSO Token Handling
@@ -1474,9 +1493,12 @@ function handleRoomCreated(msg) {
   isCreator = true;
   isReady = false;
   allPlayersReady = false;
-  wordMode = 'daily';
-  dailyNumber = null;
-  isRoomPublic = true; // Default to public
+
+  // Use settings from server (configured in pre-creation screen)
+  gameMode = msg.gameMode || 'casual';
+  wordMode = msg.wordMode || 'daily';
+  dailyNumber = msg.dailyNumber || null;
+  isRoomPublic = msg.isPublic !== undefined ? msg.isPublic : true;
 
   // Unsubscribe from lobby (we're in a room now)
   unsubscribeLobby();
@@ -1489,7 +1511,7 @@ function handleRoomCreated(msg) {
   elements.startGame.classList.remove('hidden');
   elements.waitingMessage.classList.add('hidden');
 
-  // Enable mode buttons for creator
+  // Settings are already configured - still allow changes in waiting room
   elements.modeCasual.disabled = false;
   elements.modeCompetitive.disabled = false;
   if (elements.wordModeDaily) elements.wordModeDaily.disabled = false;
@@ -2316,6 +2338,37 @@ function updateWordModeButtons() {
   }
 }
 
+// Room Config View helpers
+function resetPendingConfig() {
+  pendingConfig.gameMode = 'casual';
+  pendingConfig.wordMode = 'daily';
+  pendingConfig.isPublic = true;
+}
+
+function updateConfigButtons() {
+  if (elements.configModeCasual) {
+    elements.configModeCasual.classList.toggle('active', pendingConfig.gameMode === 'casual');
+  }
+  if (elements.configModeCompetitive) {
+    elements.configModeCompetitive.classList.toggle(
+      'active',
+      pendingConfig.gameMode === 'competitive'
+    );
+  }
+  if (elements.configWordDaily) {
+    elements.configWordDaily.classList.toggle('active', pendingConfig.wordMode === 'daily');
+  }
+  if (elements.configWordRandom) {
+    elements.configWordRandom.classList.toggle('active', pendingConfig.wordMode === 'random');
+  }
+  if (elements.configVisPublic) {
+    elements.configVisPublic.classList.toggle('active', pendingConfig.isPublic === true);
+  }
+  if (elements.configVisPrivate) {
+    elements.configVisPrivate.classList.toggle('active', pendingConfig.isPublic === false);
+  }
+}
+
 function updateReadyButton() {
   if (!elements.readyBtn) return;
 
@@ -2630,13 +2683,10 @@ function renderOpponentBoards() {
 function setupEventListeners() {
   // Lobby
   elements.createRoom.addEventListener('click', () => {
-    const name = getPlayerName();
-    localStorage.setItem('wordle_playerName', name);
-    send({
-      type: 'createRoom',
-      playerName: name,
-      playerEmail: authUser?.email || null,
-    });
+    // Show config view instead of immediately creating room
+    resetPendingConfig();
+    updateConfigButtons();
+    showView('roomConfig');
   });
 
   elements.joinRoom.addEventListener('click', () => {
@@ -2660,6 +2710,70 @@ function setupEventListeners() {
       elements.joinRoom.click();
     }
   });
+
+  // Room Config View (pre-creation)
+  if (elements.configModeCasual) {
+    elements.configModeCasual.addEventListener('click', () => {
+      pendingConfig.gameMode = 'casual';
+      updateConfigButtons();
+    });
+  }
+
+  if (elements.configModeCompetitive) {
+    elements.configModeCompetitive.addEventListener('click', () => {
+      pendingConfig.gameMode = 'competitive';
+      updateConfigButtons();
+    });
+  }
+
+  if (elements.configWordDaily) {
+    elements.configWordDaily.addEventListener('click', () => {
+      pendingConfig.wordMode = 'daily';
+      updateConfigButtons();
+    });
+  }
+
+  if (elements.configWordRandom) {
+    elements.configWordRandom.addEventListener('click', () => {
+      pendingConfig.wordMode = 'random';
+      updateConfigButtons();
+    });
+  }
+
+  if (elements.configVisPublic) {
+    elements.configVisPublic.addEventListener('click', () => {
+      pendingConfig.isPublic = true;
+      updateConfigButtons();
+    });
+  }
+
+  if (elements.configVisPrivate) {
+    elements.configVisPrivate.addEventListener('click', () => {
+      pendingConfig.isPublic = false;
+      updateConfigButtons();
+    });
+  }
+
+  if (elements.configCancel) {
+    elements.configCancel.addEventListener('click', () => {
+      showView('lobby');
+    });
+  }
+
+  if (elements.configCreate) {
+    elements.configCreate.addEventListener('click', () => {
+      const name = getPlayerName();
+      localStorage.setItem('wordle_playerName', name);
+      send({
+        type: 'createRoom',
+        playerName: name,
+        playerEmail: authUser?.email || null,
+        gameMode: pendingConfig.gameMode,
+        wordMode: pendingConfig.wordMode,
+        isPublic: pendingConfig.isPublic,
+      });
+    });
+  }
 
   // Waiting
   elements.copyCode.addEventListener('click', () => {

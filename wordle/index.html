@@ -107,55 +107,105 @@
       </div>
     </div>
 
+    <!-- Room Configuration View (Pre-Creation) -->
+    <div id="roomConfig" class="view hidden">
+      <div class="config-content">
+        <div class="view-header">
+          <h2>Create Room</h2>
+          <p class="view-subtitle">Configure your game settings</p>
+        </div>
+
+        <!-- Game Mode Card -->
+        <div class="config-card">
+          <label>Game Mode</label>
+          <div class="mode-buttons">
+            <button id="configModeCasual" class="mode-btn active" data-mode="casual">Casual</button>
+            <button id="configModeCompetitive" class="mode-btn" data-mode="competitive">Competitive</button>
+          </div>
+        </div>
+
+        <!-- Word Selection Card -->
+        <div class="config-card">
+          <label>Word Selection</label>
+          <div class="mode-buttons">
+            <button id="configWordDaily" class="mode-btn active" data-mode="daily">Daily Challenge</button>
+            <button id="configWordRandom" class="mode-btn" data-mode="random">Random</button>
+          </div>
+        </div>
+
+        <!-- Room Visibility Card -->
+        <div class="config-card">
+          <label>Room Visibility</label>
+          <div class="mode-buttons">
+            <button id="configVisPublic" class="mode-btn active" data-visibility="public">Public</button>
+            <button id="configVisPrivate" class="mode-btn" data-visibility="private">Private</button>
+          </div>
+          <p class="config-hint">Public rooms appear in lobby for others to join</p>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="config-actions">
+          <button id="configCancel" class="btn btn-secondary">Cancel</button>
+          <button id="configCreate" class="btn btn-primary">Create Room</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Waiting Room View -->
     <div id="waiting" class="view hidden">
       <div class="waiting-content">
+        <!-- Room Code Header -->
         <div class="room-code-display">
           <span class="label">Room Code</span>
           <span id="roomCode" class="code">------</span>
           <button id="copyCode" class="btn-icon" title="Copy code">📋</button>
         </div>
 
-        <div class="mode-selector">
-          <label>Game Mode</label>
-          <div class="mode-buttons">
-            <button id="modeCasual" class="mode-btn active" data-mode="casual">Casual</button>
-            <button id="modeCompetitive" class="mode-btn" data-mode="competitive">Competitive</button>
+        <!-- Settings Card -->
+        <div class="waiting-card" id="settingsCard">
+          <div class="waiting-card-label">Settings</div>
+
+          <div class="mode-selector">
+            <label>Game Mode</label>
+            <div class="mode-buttons">
+              <button id="modeCasual" class="mode-btn active" data-mode="casual">Casual</button>
+              <button id="modeCompetitive" class="mode-btn" data-mode="competitive">Competitive</button>
+            </div>
+          </div>
+
+          <div class="word-mode-selector">
+            <label>Word Selection <span id="dailyNumber" class="daily-number hidden"></span></label>
+            <div class="mode-buttons">
+              <button id="wordModeDaily" class="mode-btn active" data-mode="daily">Daily Challenge</button>
+              <button id="wordModeRandom" class="mode-btn" data-mode="random">Random</button>
+            </div>
+          </div>
+
+          <div id="visibilitySelector" class="visibility-selector hidden">
+            <label>Room Visibility</label>
+            <div class="visibility-buttons">
+              <button id="visibilityPublic" class="vis-btn active" data-visibility="public">Public</button>
+              <button id="visibilityPrivate" class="vis-btn" data-visibility="private">Private</button>
+            </div>
+            <p class="visibility-hint" id="visibilityHint">Public rooms appear in lobby for others to join</p>
           </div>
         </div>
 
-        <div class="word-mode-selector">
-          <label>Word Selection <span id="dailyNumber" class="daily-number hidden"></span></label>
-          <div class="mode-buttons">
-            <button id="wordModeDaily" class="mode-btn active" data-mode="daily">Daily Challenge</button>
-            <button id="wordModeRandom" class="mode-btn" data-mode="random">Random</button>
-          </div>
+        <!-- Players Card -->
+        <div class="waiting-card">
+          <div class="waiting-card-label">Players <span id="playerCount">(0)</span></div>
+          <ul id="players" class="player-list"></ul>
         </div>
 
-        <div id="visibilitySelector" class="visibility-selector hidden">
-          <label>Room Visibility</label>
-          <div class="visibility-buttons">
-            <button id="visibilityPublic" class="vis-btn active" data-visibility="public">Public</button>
-            <button id="visibilityPrivate" class="vis-btn" data-visibility="private">Private</button>
-          </div>
-          <p class="visibility-hint" id="visibilityHint">Public rooms appear in lobby for others to join</p>
-        </div>
-
-        <div class="player-list">
-          <h3>Players <span id="playerCount" class="player-count">(0)</span></h3>
-          <ul id="players"></ul>
-        </div>
-
-        <div class="ready-section">
+        <!-- Actions Card -->
+        <div class="actions-card">
           <button id="readyBtn" class="btn btn-ready">I'm Ready</button>
-        </div>
-
-        <div class="waiting-actions">
-          <button id="startGame" class="btn btn-primary hidden disabled">Start Game</button>
+          <div class="secondary-actions">
+            <button id="startGame" class="btn btn-primary hidden disabled">Start Game</button>
+            <button id="leaveRoom" class="btn btn-leave-outline">Leave Room</button>
+          </div>
           <p id="waitingMessage" class="waiting-msg">Waiting for host to start...</p>
         </div>
-
-        <button id="leaveRoom" class="btn btn-danger">Leave Room</button>
       </div>
     </div>
 
