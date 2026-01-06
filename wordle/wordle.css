@@ -3030,7 +3030,9 @@ body {
 .sheet-backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
 .sheet-container {
@@ -3057,15 +3059,22 @@ body {
     bottom: auto;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%) scale(0.95);
+    opacity: 0;
     max-width: 400px;
     width: 90%;
     border-radius: 16px;
     max-height: 80vh;
+    background: var(--bg-secondary);
+    box-shadow:
+      0 25px 50px -12px rgba(0, 0, 0, 0.5),
+      0 0 0 1px rgba(255, 255, 255, 0.05);
+    transition: transform 0.2s ease-out, opacity 0.2s ease-out;
   }
 
   .bottom-sheet.visible .sheet-container {
-    transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
   }
 }
 
@@ -3074,10 +3083,10 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 20px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   position: sticky;
   top: 0;
-  background: var(--bg);
+  background: var(--bg-tile);
   z-index: 1;
 }
 
