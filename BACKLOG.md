@@ -23,9 +23,9 @@
 
 | ID | Priority | Effort | Description | Status |
 |----|----------|--------|-------------|--------|
-| UX-001 | P1 | S | Clearer logged-out state indicator | Done |
-| UX-003 | P1 | S | Password reset in Settings page | Done |
-| BUG-004 | P1 | S | Race condition - multiple daily rooms per user | Done |
+| GAME-001 | P1 | S | Hard Mode - Must use revealed hints | Pending |
+| GAME-002 | P1 | S | Rematch button | Pending |
+| UX-004 | P2 | S | Win celebration confetti | Pending |
 
 ---
 
@@ -35,27 +35,32 @@
 
 | ID | Effort | Description | Files |
 |----|--------|-------------|-------|
-| ~~**UX-001**~~ | S | ~~Clearer logged-out state - more obvious visual difference~~ | Done |
-| ~~**UX-003**~~ | S | ~~Password reset in Settings page~~ | Done |
-| ~~**BUG-004**~~ | S | ~~Race condition - multiple daily rooms per user~~ | Done |
+| **GAME-001** | S | **Hard Mode** - Must use revealed hints in subsequent guesses | `wordle.js`, `wordle-room.ts` |
+| **GAME-002** | S | **Rematch button** - Quick "Play Again" with same players | `wordle.js`, `wordle-room.ts` |
+| **GAME-003** | M | **Custom letter count** - 4-7 letter word modes (Marathon) | `wordle-room.ts`, `word-list.ts` |
+| **WORDS-001** | M | **Expanded word list** - More words, especially for Sabotage mode | `word-list.ts`, `valid-guesses.js` |
 | **BUG-005** | M | localStorage resume exploit - track attempts server-side | `wordle-database.ts`, `wordle-room.ts` |
-| **FEAT-003** | M | Daily attempt tracking (resumed = no stats) | migrations, `wordle-database.ts` |
 
 ### P2 - Medium Priority
 
 | ID | Effort | Description | Files |
 |----|--------|-------------|-------|
-| **FEAT-001** | L | Spectate mode for completed daily users | `wordle-room.ts`, `wordle.js` |
-| **STATS-001** | M | Personal stats dashboard (API exists) | `wordle.js`, `index.html` |
-| **STATS-002** | S | Guess distribution chart | `wordle.js`, `wordle.css` |
+| **UX-004** | S | **Win celebration** - Confetti animation on victory | `wordle.js`, `wordle.css` |
+| **SOUND-001** | M | **Sound effects** - Keyboard clicks, win/lose sounds, countdown | `wordle.js`, `assets/` |
+| **FEAT-001** | L | **Spectate mode** + emoji reactions for watchers | `wordle-room.ts`, `wordle.js` |
 | **SHARE-001** | S | Share results - emoji grid to clipboard | `wordle.js` |
+| **TEAM-001** | L | **Team modes** - 2v2, 3v3 cooperative play | `wordle-room.ts`, `wordle.js` |
 | **ACH-001** | L | Achievement trigger logic + notifications | `wordle-room.ts`, `wordle.js` |
-| **UX-002** | S | Custom email templates (Supabase Pro required) | Supabase Dashboard |
 
 ### P3 - Low Priority / Icebox
 
 | ID | Effort | Description |
 |----|--------|-------------|
+| **POWER-001** | XL | **Powerups** - Reveal letter, extra guess, ink blot, keyboard scramble |
+| **POWER-002** | XL | **Offensive abilities** - Fog of War, Ghost Letters, Vowel Tax |
+| **POWER-003** | L | **Chaos Mode** - Maximum powerup disruption |
+| **SOCIAL-001** | L | **Friend list** - Add friends, see online status, invite to games |
+| **THEME-001** | S | **Custom room themes** - Color schemes per room |
 | **LEADER-001** | M | Daily leaderboard - fastest solvers |
 | **STATS-003** | M | Starting word analytics |
 | **STATS-004** | M | Matchup history UI |
@@ -65,6 +70,20 @@
 ---
 
 ## Completed
+
+### Wordle Battle (2026-01)
+- [x] **Stats Dashboard MVP** - 6-stat grid + guess distribution chart
+- [x] **Sabotage Mode** - Pick words for opponent to guess
+- [x] **URL-based room sharing** - `/wordle/room/ABC123` links
+- [x] **Testing infrastructure** - URL params, data-testid, Playwright fixtures
+- [x] **Play With Friends modal** - Improved desktop visibility with blur/shadow
+- [x] **UX-001** - Clearer logged-out state indicator
+- [x] **UX-003** - Password reset in Settings page
+- [x] **BUG-004** - Race condition fix for daily rooms
+- [x] **Leave/cancel mid-game** - Exit mechanics during play
+- [x] **Reconnection architecture** - Phases 0-3 complete
+
+### Overworld Game
 - [x] Fritelles with golden variants
 - [x] Throw mechanic (diagonal support)
 - [x] Context-aware dialog
