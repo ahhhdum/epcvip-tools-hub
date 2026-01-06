@@ -97,6 +97,19 @@
   - Ideas: Different header style, prominent login banner, grayed out features
   - Files: `wordle.js`, `wordle.css`, `index.html`
 
+- [ ] **UX-002: Custom email templates**
+  - Current: Default Supabase emails from `noreply@mail.app.supabase.io`
+  - Desired: Branded emails with EPCVIP styling
+  - Requires: Supabase Pro plan OR custom SMTP (SendGrid, Mailgun)
+  - Templates needed: Welcome/signup confirmation, Password reset
+  - Location: Supabase Dashboard → Authentication → Email Templates
+
+- [ ] **UX-003: Add password reset to Settings page**
+  - Add "Change Password" button/link in Settings view
+  - Opens password update form (reuse existing updatePasswordForm)
+  - Only visible when logged in
+  - Files: `wordle/index.html`, `wordle/wordle.js`
+
 ### Edge Cases to Handle
 
 - [ ] **EDGE-001: Rapid guess submission (bot detection)** - Reject guesses with `timeSinceLastMs < 500`

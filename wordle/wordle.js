@@ -571,6 +571,7 @@ async function logout() {
   state.authUser = null;
   updateAuthUI();
   elements.playerStats.classList.add('hidden');
+  showView('lobby'); // Return to main page after logout
 }
 
 // Password Reset Functions
