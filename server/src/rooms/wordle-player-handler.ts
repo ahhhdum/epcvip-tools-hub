@@ -72,6 +72,9 @@ export class WordlePlayerHandler {
     switch (room.gameState) {
       case 'waiting':
         return GRACE_PERIOD.WAITING_MS;
+      case 'selecting':
+        // Selection phase is time-sensitive (30s timeout), use shorter grace
+        return GRACE_PERIOD.PLAYING_MS;
       case 'playing':
         return GRACE_PERIOD.PLAYING_MS;
       case 'finished':
@@ -129,6 +132,11 @@ export class WordlePlayerHandler {
       room.countdownTimer = null;
       stopTimerSync(room.timerInterval);
       room.timerInterval = null;
+      // Clear selection timer (sabotage mode)
+      if (room.selectionTimer) {
+        clearTimeout(room.selectionTimer);
+        room.selectionTimer = null;
+      }
       this.rooms.delete(roomCode);
       // Update lobby (room removed)
       this.broadcastPublicRoomsList();
@@ -196,6 +204,11 @@ export class WordlePlayerHandler {
     room.countdownTimer = null;
     stopTimerSync(room.timerInterval);
     room.timerInterval = null;
+    // Clear selection timer (sabotage mode)
+    if (room.selectionTimer) {
+      clearTimeout(room.selectionTimer);
+      room.selectionTimer = null;
+    }
 
     // Delete the room
     this.rooms.delete(roomCode);
@@ -516,6 +529,29 @@ export class WordlePlayerHandler {
           isReady: player.isReady,
         });
         break;
+
+      case 'selecting': {
+        // Rejoin during sabotage word selection phase
+        const hasSubmitted = room.wordAssignments?.has(
+          room.pickerAssignments?.get(player.id) || ''
+        );
+        const submittedCount = room.wordAssignments?.size || 0;
+        const timeRemaining = room.selectionDeadline
+          ? Math.max(0, room.selectionDeadline - Date.now())
+          : 0;
+
+        this.send(socket, {
+          type: 'rejoinSelecting',
+          roomCode: room.code,
+          playerId: player.id,
+          deadline: room.selectionDeadline,
+          timeRemaining,
+          hasSubmitted: !!hasSubmitted,
+          submittedCount,
+          totalPlayers: room.players.size,
+        });
+        break;
+      }
 
       case 'playing':
         // Send full game state so player can resume

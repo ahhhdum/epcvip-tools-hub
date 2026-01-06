@@ -39,6 +39,12 @@ export const PLAYER_ID_PREFIX = 'wp';
 export const FORCED_WORDS_LOG_FILE = 'forced-words.jsonl';
 export const LOGS_DIRECTORY = 'logs';
 
+// Sabotage Mode
+/** Time allowed for word selection phase in sabotage mode */
+export const SELECTION_TIMEOUT_MS = 30000; // 30 seconds
+/** Check interval for selection timeout */
+export const SELECTION_CHECK_INTERVAL_MS = 1000;
+
 // Grace Periods (milliseconds)
 // Time before disconnected players are permanently removed
 export const GRACE_PERIOD = {

@@ -1311,6 +1311,26 @@ body {
   justify-content: center;
 }
 
+/* Sabotage Mode - Word Assignment in Results */
+.sabotage-word-info {
+  margin-top: 4px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.sabotage-word-info strong {
+  color: var(--present);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.picked-by {
+  font-style: italic;
+  margin-left: 6px;
+  color: var(--text-secondary);
+}
+
 /* Connection Status */
 .connection-status {
   position: fixed;
@@ -3473,4 +3493,180 @@ body {
 .daily-btn-container {
   position: relative;
   width: 100%;
+}
+
+/* =============================================================================
+   Sabotage Mode - Triple Button Layout
+   ============================================================================= */
+
+.mode-buttons-triple {
+  display: flex;
+  gap: 8px;
+}
+
+.mode-buttons-triple .mode-btn {
+  flex: 1;
+  padding: 10px 8px;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.config-hint,
+.mode-hint {
+  font-size: 0.8rem;
+  color: var(--present);
+  margin-top: 8px;
+  text-align: center;
+}
+
+/* =============================================================================
+   Word Selection Phase (Sabotage Mode)
+   ============================================================================= */
+
+#wordSelection {
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.selection-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  max-width: 400px;
+  width: 100%;
+}
+
+.selection-header {
+  text-align: center;
+}
+
+.selection-header h2 {
+  font-size: 1.8rem;
+  margin-bottom: 8px;
+}
+
+.selection-subtitle {
+  color: var(--text-secondary);
+  font-size: 1rem;
+}
+
+.selection-timer {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--present);
+  padding: 8px 20px;
+  background-color: var(--bg-secondary);
+  border-radius: 8px;
+}
+
+.selection-grid {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.selection-row {
+  display: flex;
+  gap: 8px;
+}
+
+.selection-tile {
+  width: 52px;
+  height: 52px;
+  border: 2px solid var(--border);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  background-color: var(--bg-secondary);
+  transition: border-color 0.2s;
+}
+
+.selection-tile.filled {
+  border-color: var(--text-secondary);
+}
+
+.selection-tile.valid {
+  border-color: var(--correct);
+  background-color: rgba(83, 141, 78, 0.2);
+}
+
+.selection-tile.invalid {
+  border-color: var(--danger);
+  background-color: rgba(211, 47, 47, 0.1);
+}
+
+.selection-status {
+  font-size: 0.9rem;
+  min-height: 1.2em;
+  transition: color 0.2s;
+}
+
+.selection-status.valid {
+  color: var(--correct);
+}
+
+.selection-status.invalid {
+  color: var(--danger);
+}
+
+.selection-submit {
+  padding: 14px 32px;
+  font-size: 1rem;
+}
+
+.selection-submit:disabled {
+  background-color: var(--bg-tile);
+  cursor: not-allowed;
+}
+
+.selection-progress {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.selection-keyboard {
+  margin-top: 10px;
+}
+
+.selection-keyboard button {
+  background-color: var(--key-bg);
+}
+
+/* Submitted state */
+#wordSelection.submitted .selection-tile {
+  border-color: var(--correct);
+  background-color: rgba(83, 141, 78, 0.3);
+}
+
+#wordSelection.submitted .selection-submit {
+  background-color: var(--correct);
+  cursor: default;
+}
+
+#wordSelection.submitted .selection-keyboard button {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Mobile adjustments for selection phase */
+@media (max-width: 480px) {
+  .selection-tile {
+    width: 48px;
+    height: 48px;
+    font-size: 1.6rem;
+  }
+
+  .selection-header h2 {
+    font-size: 1.5rem;
+  }
+
+  .selection-timer {
+    font-size: 1.6rem;
+  }
 }

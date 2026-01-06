@@ -24,7 +24,7 @@ class GameState {
     this.isCreator = false;
     this.isReady = false;
     this.gameMode = 'casual'; // 'casual' | 'competitive'
-    this.wordMode = 'daily'; // 'daily' | 'random'
+    this.wordMode = 'daily'; // 'daily' | 'random' | 'sabotage'
     this.dailyNumber = null;
     this.isRoomPublic = true;
     this.playersInRoom = []; // Array of { id, name, isCreator, isReady, connectionState }
@@ -39,7 +39,7 @@ class GameState {
     // ==========================================================================
     // Game State
     // ==========================================================================
-    this.gamePhase = 'lobby'; // 'lobby' | 'waiting' | 'playing' | 'results'
+    this.gamePhase = 'lobby'; // 'lobby' | 'waiting' | 'selecting' | 'playing' | 'results'
     this.currentGuess = '';
     this.guesses = [];
     this.guessResults = [];
@@ -51,6 +51,15 @@ class GameState {
     // Dictionary validation state
     this.lastRejectedWord = null;
     this.rejectionCount = 0;
+
+    // ==========================================================================
+    // Sabotage Mode Selection Phase
+    // ==========================================================================
+    this.selectionWord = ''; // Word being typed in selection phase
+    this.selectionSubmitted = false; // Whether player has submitted their word
+    this.selectionDeadline = null; // Server deadline timestamp
+    this.selectionTimerId = null; // Interval for countdown display
+    this.wordAssignments = null; // Array from server: [{ targetId, targetName, word, pickerId, pickerName }]
 
     // ==========================================================================
     // Auth State
@@ -159,6 +168,16 @@ class GameState {
     this.playerTimes = {};
     this.lastRejectedWord = null;
     this.rejectionCount = 0;
+
+    // Reset selection phase state
+    this.selectionWord = '';
+    this.selectionSubmitted = false;
+    this.selectionDeadline = null;
+    if (this.selectionTimerId) {
+      clearInterval(this.selectionTimerId);
+      this.selectionTimerId = null;
+    }
+    this.wordAssignments = null;
   }
 
   /**

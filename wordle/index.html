@@ -56,7 +56,7 @@
     <div id="dropdownOverlay" class="dropdown-overlay hidden"></div>
 
     <!-- Lobby View -->
-    <div id="lobby" class="view">
+    <div id="lobby" class="view" data-testid="lobby">
       <div class="lobby-content lobby-simplified">
         <!-- Primary CTA: Daily Challenge -->
         <div id="dailyBtnContainer" class="daily-btn-container">
@@ -111,12 +111,12 @@
         </div>
         <div class="sheet-content">
           <!-- Create Room -->
-          <button id="createRoom" class="btn btn-primary sheet-btn">Create Room</button>
+          <button id="createRoom" class="btn btn-primary sheet-btn" data-testid="create-room">Create Room</button>
 
           <!-- Join with Code -->
           <div class="sheet-join-section">
-            <input type="text" id="roomCodeInput" placeholder="Room Code" maxlength="6" autocomplete="off">
-            <button id="joinRoom" class="btn btn-secondary">Join</button>
+            <input type="text" id="roomCodeInput" placeholder="Room Code" maxlength="6" autocomplete="off" data-testid="room-code-input">
+            <button id="joinRoom" class="btn btn-secondary" data-testid="join-room">Join</button>
           </div>
 
           <!-- Public Rooms (only if rooms exist) -->
@@ -151,10 +151,12 @@
         <!-- Word Selection Card -->
         <div class="config-card">
           <label>Word Selection</label>
-          <div class="mode-buttons">
-            <button id="configWordDaily" class="mode-btn active" data-mode="daily">Daily Challenge</button>
+          <div class="mode-buttons mode-buttons-triple">
+            <button id="configWordDaily" class="mode-btn active" data-mode="daily">Daily</button>
             <button id="configWordRandom" class="mode-btn" data-mode="random">Random</button>
+            <button id="configWordSabotage" class="mode-btn" data-mode="sabotage">Sabotage</button>
           </div>
+          <p id="sabotageHintConfig" class="config-hint hidden">Pick words for your opponents!</p>
         </div>
 
         <!-- Room Visibility Card -->
@@ -181,7 +183,7 @@
         <!-- Room Code Header -->
         <div class="room-code-display">
           <span class="label">Room Code</span>
-          <span id="roomCode" class="code">------</span>
+          <span id="roomCode" class="code" data-testid="room-code">------</span>
           <button id="copyCode" class="btn-icon" title="Copy code">📋</button>
           <button id="copyLink" class="btn-icon" title="Copy shareable link">🔗</button>
         </div>
@@ -200,10 +202,12 @@
 
           <div class="word-mode-selector">
             <label>Word Selection <span id="dailyNumber" class="daily-number hidden"></span></label>
-            <div class="mode-buttons">
-              <button id="wordModeDaily" class="mode-btn active" data-mode="daily">Daily Challenge</button>
+            <div class="mode-buttons mode-buttons-triple">
+              <button id="wordModeDaily" class="mode-btn active" data-mode="daily">Daily</button>
               <button id="wordModeRandom" class="mode-btn" data-mode="random">Random</button>
+              <button id="wordModeSabotage" class="mode-btn" data-mode="sabotage">Sabotage</button>
             </div>
+            <p id="sabotageHintWaiting" class="mode-hint hidden">Pick words for your opponents!</p>
           </div>
 
           <div id="visibilitySelector" class="visibility-selector hidden">
@@ -224,9 +228,9 @@
 
         <!-- Actions Card -->
         <div class="actions-card">
-          <button id="readyBtn" class="btn btn-ready">I'm Ready</button>
+          <button id="readyBtn" class="btn btn-ready" data-testid="ready-button">I'm Ready</button>
           <div class="secondary-actions">
-            <button id="startGame" class="btn btn-primary hidden disabled">Start Game</button>
+            <button id="startGame" class="btn btn-primary hidden disabled" data-testid="start-game">Start Game</button>
             <button id="leaveRoom" class="btn btn-leave-outline">Leave Room</button>
             <button id="closeRoom" class="btn btn-danger hidden">Close Room</button>
           </div>
@@ -239,6 +243,81 @@
     <div id="countdownOverlay" class="countdown-overlay hidden">
       <div class="countdown-content">
         <span id="countdownNumber" class="countdown-number">3</span>
+      </div>
+    </div>
+
+    <!-- Word Selection Phase (Sabotage Mode) -->
+    <div id="wordSelection" class="view hidden" data-testid="selection-phase">
+      <div class="selection-content">
+        <div class="selection-header">
+          <h2>Pick a Word</h2>
+          <p class="selection-subtitle">Choose a tricky word for your opponent!</p>
+        </div>
+
+        <!-- Timer -->
+        <div class="selection-timer">
+          <span id="selectionTimeRemaining">30</span>s
+        </div>
+
+        <!-- Word Input Grid (like guess tiles) -->
+        <div class="selection-grid">
+          <div class="selection-row">
+            <div class="selection-tile" id="selTile0"></div>
+            <div class="selection-tile" id="selTile1"></div>
+            <div class="selection-tile" id="selTile2"></div>
+            <div class="selection-tile" id="selTile3"></div>
+            <div class="selection-tile" id="selTile4"></div>
+          </div>
+        </div>
+
+        <!-- Validation Status -->
+        <p id="selectionStatus" class="selection-status"></p>
+
+        <!-- Submit Button -->
+        <button id="submitWordBtn" class="btn btn-primary selection-submit" disabled>Submit Word</button>
+
+        <!-- Progress -->
+        <div class="selection-progress">
+          <span id="selectionProgress">Waiting for others...</span>
+        </div>
+
+        <!-- On-screen keyboard for selection -->
+        <div id="selectionKeyboard" class="keyboard selection-keyboard">
+          <div class="keyboard-row">
+            <button data-key="Q">Q</button>
+            <button data-key="W">W</button>
+            <button data-key="E">E</button>
+            <button data-key="R">R</button>
+            <button data-key="T">T</button>
+            <button data-key="Y">Y</button>
+            <button data-key="U">U</button>
+            <button data-key="I">I</button>
+            <button data-key="O">O</button>
+            <button data-key="P">P</button>
+          </div>
+          <div class="keyboard-row">
+            <button data-key="A">A</button>
+            <button data-key="S">S</button>
+            <button data-key="D">D</button>
+            <button data-key="F">F</button>
+            <button data-key="G">G</button>
+            <button data-key="H">H</button>
+            <button data-key="J">J</button>
+            <button data-key="K">K</button>
+            <button data-key="L">L</button>
+          </div>
+          <div class="keyboard-row">
+            <button data-key="ENTER" class="key-wide key-enter" disabled>ENTER</button>
+            <button data-key="Z">Z</button>
+            <button data-key="X">X</button>
+            <button data-key="C">C</button>
+            <button data-key="V">V</button>
+            <button data-key="B">B</button>
+            <button data-key="N">N</button>
+            <button data-key="M">M</button>
+            <button data-key="BACKSPACE" class="key-wide">⌫</button>
+          </div>
+        </div>
       </div>
     </div>
 

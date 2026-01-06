@@ -7,6 +7,7 @@
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { LetterResult } from './wordle-validator';
+import { WordMode } from '../utils/daily-word';
 
 // Supabase client singleton
 let supabase: SupabaseClient | null = null;
@@ -84,7 +85,7 @@ export interface GameMetadata {
   roomCode: string;
   word: string;
   gameMode: 'casual' | 'competitive';
-  wordMode: 'daily' | 'random';
+  wordMode: WordMode;
   dailyNumber: number | null;
   isSolo: boolean;
   playerCount: number;

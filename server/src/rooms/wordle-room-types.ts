@@ -19,11 +19,24 @@ export type { LetterResult, WordMode };
 /** Game mode determines scoring and competitive features */
 export type GameMode = 'casual' | 'competitive';
 
-/** Game state progression: waiting -> playing -> finished */
-export type GameState = 'waiting' | 'playing' | 'finished';
+/** Game state progression: waiting -> selecting (sabotage only) -> playing -> finished */
+export type GameState = 'waiting' | 'selecting' | 'playing' | 'finished';
 
 /** Player connection state for grace period handling */
 export type ConnectionState = 'connected' | 'disconnected';
+
+// =============================================================================
+// Sabotage Mode Types
+// =============================================================================
+
+/** Word assignment for sabotage mode - tracks who picked which word for whom */
+export interface WordAssignment {
+  pickerId: string; // Who picked this word
+  pickerName: string; // Picker's display name (for results)
+  targetId: string; // Who solves this word
+  word: string; // The chosen word
+  submittedAt: number; // Timestamp when submitted
+}
 
 // =============================================================================
 // Player Interface
@@ -74,6 +87,12 @@ export interface WordleRoom {
   isSolo: boolean; // True if this is a solo game (skip 2-player requirement)
   gameId: string | null; // Database game ID for tracking guesses
   isPublic: boolean; // True if room is visible in public rooms list (default: true)
+
+  // Sabotage mode fields
+  wordAssignments: Map<string, WordAssignment> | null; // targetId -> assignment (who solves what)
+  pickerAssignments: Map<string, string> | null; // pickerId -> targetId (who picks for whom)
+  selectionDeadline: number | null; // Timestamp when selection phase ends
+  selectionTimer: NodeJS.Timeout | null; // Timer for auto-assign on timeout
 }
 
 // =============================================================================

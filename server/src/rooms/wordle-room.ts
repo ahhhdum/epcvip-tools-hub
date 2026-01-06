@@ -146,6 +146,12 @@ export class WordleRoomManager {
       isSolo: false,
       gameId: null,
       isPublic, // Visible in lobby (default true)
+
+      // Sabotage mode fields
+      wordAssignments: null,
+      pickerAssignments: null,
+      selectionDeadline: null,
+      selectionTimer: null,
     };
 
     this.rooms.set(roomCode, room);
@@ -464,6 +470,13 @@ export class WordleRoomManager {
     this.gameController.handlePlayAgain(socket);
   }
 
+  /**
+   * Handle word submission during sabotage selection phase
+   */
+  handleSubmitWord(socket: WebSocket, word: string): void {
+    this.gameController.handleSubmitWord(socket, word);
+  }
+
   // ===========================================================================
   // Reconnection (Delegated to PlayerHandler)
   // ===========================================================================
@@ -528,6 +541,9 @@ export class WordleRoomManager {
           break;
         case 'guess':
           this.handleGuess(socket, msg.word, msg.forced || false);
+          break;
+        case 'submitWord':
+          this.handleSubmitWord(socket, msg.word);
           break;
         case 'playAgain':
           this.handlePlayAgain(socket);

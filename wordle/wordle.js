@@ -195,6 +195,7 @@ const views = {
   lobby: document.getElementById('lobby'),
   roomConfig: document.getElementById('roomConfig'),
   waiting: document.getElementById('waiting'),
+  wordSelection: document.getElementById('wordSelection'),
   game: document.getElementById('game'),
   results: document.getElementById('results'),
   dailyCompleted: document.getElementById('dailyCompleted'),
@@ -443,6 +444,27 @@ const elements = {
   changePasswordSuccess: document.getElementById('changePasswordSuccess'),
   submitPasswordChange: document.getElementById('submitPasswordChange'),
   cancelPasswordChange: document.getElementById('cancelPasswordChange'),
+
+  // Sabotage Mode - Config
+  configWordSabotage: document.getElementById('configWordSabotage'),
+  sabotageHintConfig: document.getElementById('sabotageHintConfig'),
+  wordModeSabotage: document.getElementById('wordModeSabotage'),
+  sabotageHintWaiting: document.getElementById('sabotageHintWaiting'),
+
+  // Word Selection Phase (Sabotage Mode)
+  wordSelectionView: document.getElementById('wordSelection'),
+  selectionTimeRemaining: document.getElementById('selectionTimeRemaining'),
+  selectionTiles: [
+    document.getElementById('selTile0'),
+    document.getElementById('selTile1'),
+    document.getElementById('selTile2'),
+    document.getElementById('selTile3'),
+    document.getElementById('selTile4'),
+  ],
+  selectionStatus: document.getElementById('selectionStatus'),
+  submitWordBtn: document.getElementById('submitWordBtn'),
+  selectionProgress: document.getElementById('selectionProgress'),
+  selectionKeyboard: document.getElementById('selectionKeyboard'),
 };
 
 // SSO Token Handling
@@ -1967,6 +1989,47 @@ async function handleAuthSubmit(e) {
 
 // Initialize
 async function init() {
+  // ==========================================================================
+  // Test Mode: URL Parameters
+  // Usage: /wordle/?playerName=TestHost&fresh=true&autoJoin=ABC123
+  // ==========================================================================
+  const urlParams = new URLSearchParams(window.location.search);
+
+  // fresh=true: Clear all session data for clean testing
+  if (urlParams.get('fresh') === 'true') {
+    sessionStorage.clear();
+    clearSession();
+    console.log('[Wordle] Test mode: Cleared session (fresh=true)');
+  }
+
+  // playerName=X: Override player name
+  const testPlayerName = urlParams.get('playerName');
+  if (testPlayerName) {
+    localStorage.setItem('wordle_playerName', testPlayerName);
+    console.log('[Wordle] Test mode: Set player name to', testPlayerName);
+  }
+
+  // testMode=true: Enable debug state display and expose state
+  if (urlParams.get('testMode') === 'true') {
+    window.__WORDLE_DEBUG__ = true;
+    window.__WORDLE_STATE__ = state;
+    console.log('[Wordle] Test mode: Debug enabled, state exposed as window.__WORDLE_STATE__');
+  }
+
+  // slowTimers=true: Extend timers for easier manual testing
+  // Note: This is client-side only; server still controls actual deadlines
+  if (urlParams.get('slowTimers') === 'true') {
+    window.__WORDLE_SLOW_TIMERS__ = true;
+    console.log('[Wordle] Test mode: Slow timers enabled (client display only)');
+  }
+
+  // Store autoJoin for later (after WebSocket connects)
+  const autoJoinRoom = urlParams.get('autoJoin');
+  if (autoJoinRoom) {
+    sessionStorage.setItem('wordle_autoJoin', autoJoinRoom);
+    console.log('[Wordle] Test mode: Will auto-join room', autoJoinRoom);
+  }
+
   // Fetch Supabase config from server
   await fetchSupabaseConfig();
 
@@ -2102,10 +2165,25 @@ function connect() {
       return;
     }
 
-    // Priority 2: Try to rejoin if we have a saved session
+    // Priority 2: Auto-join from URL param (test mode)
+    const autoJoinRoom = sessionStorage.getItem('wordle_autoJoin');
+    if (autoJoinRoom) {
+      sessionStorage.removeItem('wordle_autoJoin');
+      console.log('[Wordle] Test mode: Auto-joining room', autoJoinRoom);
+      const playerName = elements.playerName.value.trim() || 'Player';
+      send({
+        type: 'joinRoom',
+        roomCode: autoJoinRoom,
+        playerName,
+        playerEmail: state.authUser?.email,
+      });
+      return;
+    }
+
+    // Priority 3: Try to rejoin if we have a saved session
     const hadSession = attemptRejoin();
 
-    // Priority 3: If no saved session, subscribe to lobby for public rooms
+    // Priority 4: If no saved session, subscribe to lobby for public rooms
     if (!hadSession) {
       subscribeLobby();
     }
@@ -2212,6 +2290,9 @@ function handleMessage(msg) {
     case 'rejoinResults':
       handleRejoinResults(msg);
       break;
+    case 'rejoinSelecting':
+      handleRejoinSelecting(msg);
+      break;
     case 'rejoinFailed':
       handleRejoinFailed(msg);
       break;
@@ -2235,6 +2316,26 @@ function handleMessage(msg) {
 
     case 'leftRoom':
       handleLeftRoom(msg);
+      break;
+
+    // Sabotage mode selection phase
+    case 'selectionPhaseStarted':
+      handleSelectionPhaseStarted(msg);
+      break;
+    case 'wordValidation':
+      handleWordValidation(msg);
+      break;
+    case 'wordSubmitted':
+      handleWordSubmittedConfirm(msg);
+      break;
+    case 'selectionProgress':
+      handleSelectionProgress(msg);
+      break;
+    case 'allWordsSubmitted':
+      handleAllWordsSubmitted(msg);
+      break;
+    case 'selectionTimeout':
+      handleSelectionTimeout(msg);
       break;
 
     case 'error':
@@ -2269,6 +2370,211 @@ function handleLeftRoom(msg) {
   // Return to lobby
   showView('lobby');
   subscribeLobby();
+}
+
+// =============================================================================
+// Sabotage Mode - Selection Phase Handlers
+// =============================================================================
+
+/**
+ * Handle selection phase starting (sabotage mode)
+ */
+function handleSelectionPhaseStarted(msg) {
+  console.log('[Wordle] Selection phase started', msg);
+
+  state.gamePhase = 'selecting';
+  state.selectionWord = '';
+  state.selectionSubmitted = false;
+  state.selectionDeadline = msg.deadline;
+
+  // Show selection view
+  showView('wordSelection');
+  updateSelectionTiles();
+  updateSelectionStatus('');
+
+  // Start countdown timer
+  startSelectionTimer();
+
+  // Enable submit button handler
+  elements.submitWordBtn.disabled = true;
+}
+
+/**
+ * Start the selection countdown timer
+ */
+function startSelectionTimer() {
+  // Clear any existing timer
+  if (state.selectionTimerId) {
+    clearInterval(state.selectionTimerId);
+  }
+
+  const updateTimer = () => {
+    if (!state.selectionDeadline) return;
+
+    const remaining = Math.max(0, state.selectionDeadline - Date.now());
+    const seconds = Math.ceil(remaining / 1000);
+
+    if (elements.selectionTimeRemaining) {
+      elements.selectionTimeRemaining.textContent = seconds;
+    }
+
+    if (remaining <= 0) {
+      clearInterval(state.selectionTimerId);
+      state.selectionTimerId = null;
+    }
+  };
+
+  updateTimer();
+  state.selectionTimerId = setInterval(updateTimer, 100);
+}
+
+/**
+ * Update selection tiles display
+ */
+function updateSelectionTiles() {
+  if (!elements.selectionTiles) return;
+
+  elements.selectionTiles.forEach((tile, i) => {
+    tile.textContent = state.selectionWord[i] || '';
+    tile.classList.toggle('filled', !!state.selectionWord[i]);
+  });
+}
+
+/**
+ * Update selection status message
+ */
+function updateSelectionStatus(message, isValid = null) {
+  if (!elements.selectionStatus) return;
+
+  elements.selectionStatus.textContent = message;
+  elements.selectionStatus.classList.remove('valid', 'invalid');
+
+  if (isValid === true) {
+    elements.selectionStatus.classList.add('valid');
+  } else if (isValid === false) {
+    elements.selectionStatus.classList.add('invalid');
+  }
+}
+
+/**
+ * Handle word validation response from server
+ */
+function handleWordValidation(msg) {
+  console.log('[Wordle] Word validation:', msg);
+
+  if (!msg.valid) {
+    updateSelectionStatus(msg.message || 'Not in word list', false);
+    // Mark tiles as invalid
+    elements.selectionTiles?.forEach((tile) => {
+      if (tile.textContent) {
+        tile.classList.add('invalid');
+        tile.classList.remove('valid');
+      }
+    });
+    elements.submitWordBtn.disabled = true;
+  }
+}
+
+/**
+ * Handle confirmation that our word was submitted
+ */
+function handleWordSubmittedConfirm(msg) {
+  console.log('[Wordle] Word submitted confirm:', msg);
+
+  if (msg.success) {
+    state.selectionSubmitted = true;
+
+    // Update UI to show submitted state
+    elements.wordSelectionView?.classList.add('submitted');
+    elements.submitWordBtn.textContent = 'Submitted!';
+    elements.submitWordBtn.disabled = true;
+
+    // Mark tiles as valid/submitted
+    elements.selectionTiles?.forEach((tile) => {
+      tile.classList.remove('invalid');
+      tile.classList.add('valid');
+    });
+
+    updateSelectionStatus('Word submitted!', true);
+  }
+}
+
+/**
+ * Handle selection progress update (someone submitted)
+ */
+function handleSelectionProgress(msg) {
+  console.log('[Wordle] Selection progress:', msg);
+
+  if (elements.selectionProgress) {
+    elements.selectionProgress.textContent = `${msg.submittedCount}/${msg.totalPlayers} players ready`;
+  }
+}
+
+/**
+ * Handle all words submitted - about to start
+ */
+function handleAllWordsSubmitted(_msg) {
+  console.log('[Wordle] All words submitted, starting soon...');
+
+  updateSelectionStatus('All players ready!', true);
+}
+
+/**
+ * Handle selection timeout (auto-assigned)
+ */
+function handleSelectionTimeout(msg) {
+  console.log('[Wordle] Selection timeout:', msg);
+
+  if (msg.autoAssignedCount > 0 && !state.selectionSubmitted) {
+    updateSelectionStatus('Time up! Random word assigned.', false);
+  }
+}
+
+/**
+ * Handle selection keyboard input
+ */
+function handleSelectionKeyInput(key) {
+  if (state.selectionSubmitted) return;
+
+  if (key === 'BACKSPACE') {
+    state.selectionWord = state.selectionWord.slice(0, -1);
+    updateSelectionTiles();
+    updateSelectionStatus('');
+    elements.submitWordBtn.disabled = true;
+    // Clear invalid state on backspace
+    elements.selectionTiles?.forEach((tile) => {
+      tile.classList.remove('invalid', 'valid');
+    });
+  } else if (key === 'ENTER') {
+    // Submit if word is complete
+    if (state.selectionWord.length === 5) {
+      submitSelectionWord();
+    }
+  } else if (key.length === 1 && /[A-Z]/i.test(key) && state.selectionWord.length < 5) {
+    state.selectionWord += key.toUpperCase();
+    updateSelectionTiles();
+
+    // Enable submit button when word is complete
+    if (state.selectionWord.length === 5) {
+      elements.submitWordBtn.disabled = false;
+      updateSelectionStatus('Press Submit to confirm', true);
+      // Mark tiles as potentially valid
+      elements.selectionTiles?.forEach((tile) => {
+        tile.classList.remove('invalid');
+        tile.classList.add('valid');
+      });
+    }
+  }
+}
+
+/**
+ * Submit the selection word to server
+ */
+function submitSelectionWord() {
+  if (state.selectionWord.length !== 5 || state.selectionSubmitted) return;
+
+  console.log('[Wordle] Submitting word:', state.selectionWord);
+  send({ type: 'submitWord', word: state.selectionWord });
 }
 
 // Room Handlers
@@ -2331,6 +2637,7 @@ function handleRoomJoined(msg) {
   }
 
   showView('waiting');
+  closeFriendsSheet(); // Auto-close bottom sheet after joining room
   elements.roomCode.textContent = state.roomCode;
   updateURLForRoom(state.roomCode); // Update URL for shareable link
 
@@ -2604,18 +2911,30 @@ function handleGameEnded(msg) {
   state.gamePhase = 'results';
   state.targetWord = msg.word;
 
+  // Store word assignments for sabotage mode
+  state.wordAssignments = msg.wordAssignments || null;
+
   // Clear any saved daily progress since the game completed
   if (state.dailyNumber) {
     clearDailyProgress(state.dailyNumber);
   }
 
   showView('results');
-  elements.revealedWord.textContent = msg.word;
+
+  // Handle word reveal - different for sabotage mode
+  if (state.wordAssignments) {
+    // Sabotage mode: hide single word reveal, show "Various" or player-specific
+    elements.revealedWord.textContent = 'See below';
+    elements.revealedWord.parentElement?.classList.add('sabotage-results');
+  } else {
+    elements.revealedWord.textContent = msg.word;
+    elements.revealedWord.parentElement?.classList.remove('sabotage-results');
+  }
 
   // Build results list
   elements.resultsList.innerHTML = '';
   msg.results.forEach((result, index) => {
-    elements.resultsList.appendChild(renderResultItem(result, index));
+    elements.resultsList.appendChild(renderResultItem(result, index, state.wordAssignments));
   });
 }
 
@@ -2903,6 +3222,46 @@ function handleRejoinGame(msg) {
 }
 
 /**
+ * Handle successful rejoin to sabotage selection phase
+ */
+function handleRejoinSelecting(msg) {
+  hideReconnectingOverlay();
+
+  // Restore state
+  state.playerId = msg.playerId;
+  state.roomCode = msg.roomCode;
+  state.gamePhase = 'selecting';
+  state.selectionDeadline = msg.deadline;
+  state.selectionSubmitted = msg.hasSubmitted;
+
+  // Update session
+  saveSession(state.roomCode, state.playerId);
+
+  // Show selection view
+  showView('wordSelection');
+
+  // If already submitted, show submitted state
+  if (msg.hasSubmitted) {
+    views.wordSelection.classList.add('submitted');
+    elements.selectionSubmit.textContent = 'Word Submitted!';
+    elements.selectionSubmit.disabled = true;
+    elements.selectionStatus.textContent = 'Waiting for other players...';
+    elements.selectionStatus.className = 'selection-status valid';
+  }
+
+  // Update progress display
+  elements.selectionProgress.textContent = `${msg.submittedCount}/${msg.totalPlayers} players submitted`;
+
+  // Start timer with remaining time
+  if (msg.timeRemaining > 0) {
+    startSelectionTimer(msg.timeRemaining);
+  }
+
+  showToast('Reconnected to word selection', 'success');
+  console.log('[Wordle] Rejoined selection phase:', state.roomCode);
+}
+
+/**
  * Handle successful rejoin to results screen
  */
 function handleRejoinResults(msg) {
@@ -3051,6 +3410,9 @@ function updateWordModeButtons() {
   if (elements.wordModeRandom) {
     elements.wordModeRandom.classList.toggle('active', state.wordMode === 'random');
   }
+  if (elements.wordModeSabotage) {
+    elements.wordModeSabotage.classList.toggle('active', state.wordMode === 'sabotage');
+  }
   if (elements.dailyNumberDisplay) {
     if (state.wordMode === 'daily' && state.dailyNumber) {
       elements.dailyNumberDisplay.textContent = `#${state.dailyNumber}`;
@@ -3058,6 +3420,10 @@ function updateWordModeButtons() {
     } else {
       elements.dailyNumberDisplay.classList.add('hidden');
     }
+  }
+  // Show/hide sabotage hint in waiting room
+  if (elements.sabotageHintWaiting) {
+    elements.sabotageHintWaiting.classList.toggle('hidden', state.wordMode !== 'sabotage');
   }
 }
 
@@ -3083,6 +3449,19 @@ function updateConfigButtons() {
   }
   if (elements.configWordRandom) {
     elements.configWordRandom.classList.toggle('active', state.pendingConfig.wordMode === 'random');
+  }
+  if (elements.configWordSabotage) {
+    elements.configWordSabotage.classList.toggle(
+      'active',
+      state.pendingConfig.wordMode === 'sabotage'
+    );
+  }
+  // Show/hide sabotage hint
+  if (elements.sabotageHintConfig) {
+    elements.sabotageHintConfig.classList.toggle(
+      'hidden',
+      state.pendingConfig.wordMode !== 'sabotage'
+    );
   }
   if (elements.configVisPublic) {
     elements.configVisPublic.classList.toggle('active', state.pendingConfig.isPublic === true);
@@ -3122,9 +3501,10 @@ function updateStartButton() {
  *
  * @param {Object} result - Result object with name, won, guesses, time, score
  * @param {number} index - Position in results list (0-based)
+ * @param {Array|null} wordAssignments - Optional array of word assignments for sabotage mode
  * @returns {HTMLLIElement} The rendered list item
  */
-function renderResultItem(result, index) {
+function renderResultItem(result, index, wordAssignments = null) {
   const li = document.createElement('li');
 
   let rankClass = '';
@@ -3133,7 +3513,8 @@ function renderResultItem(result, index) {
   else if (index === 2) rankClass = 'bronze';
 
   // Handle both playerId and id field names (server inconsistency)
-  const isMe = (result.playerId || result.id) === state.playerId;
+  const playerId = result.playerId || result.id;
+  const isMe = playerId === state.playerId;
 
   const timeStr = result.time ? `${(result.time / 1000).toFixed(1)}s` : '-';
   const statsStr =
@@ -3141,11 +3522,26 @@ function renderResultItem(result, index) {
       ? `${result.guesses} guesses • ${timeStr} • ${result.score} pts`
       : `${result.guesses} guesses • ${timeStr}`;
 
+  // Sabotage mode: find this player's word assignment
+  let sabotageInfo = '';
+  if (wordAssignments) {
+    const assignment = wordAssignments.find((a) => a.targetId === playerId);
+    if (assignment) {
+      sabotageInfo = `
+        <div class="sabotage-word-info">
+          Word: <strong>${assignment.word}</strong>
+          <span class="picked-by">(picked by ${assignment.pickerName})</span>
+        </div>
+      `;
+    }
+  }
+
   li.innerHTML = `
     <span class="rank ${rankClass}">${index + 1}</span>
     <div class="player-info">
       <div class="player-name">${result.name}${isMe ? ' (You)' : ''}</div>
       <div class="player-stats">${result.won ? statsStr : 'Did not solve'}</div>
+      ${sabotageInfo}
     </div>
     <span class="result-badge ${result.won ? 'won' : 'lost'}">${result.won ? 'Solved' : 'Failed'}</span>
   `;
@@ -3512,6 +3908,13 @@ function setupEventListeners() {
     });
   }
 
+  if (elements.configWordSabotage) {
+    elements.configWordSabotage.addEventListener('click', () => {
+      state.pendingConfig.wordMode = 'sabotage';
+      updateConfigButtons();
+    });
+  }
+
   if (elements.configVisPublic) {
     elements.configVisPublic.addEventListener('click', () => {
       state.pendingConfig.isPublic = true;
@@ -3591,6 +3994,14 @@ function setupEventListeners() {
     elements.wordModeRandom.addEventListener('click', () => {
       if (state.isCreator) {
         send({ type: 'setWordMode', mode: 'random' });
+      }
+    });
+  }
+
+  if (elements.wordModeSabotage) {
+    elements.wordModeSabotage.addEventListener('click', () => {
+      if (state.isCreator) {
+        send({ type: 'setWordMode', mode: 'sabotage' });
       }
     });
   }
@@ -3691,8 +4102,38 @@ function setupEventListeners() {
     }
   });
 
-  // Physical keyboard
+  // Selection phase keyboard (sabotage mode)
+  if (elements.selectionKeyboard) {
+    elements.selectionKeyboard.addEventListener('click', (e) => {
+      const key = e.target.dataset.key;
+      if (key) {
+        handleSelectionKeyInput(key);
+      }
+    });
+  }
+
+  // Submit word button (sabotage mode)
+  if (elements.submitWordBtn) {
+    elements.submitWordBtn.addEventListener('click', () => {
+      submitSelectionWord();
+    });
+  }
+
+  // Physical keyboard - supports both game and selection phases
   document.addEventListener('keydown', (e) => {
+    // Selection phase keyboard handling
+    if (state.gamePhase === 'selecting') {
+      if (e.key === 'Enter') {
+        handleSelectionKeyInput('ENTER');
+      } else if (e.key === 'Backspace') {
+        handleSelectionKeyInput('BACKSPACE');
+      } else if (/^[a-zA-Z]$/.test(e.key)) {
+        handleSelectionKeyInput(e.key.toUpperCase());
+      }
+      return;
+    }
+
+    // Game phase keyboard handling
     if (state.gamePhase !== 'playing') return;
 
     if (e.key === 'Enter') {

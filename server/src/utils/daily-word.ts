@@ -72,4 +72,4 @@ export function getDailyWordByNumber(dailyNumber: number): string {
   return WORD_LIST[index];
 }
 
-export type WordMode = 'daily' | 'random';
+export type WordMode = 'daily' | 'random' | 'sabotage';

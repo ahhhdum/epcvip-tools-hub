@@ -8,14 +8,15 @@
 import { WebSocket } from 'ws';
 import * as fs from 'fs';
 import * as path from 'path';
-import { WordleRoom, WordlePlayer, getConnectedPlayers } from './wordle-room-types';
-import { getRandomWord } from '../utils/word-list';
+import { WordleRoom, WordlePlayer, WordAssignment, getConnectedPlayers } from './wordle-room-types';
+import { getRandomWord, WORD_LIST } from '../utils/word-list';
 import { getDailyNumber, getDailyWordByNumber } from '../utils/daily-word';
 import {
   MAX_GUESSES,
   MIN_PLAYERS_FOR_MULTIPLAYER,
   FORCED_WORDS_LOG_FILE,
   LOGS_DIRECTORY,
+  SELECTION_TIMEOUT_MS,
 } from '../constants/wordle-constants';
 import {
   validateGuess,
@@ -146,10 +147,207 @@ export class WordleGameController {
       return;
     }
 
-    console.log(`[Wordle] Starting countdown in room ${roomCode}`);
+    console.log(`[Wordle] Starting game in room ${roomCode}`);
 
-    // Start the countdown (game will begin after 3... 2... 1...)
-    this.startCountdown(room);
+    // For sabotage mode, enter selection phase first
+    if (room.wordMode === 'sabotage') {
+      this.startSelectionPhase(room);
+    } else {
+      // Start the countdown (game will begin after 3... 2... 1...)
+      this.startCountdown(room);
+    }
+  }
+
+  /**
+   * Start the word selection phase for sabotage mode
+   * Each player picks a word for another player in a circular chain
+   */
+  private startSelectionPhase(room: WordleRoom): void {
+    room.gameState = 'selecting';
+
+    // Calculate circular assignments: each picker → target
+    // For 2 players: A picks for B, B picks for A
+    // For 3+ players: shuffle then chain (A→B→C→A)
+    const playerIds = Array.from(room.players.keys());
+    const shuffled = this.shuffleArray([...playerIds]);
+
+    room.pickerAssignments = new Map();
+    room.wordAssignments = new Map();
+
+    for (let i = 0; i < shuffled.length; i++) {
+      const pickerId = shuffled[i];
+      const targetId = shuffled[(i + 1) % shuffled.length];
+      room.pickerAssignments.set(pickerId, targetId);
+    }
+
+    // Set deadline
+    room.selectionDeadline = Date.now() + SELECTION_TIMEOUT_MS;
+
+    // Send selection phase started to each player
+    // Players learn they're picking, but NOT who for (mystery until results!)
+    for (const player of room.players.values()) {
+      if (player.socket && player.connectionState === 'connected') {
+        this.send(player.socket, {
+          type: 'selectionPhaseStarted',
+          deadline: room.selectionDeadline,
+          timeRemaining: SELECTION_TIMEOUT_MS,
+        });
+      }
+    }
+
+    // Start timeout timer
+    room.selectionTimer = setTimeout(() => {
+      this.handleSelectionTimeout(room);
+    }, SELECTION_TIMEOUT_MS);
+
+    console.log(`[Wordle] Selection phase started in room ${room.code}`);
+
+    // Update lobby (room no longer joinable during selection)
+    this.broadcastPublicRoomsList();
+  }
+
+  /**
+   * Handle word submission during sabotage selection phase
+   */
+  handleSubmitWord(socket: WebSocket, word: string): void {
+    const playerId = this.socketToPlayer.get(socket);
+    if (!playerId) return;
+
+    const roomCode = this.playerToRoom.get(playerId);
+    if (!roomCode) return;
+
+    const room = this.rooms.get(roomCode);
+    if (!room || room.gameState !== 'selecting') {
+      this.send(socket, { type: 'error', message: 'Not in word selection phase.' });
+      return;
+    }
+
+    const player = room.players.get(playerId);
+    if (!player) return;
+
+    // Validate word is in the answer word list (666 words, not full 12K)
+    const normalizedWord = word.toUpperCase().trim();
+    if (!WORD_LIST.includes(normalizedWord)) {
+      this.send(socket, {
+        type: 'wordValidation',
+        valid: false,
+        message: 'Word not in answer list. Try another!',
+      });
+      return;
+    }
+
+    // Get target player
+    const targetId = room.pickerAssignments?.get(playerId);
+    if (!targetId) {
+      this.send(socket, { type: 'error', message: 'No assignment found.' });
+      return;
+    }
+
+    // Check if already submitted
+    if (room.wordAssignments?.has(targetId)) {
+      this.send(socket, { type: 'error', message: 'You already submitted a word.' });
+      return;
+    }
+
+    // Store the assignment
+    const assignment: WordAssignment = {
+      pickerId: playerId,
+      pickerName: player.name,
+      targetId,
+      word: normalizedWord,
+      submittedAt: Date.now(),
+    };
+    room.wordAssignments!.set(targetId, assignment);
+
+    // Confirm to picker
+    this.send(socket, {
+      type: 'wordSubmitted',
+      success: true,
+    });
+
+    // Broadcast that someone submitted (without revealing who or what)
+    const submittedCount = room.wordAssignments!.size;
+    const totalPlayers = room.players.size;
+
+    this.broadcastToRoom(room.code, {
+      type: 'selectionProgress',
+      submittedCount,
+      totalPlayers,
+    });
+
+    console.log(`[Wordle] Word submitted in room ${room.code}: ${submittedCount}/${totalPlayers}`);
+
+    // Check if all players have submitted
+    if (submittedCount === totalPlayers) {
+      // Clear timeout and start game
+      if (room.selectionTimer) {
+        clearTimeout(room.selectionTimer);
+        room.selectionTimer = null;
+      }
+
+      // Brief pause then start countdown
+      this.broadcastToRoom(room.code, { type: 'allWordsSubmitted' });
+      setTimeout(() => {
+        this.startCountdown(room);
+      }, 500);
+    }
+  }
+
+  /**
+   * Handle selection timeout - assign random words to players who didn't submit
+   */
+  private handleSelectionTimeout(room: WordleRoom): void {
+    room.selectionTimer = null;
+
+    if (room.gameState !== 'selecting') return;
+
+    const autoAssigned: string[] = [];
+
+    // For each player who needs a word assigned
+    for (const [pickerId, targetId] of room.pickerAssignments!) {
+      if (!room.wordAssignments!.has(targetId)) {
+        // Picker didn't submit - assign random word
+        const picker = room.players.get(pickerId);
+        const randomWord = getRandomWord();
+
+        const assignment: WordAssignment = {
+          pickerId,
+          pickerName: picker?.name || 'Unknown',
+          targetId,
+          word: randomWord,
+          submittedAt: Date.now(),
+        };
+        room.wordAssignments!.set(targetId, assignment);
+        autoAssigned.push(pickerId);
+      }
+    }
+
+    if (autoAssigned.length > 0) {
+      console.log(
+        `[Wordle] Selection timeout in room ${room.code}, auto-assigned ${autoAssigned.length} words`
+      );
+    }
+
+    this.broadcastToRoom(room.code, {
+      type: 'selectionTimeout',
+      autoAssignedCount: autoAssigned.length,
+    });
+
+    // Start the game countdown
+    setTimeout(() => {
+      this.startCountdown(room);
+    }, 500);
+  }
+
+  /**
+   * Shuffle an array using Fisher-Yates algorithm
+   */
+  private shuffleArray<T>(array: T[]): T[] {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
   }
 
   /**
@@ -191,6 +389,10 @@ export class WordleGameController {
       // Use specific daily number if set (historical), otherwise today's
       const dailyNum = room.dailyNumber ?? getDailyNumber();
       room.word = getDailyWordByNumber(dailyNum);
+    } else if (room.wordMode === 'sabotage') {
+      // In sabotage mode, each player has their own word from wordAssignments
+      // Set room.word to null - individual words are in wordAssignments
+      room.word = null;
     } else {
       room.word = getRandomWord();
     }
@@ -198,9 +400,11 @@ export class WordleGameController {
     room.startTime = Date.now();
 
     // Create game record in database for tracking guesses
+    // For sabotage mode, use placeholder word (individual words tracked separately)
+    const dbWord = room.wordMode === 'sabotage' ? 'SABOTAGE' : room.word!;
     room.gameId = await createGame({
       roomCode: room.code,
-      word: room.word!,
+      word: dbWord,
       gameMode: room.gameMode,
       wordMode: room.wordMode,
       dailyNumber: room.dailyNumber,
@@ -210,8 +414,15 @@ export class WordleGameController {
     });
 
     const wordModeInfo =
-      room.wordMode === 'daily' ? `Daily #${room.dailyNumber ?? getDailyNumber()}` : 'Random';
-    console.log(`[Wordle] Game started in room ${room.code}, word: ${room.word} (${wordModeInfo})`);
+      room.wordMode === 'daily'
+        ? `Daily #${room.dailyNumber ?? getDailyNumber()}`
+        : room.wordMode === 'sabotage'
+          ? 'Sabotage'
+          : 'Random';
+    console.log(
+      `[Wordle] Game started in room ${room.code}, mode: ${wordModeInfo}` +
+        (room.word ? `, word: ${room.word}` : '')
+    );
 
     // Send game start to all players
     const players = Array.from(room.players.values()).map((p) => ({
@@ -276,7 +487,23 @@ export class WordleGameController {
     if (!roomCode) return;
 
     const room = this.rooms.get(roomCode);
-    if (!room || room.gameState !== 'playing' || !room.word) return;
+    if (!room || room.gameState !== 'playing') return;
+
+    // Determine the target word for this player
+    let targetWord: string;
+    if (room.wordMode === 'sabotage') {
+      // In sabotage mode, each player has their own word from wordAssignments
+      const assignment = room.wordAssignments?.get(playerId);
+      if (!assignment) {
+        this.send(socket, { type: 'error', message: 'No word assigned.' });
+        return;
+      }
+      targetWord = assignment.word;
+    } else {
+      // Normal mode - everyone solves the same word
+      if (!room.word) return;
+      targetWord = room.word;
+    }
 
     const player = room.players.get(playerId);
     if (!player || player.isFinished) return;
@@ -305,7 +532,7 @@ export class WordleGameController {
     const timeSinceLastMs = player.lastGuessTime ? now - player.lastGuessTime : null;
 
     // Validate guess against target word using validator service
-    const result = validateGuess(guess, room.word);
+    const result = validateGuess(guess, targetWord);
     player.guesses.push(guess);
     player.guessResults.push(result);
     player.lastGuessTime = now;
@@ -448,11 +675,25 @@ export class WordleGameController {
       r.finishPosition = idx + 1;
     });
 
+    // Build word assignments for sabotage mode results
+    // Convert Map to array of objects for JSON serialization
+    const wordAssignments =
+      room.wordMode === 'sabotage' && room.wordAssignments
+        ? Array.from(room.wordAssignments.entries()).map(([targetId, assignment]) => ({
+            targetId,
+            targetName: room.players.get(targetId)?.name || 'Unknown',
+            word: assignment.word,
+            pickerId: assignment.pickerId,
+            pickerName: assignment.pickerName,
+          }))
+        : null;
+
     this.broadcastToRoom(room.code, {
       type: 'gameEnded',
-      word: room.word,
+      word: room.word, // null in sabotage mode
       results,
       gameMode: room.gameMode,
+      wordAssignments, // Array of { targetId, targetName, word, pickerId, pickerName }
     });
 
     console.log(`[Wordle] Game ended in room ${room.code}`);
