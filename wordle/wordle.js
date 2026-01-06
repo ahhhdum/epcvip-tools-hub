@@ -431,6 +431,18 @@ const elements = {
   settingsName: document.getElementById('settingsName'),
   soundToggle: document.getElementById('soundToggle'),
   backFromSettings: document.getElementById('backFromSettings'),
+
+  // Settings - Account Section (UX-003)
+  settingsAccountSection: document.getElementById('settingsAccountSection'),
+  changePasswordBtn: document.getElementById('changePasswordBtn'),
+  changePasswordForm: document.getElementById('changePasswordForm'),
+  currentPassword: document.getElementById('currentPassword'),
+  newPasswordSettings: document.getElementById('newPasswordSettings'),
+  confirmNewPassword: document.getElementById('confirmNewPassword'),
+  changePasswordError: document.getElementById('changePasswordError'),
+  changePasswordSuccess: document.getElementById('changePasswordSuccess'),
+  submitPasswordChange: document.getElementById('submitPasswordChange'),
+  cancelPasswordChange: document.getElementById('cancelPasswordChange'),
 };
 
 // SSO Token Handling
@@ -960,7 +972,121 @@ function showSettings() {
     elements.soundToggle.setAttribute('aria-pressed', soundEnabled.toString());
   }
 
+  // Show account section only for logged-in users (UX-003)
+  if (elements.settingsAccountSection) {
+    if (state.authUser) {
+      elements.settingsAccountSection.classList.remove('hidden');
+    } else {
+      elements.settingsAccountSection.classList.add('hidden');
+    }
+  }
+
+  // Reset password form state
+  hideChangePasswordForm();
+
   showView('settingsView');
+}
+
+/**
+ * Show the change password form in settings (UX-003).
+ */
+function showChangePasswordForm() {
+  if (elements.changePasswordBtn) {
+    elements.changePasswordBtn.classList.add('hidden');
+  }
+  if (elements.changePasswordForm) {
+    elements.changePasswordForm.classList.remove('hidden');
+  }
+  // Clear previous inputs and messages
+  if (elements.currentPassword) elements.currentPassword.value = '';
+  if (elements.newPasswordSettings) elements.newPasswordSettings.value = '';
+  if (elements.confirmNewPassword) elements.confirmNewPassword.value = '';
+  if (elements.changePasswordError) {
+    elements.changePasswordError.textContent = '';
+    elements.changePasswordError.classList.add('hidden');
+  }
+  if (elements.changePasswordSuccess) {
+    elements.changePasswordSuccess.textContent = '';
+    elements.changePasswordSuccess.classList.add('hidden');
+  }
+}
+
+/**
+ * Hide the change password form in settings.
+ */
+function hideChangePasswordForm() {
+  if (elements.changePasswordBtn) {
+    elements.changePasswordBtn.classList.remove('hidden');
+  }
+  if (elements.changePasswordForm) {
+    elements.changePasswordForm.classList.add('hidden');
+  }
+}
+
+/**
+ * Handle password change submission (UX-003).
+ */
+async function handlePasswordChange() {
+  // Note: currentPassword collected for future server-side verification
+  const _currentPassword = elements.currentPassword?.value?.trim();
+  const newPassword = elements.newPasswordSettings?.value?.trim();
+  const confirmPassword = elements.confirmNewPassword?.value?.trim();
+
+  // Clear previous messages
+  if (elements.changePasswordError) {
+    elements.changePasswordError.classList.add('hidden');
+  }
+  if (elements.changePasswordSuccess) {
+    elements.changePasswordSuccess.classList.add('hidden');
+  }
+
+  // Validation
+  if (!newPassword || !confirmPassword) {
+    showChangePasswordError('Please fill in all fields');
+    return;
+  }
+
+  if (newPassword.length < 6) {
+    showChangePasswordError('New password must be at least 6 characters');
+    return;
+  }
+
+  if (newPassword !== confirmPassword) {
+    showChangePasswordError('New passwords do not match');
+    return;
+  }
+
+  try {
+    // Use Supabase to update password
+    const { error } = await state.supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    if (error) {
+      showChangePasswordError(error.message);
+      return;
+    }
+
+    // Success
+    if (elements.changePasswordSuccess) {
+      elements.changePasswordSuccess.textContent = 'Password updated successfully!';
+      elements.changePasswordSuccess.classList.remove('hidden');
+    }
+
+    // Clear form after brief delay
+    setTimeout(() => {
+      hideChangePasswordForm();
+    }, 2000);
+  } catch (_err) {
+    showChangePasswordError('Failed to update password. Please try again.');
+  }
+}
+
+function showChangePasswordError(message) {
+  if (elements.changePasswordError) {
+    elements.changePasswordError.textContent = message;
+    elements.changePasswordError.classList.remove('hidden');
+  }
 }
 
 /**
@@ -4011,6 +4137,19 @@ function setupEventListeners() {
         }
       }
     });
+  }
+
+  // Password change in settings (UX-003)
+  if (elements.changePasswordBtn) {
+    elements.changePasswordBtn.addEventListener('click', showChangePasswordForm);
+  }
+
+  if (elements.submitPasswordChange) {
+    elements.submitPasswordChange.addEventListener('click', handlePasswordChange);
+  }
+
+  if (elements.cancelPasswordChange) {
+    elements.cancelPasswordChange.addEventListener('click', hideChangePasswordForm);
   }
 
   // Re-render opponent boards on resize (debounced)

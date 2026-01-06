@@ -445,6 +445,26 @@
           </div>
         </div>
 
+        <!-- Account Section (shown when logged in) -->
+        <div id="settingsAccountSection" class="settings-card hidden">
+          <label>Account</label>
+          <div id="changePasswordSection">
+            <button id="changePasswordBtn" class="btn btn-secondary settings-action-btn">Change Password</button>
+          </div>
+          <!-- Change Password Form (hidden by default) -->
+          <div id="changePasswordForm" class="settings-form hidden">
+            <input type="password" id="currentPassword" placeholder="Current password" autocomplete="current-password">
+            <input type="password" id="newPasswordSettings" placeholder="New password" autocomplete="new-password">
+            <input type="password" id="confirmNewPassword" placeholder="Confirm new password" autocomplete="new-password">
+            <p id="changePasswordError" class="error-message hidden"></p>
+            <p id="changePasswordSuccess" class="success-message hidden"></p>
+            <div class="settings-form-actions">
+              <button id="submitPasswordChange" class="btn btn-primary">Update Password</button>
+              <button id="cancelPasswordChange" class="btn btn-secondary">Cancel</button>
+            </div>
+          </div>
+        </div>
+
         <button id="backFromSettings" class="btn btn-link">← Back to Lobby</button>
       </div>
     </div>

@@ -3222,6 +3222,45 @@ body {
   margin-top: 24px;
 }
 
+/* Settings Account Section */
+.settings-action-btn {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.settings-form input {
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--bg-tile);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+}
+
+.settings-form input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.settings-form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.settings-form-actions .btn {
+  flex: 1;
+  padding: 10px 16px;
+}
+
 /* ===========================================
    Mobile Adjustments for Lobby Redesign
    =========================================== */
