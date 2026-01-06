@@ -206,6 +206,20 @@ export class WordleRoomManager {
       return null;
     }
 
+    // BUG-004: Check if user already has an active daily room for this number
+    // Prevents race condition from multiple rapid clicks or multiple tabs
+    const existingDailyRoom = this.findActiveRoomByEmailAndDaily(playerEmail, dailyNumber);
+    if (existingDailyRoom) {
+      console.log(
+        `[DAILY] User ${playerEmail} already has active room ${existingDailyRoom.code} for Daily #${dailyNumber}`
+      );
+      this.send(socket, {
+        type: 'error',
+        message: 'You already have an active game for this daily challenge',
+      });
+      return null;
+    }
+
     // Create room with daily challenge settings locked
     const result = this.createRoom(socket, playerName, playerEmail);
     if (result) {
@@ -533,6 +547,25 @@ export class WordleRoomManager {
     } catch (e) {
       console.error('[Wordle] Error handling message:', e);
     }
+  }
+
+  /**
+   * BUG-004: Find if user already has an active room for a specific daily challenge.
+   * Searches all rooms for a player with matching email in a daily room with matching number.
+   */
+  private findActiveRoomByEmailAndDaily(email: string, dailyNumber: number): WordleRoom | null {
+    for (const room of this.rooms.values()) {
+      if (!room.isDailyChallenge || room.dailyNumber !== dailyNumber) {
+        continue;
+      }
+      // Check if any player in this room has matching email
+      for (const player of room.players.values()) {
+        if (player.email === email) {
+          return room;
+        }
+      }
+    }
+    return null;
   }
 
   /**
