@@ -1,5 +1,69 @@
 # EPCVIP Tools Hub - Feature Backlog
 
+## Priority & Effort Legend
+
+| Priority | Meaning | SLA |
+|----------|---------|-----|
+| **P0** | Critical bug / blocker | This sprint |
+| **P1** | High value, should do soon | Next 2 sprints |
+| **P2** | Nice to have | When time permits |
+| **P3** | Icebox / future idea | No timeline |
+
+| Effort | Time Estimate |
+|--------|---------------|
+| **XS** | < 1 hour |
+| **S** | 1-2 hours |
+| **M** | 3-4 hours |
+| **L** | 5-8 hours |
+| **XL** | > 1 day |
+
+---
+
+## Current Sprint
+
+| ID | Priority | Effort | Description |
+|----|----------|--------|-------------|
+| UX-001 | P1 | S | Clearer logged-out state indicator |
+| UX-003 | P1 | S | Password reset in Settings page |
+| BUG-004 | P1 | S | Race condition - multiple daily rooms per user |
+
+---
+
+## Prioritized Backlog
+
+### P1 - High Priority
+
+| ID | Effort | Description | Files |
+|----|--------|-------------|-------|
+| **UX-001** | S | Clearer logged-out state - more obvious visual difference | `wordle.js`, `wordle.css` |
+| **UX-003** | S | Password reset in Settings page | `index.html`, `wordle.js` |
+| **BUG-004** | S | Race condition - multiple daily rooms per user | `wordle-room.ts` |
+| **BUG-005** | M | localStorage resume exploit - track attempts server-side | `wordle-database.ts`, `wordle-room.ts` |
+| **FEAT-003** | M | Daily attempt tracking (resumed = no stats) | migrations, `wordle-database.ts` |
+
+### P2 - Medium Priority
+
+| ID | Effort | Description | Files |
+|----|--------|-------------|-------|
+| **FEAT-001** | L | Spectate mode for completed daily users | `wordle-room.ts`, `wordle.js` |
+| **STATS-001** | M | Personal stats dashboard (API exists) | `wordle.js`, `index.html` |
+| **STATS-002** | S | Guess distribution chart | `wordle.js`, `wordle.css` |
+| **SHARE-001** | S | Share results - emoji grid to clipboard | `wordle.js` |
+| **ACH-001** | L | Achievement trigger logic + notifications | `wordle-room.ts`, `wordle.js` |
+| **UX-002** | S | Custom email templates (Supabase Pro required) | Supabase Dashboard |
+
+### P3 - Low Priority / Icebox
+
+| ID | Effort | Description |
+|----|--------|-------------|
+| **LEADER-001** | M | Daily leaderboard - fastest solvers |
+| **STATS-003** | M | Starting word analytics |
+| **STATS-004** | M | Matchup history UI |
+| **CODE-001** | M | Split wordle.js into modules |
+| **CODE-002** | S | Split wordle.css into partials |
+
+---
+
 ## Completed
 - [x] Fritelles with golden variants
 - [x] Throw mechanic (diagonal support)
