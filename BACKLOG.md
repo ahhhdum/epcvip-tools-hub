@@ -21,11 +21,11 @@
 
 ## Current Sprint
 
-| ID | Priority | Effort | Description |
-|----|----------|--------|-------------|
-| UX-001 | P1 | S | Clearer logged-out state indicator |
-| UX-003 | P1 | S | Password reset in Settings page |
-| BUG-004 | P1 | S | Race condition - multiple daily rooms per user |
+| ID | Priority | Effort | Description | Status |
+|----|----------|--------|-------------|--------|
+| UX-001 | P1 | S | Clearer logged-out state indicator | Done |
+| UX-003 | P1 | S | Password reset in Settings page | |
+| BUG-004 | P1 | S | Race condition - multiple daily rooms per user | |
 
 ---
 
@@ -35,7 +35,7 @@
 
 | ID | Effort | Description | Files |
 |----|--------|-------------|-------|
-| **UX-001** | S | Clearer logged-out state - more obvious visual difference | `wordle.js`, `wordle.css` |
+| ~~**UX-001**~~ | S | ~~Clearer logged-out state - more obvious visual difference~~ | Done |
 | **UX-003** | S | Password reset in Settings page | `index.html`, `wordle.js` |
 | **BUG-004** | S | Race condition - multiple daily rooms per user | `wordle-room.ts` |
 | **BUG-005** | M | localStorage resume exploit - track attempts server-side | `wordle-database.ts`, `wordle-room.ts` |

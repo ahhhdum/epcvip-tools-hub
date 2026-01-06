@@ -18,7 +18,10 @@
         </div>
         <div class="toolbar-right">
           <button id="settingsBtn" class="toolbar-btn" aria-label="Settings">⚙️</button>
-          <button id="profileBtn" class="toolbar-btn" aria-label="Profile">👤</button>
+          <button id="profileBtn" class="toolbar-btn profile-btn" aria-label="Profile">
+            <span class="profile-icon">👤</span>
+            <span class="profile-label" id="profileLabel">Guest</span>
+          </button>
         </div>
       </div>
     </header>
@@ -56,11 +59,18 @@
     <div id="lobby" class="view">
       <div class="lobby-content lobby-simplified">
         <!-- Primary CTA: Daily Challenge -->
-        <button id="dailyChallengeBtn" class="btn btn-daily-large" disabled>
-          <span class="btn-icon">🎯</span>
-          <span class="btn-text">Daily Challenge</span>
-          <span class="btn-number">#<span id="dailyNum">---</span></span>
-        </button>
+        <div id="dailyBtnContainer" class="daily-btn-container">
+          <button id="dailyChallengeBtn" class="btn btn-daily-large" disabled>
+            <span class="btn-icon">🎯</span>
+            <span class="btn-text">Daily Challenge</span>
+            <span class="btn-number">#<span id="dailyNum">---</span></span>
+          </button>
+          <!-- Tooltip shown when logged out and tapping disabled daily -->
+          <div id="dailyTooltip" class="feature-tooltip hidden">
+            <p>Sign in to play daily challenges and track your stats!</p>
+            <button class="tooltip-cta" id="tooltipSignIn">Sign in</button>
+          </div>
+        </div>
 
         <!-- Secondary CTA: Play With Friends -->
         <button id="playWithFriendsLobbyBtn" class="btn btn-friends">

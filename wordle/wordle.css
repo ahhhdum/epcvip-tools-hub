@@ -3290,3 +3290,148 @@ body {
 .header {
   position: relative;
 }
+
+/* ===========================================
+   Profile Button States (UX-001)
+   =========================================== */
+
+.profile-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 20px;
+  transition: all 0.2s ease;
+  width: auto;
+}
+
+.profile-icon {
+  font-size: 1rem;
+}
+
+.profile-label {
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+/* Logged out - muted, inviting */
+.profile-btn.logged-out {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px dashed var(--border);
+}
+
+.profile-btn.logged-out:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-style: solid;
+}
+
+.profile-btn.logged-out .profile-label {
+  color: var(--text-secondary);
+}
+
+/* Logged in - confident, complete */
+.profile-btn.logged-in {
+  background: rgba(83, 141, 78, 0.2);
+  border: 1px solid var(--correct);
+}
+
+.profile-btn.logged-in:hover {
+  background: rgba(83, 141, 78, 0.3);
+}
+
+.profile-btn.logged-in .profile-icon {
+  color: var(--correct);
+}
+
+/* Mobile: hide label on small screens */
+@media (max-width: 480px) {
+  .profile-btn .profile-label {
+    display: none;
+  }
+
+  .profile-btn {
+    padding: 8px;
+    width: 40px;
+  }
+}
+
+/* ===========================================
+   Feature Tooltip (UX-001)
+   =========================================== */
+
+.feature-tooltip {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 8px;
+  padding: 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  z-index: 150;
+  width: 280px;
+  text-align: center;
+  animation: tooltipFade 0.2s ease;
+}
+
+@keyframes tooltipFade {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.feature-tooltip::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 8px solid transparent;
+  border-bottom-color: var(--border);
+}
+
+.feature-tooltip::after {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 7px solid transparent;
+  border-bottom-color: var(--bg-secondary);
+}
+
+.feature-tooltip p {
+  margin: 0 0 12px 0;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.tooltip-cta {
+  padding: 10px 24px;
+  background: var(--accent);
+  border: none;
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tooltip-cta:hover {
+  background: #477841;
+}
+
+/* Daily button container for tooltip positioning */
+.daily-btn-container {
+  position: relative;
+  width: 100%;
+}

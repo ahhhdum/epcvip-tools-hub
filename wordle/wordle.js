@@ -396,6 +396,7 @@ const elements = {
 
   // Profile Dropdown
   profileDropdown: document.getElementById('profileDropdown'),
+  profileLabel: document.getElementById('profileLabel'),
   profileLoggedIn: document.getElementById('profileLoggedIn'),
   profileLoggedOut: document.getElementById('profileLoggedOut'),
   profileDisplayName: document.getElementById('profileDisplayName'),
@@ -405,6 +406,11 @@ const elements = {
   dropdownLogin: document.getElementById('dropdownLogin'),
   dropdownSignup: document.getElementById('dropdownSignup'),
   dropdownGuest: document.getElementById('dropdownGuest'),
+
+  // Daily Tooltip (UX-001)
+  dailyBtnContainer: document.getElementById('dailyBtnContainer'),
+  dailyTooltip: document.getElementById('dailyTooltip'),
+  tooltipSignIn: document.getElementById('tooltipSignIn'),
 
   // Simplified Lobby
   playWithFriendsLobbyBtn: document.getElementById('playWithFriendsLobbyBtn'),
@@ -725,6 +731,9 @@ function updateAuthUI() {
   // Update profile dropdown UI (new lobby design)
   updateProfileDropdown();
 
+  // Update profile button state (UX-001)
+  updateProfileButtonState();
+
   // Update stats strip
   updateStatsStrip();
 
@@ -792,6 +801,77 @@ function closeProfileDropdownOnOutsideClick(e) {
     !elements.profileBtn?.contains(e.target)
   ) {
     closeProfileDropdown();
+  }
+}
+
+/**
+ * Update profile button appearance based on auth state (UX-001).
+ * - Logged out: Shows "Guest" with muted styling
+ * - Logged in: Shows user initials with green styling
+ */
+function updateProfileButtonState() {
+  if (!elements.profileBtn) return;
+
+  if (state.authUser) {
+    // Logged in
+    elements.profileBtn.classList.remove('logged-out');
+    elements.profileBtn.classList.add('logged-in');
+    if (elements.profileLabel) {
+      elements.profileLabel.textContent = getInitials(state.authUser.name);
+    }
+  } else {
+    // Logged out
+    elements.profileBtn.classList.remove('logged-in');
+    elements.profileBtn.classList.add('logged-out');
+    if (elements.profileLabel) {
+      elements.profileLabel.textContent = 'Guest';
+    }
+  }
+}
+
+/**
+ * Get user initials from name (up to 2 characters).
+ */
+function getInitials(name) {
+  if (!name) return '?';
+  return name
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+/**
+ * Show the daily challenge tooltip (when guest taps disabled button).
+ */
+function showDailyTooltip() {
+  if (elements.dailyTooltip) {
+    elements.dailyTooltip.classList.remove('hidden');
+    // Close on click outside
+    setTimeout(() => {
+      document.addEventListener('click', closeDailyTooltipOnOutsideClick);
+    }, 0);
+  }
+}
+
+/**
+ * Hide the daily challenge tooltip.
+ */
+function hideDailyTooltip() {
+  if (elements.dailyTooltip) {
+    elements.dailyTooltip.classList.add('hidden');
+  }
+  document.removeEventListener('click', closeDailyTooltipOnOutsideClick);
+}
+
+function closeDailyTooltipOnOutsideClick(e) {
+  if (
+    elements.dailyTooltip &&
+    !elements.dailyTooltip.contains(e.target) &&
+    !elements.dailyChallengeBtn?.contains(e.target)
+  ) {
+    hideDailyTooltip();
   }
 }
 
@@ -3857,6 +3937,26 @@ function setupEventListeners() {
       if (elements.dailyChallengeSection) {
         elements.dailyChallengeSection.classList.remove('hidden');
       }
+    });
+  }
+
+  // Daily Challenge tooltip (UX-001) - show when guest taps disabled button
+  // Use container because click events don't fire on disabled buttons
+  if (elements.dailyBtnContainer) {
+    elements.dailyBtnContainer.addEventListener('click', (e) => {
+      // Only show tooltip if button is disabled (user not logged in)
+      if (elements.dailyChallengeBtn?.disabled) {
+        e.preventDefault();
+        showDailyTooltip();
+      }
+    });
+  }
+
+  // Tooltip sign-in button opens auth modal
+  if (elements.tooltipSignIn) {
+    elements.tooltipSignIn.addEventListener('click', () => {
+      hideDailyTooltip();
+      showAuthModal(false); // false = login mode
     });
   }
 
