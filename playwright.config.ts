@@ -20,6 +20,14 @@ export default defineConfig({
     baseURL: 'http://localhost:2567',
     trace: 'on-first-retry',
     video: 'on-first-retry',
+    screenshot: 'only-on-failure',
+  },
+
+  // Visual regression settings
+  expect: {
+    toHaveScreenshot: {
+      maxDiffPixels: 100, // Allow minor anti-aliasing differences
+    },
   },
 
   projects: [

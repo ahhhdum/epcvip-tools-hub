@@ -1,0 +1,155 @@
+name: Claude QA Review
+
+# Triggered when the 'qa-verify' label is added to a PR
+on:
+  pull_request:
+    types: [labeled]
+
+jobs:
+  qa-review:
+    # Only run when the specific label is added
+    if: github.event.label.name == 'qa-verify'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          cd server && npm ci
+
+      - name: Build application
+        run: npm run build
+
+      - name: Start dev server
+        run: |
+          cd server && npm start &
+          echo "Waiting for server to start..."
+          sleep 10
+
+      - name: Wait for server health
+        run: |
+          for i in {1..30}; do
+            if curl -s http://localhost:2567/health > /dev/null; then
+              echo "Server is ready!"
+              exit 0
+            fi
+            echo "Waiting... ($i/30)"
+            sleep 2
+          done
+          echo "Server failed to start"
+          exit 1
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium
+
+      # Option 1: When Anthropic releases official action
+      # - name: Run Claude QA
+      #   uses: anthropics/claude-code-action@v1
+      #   with:
+      #     prompt-file: prompts/qa-persona.md
+      #     mcp-servers: playwright
+      #     base-url: http://localhost:2567
+      #     output-file: qa-report.md
+      #   env:
+      #     ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      # Option 2: Using Claude Code CLI directly
+      - name: Run Claude QA Review
+        id: qa-review
+        run: |
+          # Install Claude Code CLI
+          npm install -g @anthropic-ai/claude-code
+
+          # Configure Playwright MCP
+          echo '{"mcpServers":{"playwright":{"command":"npx","args":["@playwright/mcp@latest"]}}}' > ~/.mcp.json
+
+          # Prepare the prompt with PR context
+          PR_BODY="${{ github.event.pull_request.body }}"
+          PR_TITLE="${{ github.event.pull_request.title }}"
+
+          # Run Claude with the QA persona
+          cat prompts/qa-persona.md | \
+            sed "s|\${{ github.event.pull_request.title }}|${PR_TITLE}|g" | \
+            sed "s|\${{ github.event.pull_request.body }}|${PR_BODY}|g" | \
+            claude --print > qa-report.md 2>&1 || true
+
+          # Check if report was generated
+          if [ -f qa-report.md ]; then
+            echo "QA report generated successfully"
+            echo "report_generated=true" >> $GITHUB_OUTPUT
+          else
+            echo "Failed to generate QA report"
+            echo "report_generated=false" >> $GITHUB_OUTPUT
+          fi
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        continue-on-error: true
+
+      - name: Post QA Report as Comment
+        if: steps.qa-review.outputs.report_generated == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('qa-report.md', 'utf8');
+
+            // Add header and footer
+            const comment = `## 🤖 Claude QA Verification Report
+
+            ${report}
+
+            ---
+            *Automated QA by Claude Code with Playwright MCP*
+            *Triggered by: \`qa-verify\` label*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+      - name: Post Failure Notice
+        if: steps.qa-review.outputs.report_generated != 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## ⚠️ QA Verification Failed
+
+              The automated QA review could not complete. This may be due to:
+              - Server startup issues
+              - Claude API rate limits
+              - MCP configuration problems
+
+              Please run manual QA or re-trigger by removing and re-adding the \`qa-verify\` label.`
+            });
+
+      - name: Upload QA Report Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-report
+          path: qa-report.md
+          if-no-files-found: ignore
+
+      - name: Upload Screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-screenshots
+          path: .playwright-mcp/
+          if-no-files-found: ignore
