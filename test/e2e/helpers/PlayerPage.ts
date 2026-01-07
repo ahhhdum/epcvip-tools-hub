@@ -92,9 +92,9 @@ export class PlayerPage {
 
   async markReady() {
     await this.page.click('[data-testid="ready-button"]');
-    // Wait for button state to change
+    // Wait for button state to change (shows "Not Ready" when ready)
     await this.page.waitForSelector(
-      '[data-testid="ready-button"]:has-text("Waiting")'
+      '[data-testid="ready-button"]:has-text("Not Ready")'
     );
   }
 
@@ -126,8 +126,13 @@ export class PlayerPage {
 
   async submitSelectionWord() {
     await this.page.click('#submitWordBtn');
-    // Wait for status to update
-    await this.page.waitForSelector('.selection-status:has-text("Submitted")');
+    // Wait for either: status update OR game phase (if all players submitted instantly)
+    await Promise.race([
+      this.page.waitForSelector(
+        '.selection-status:has-text("Waiting for other players")'
+      ),
+      this.page.waitForSelector('#game:not(.hidden)'),
+    ]);
   }
 
   async pickWord(word: string) {
