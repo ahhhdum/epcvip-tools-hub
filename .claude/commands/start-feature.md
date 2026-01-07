@@ -15,21 +15,22 @@ Start a new feature from the backlog with integrated testing planning.
 Look up in BACKLOG.md and confirm.
 
 ### If no argument provided:
-Show available features:
+Read BACKLOG.md and show available features grouped by priority:
 
 ```
 🎯 CURRENT SPRINT
-1. GAME-001: Hard Mode (P1, S) - Must use revealed hints
-2. GAME-002: Rematch button (P1, S) - Quick "Play Again"
-3. UX-004: Win celebration (P2, S) - Confetti animation
+[List items from "Current Sprint" section in BACKLOG.md]
 
 📋 HIGH PRIORITY (P1)
-4. GAME-003: Custom letter count (M) - 4-7 letter modes
-5. WORDS-001: Expanded word list (M)
-6. BUG-005: Anti-cheat fix (M)
+[List P1 items from "Prioritized Backlog" section]
+
+📋 MEDIUM PRIORITY (P2)
+[List first 3-5 P2 items]
 
 Which feature? (Enter number, ID, or describe new feature)
 ```
+
+**Parse BACKLOG.md dynamically** - don't hardcode feature lists.
 
 ## Step 3: Size Assessment
 
@@ -205,24 +206,23 @@ npx playwright test --headed
 ## Example Session
 
 ```
-User: /start-feature GAME-001
+User: /start-feature [FEATURE-ID]
 
 Claude: Loading context...
 
-✅ FEATURE SELECTED: GAME-001 Hard Mode
-├─ Priority: P1
-├─ Effort: S (1-2 hours)
-├─ Files: wordle.js, wordle-room.ts, wordle-validator.ts
-└─ Testing: Game Logic → E2E + Unit suggested
+✅ FEATURE SELECTED: [ID] [Feature Name]
+├─ Priority: [P1/P2/P3]
+├─ Effort: [S/M/L] ([X] hours)
+├─ Files: [relevant files from BACKLOG.md]
+└─ Testing: [Auto-detected type] → [Suggested testing]
 
 📋 TESTING PLAN (auto-suggested):
-├─ Type: Game Logic
+├─ Type: [UI Feature / Game Logic / Bug Fix / etc.]
 ├─ Recommended:
-│   ├─ [✓] E2E Test: Hard mode enforcement flow
+│   ├─ [✓/○] E2E Test: [specific flow if applicable]
 │   │   Status: TESTED locally
-│   ├─ [○] Visual: Not needed (no UI changes)
-│   └─ [✓] Unit Test: validateHardMode() function
-│       Status: Jest available but unused
+│   ├─ [✓/○] Visual: [if UI changes]
+│   └─ [✓/○] Unit Test: [if pure logic]
 ├─ CI (automatic):
 │   ├─ Security Review: On all PRs
 │   └─ QA Workflow: On Wordle files (UNTESTED)
@@ -230,21 +230,22 @@ Claude: Loading context...
 
 📝 LIGHTWEIGHT PLAN:
 ## Goal
-Enforce "hard mode" where revealed hints must be used in subsequent guesses.
+[1-2 sentence goal based on BACKLOG.md description]
 
 ## Tasks
-1. [ ] Add hard mode toggle to room config
-2. [ ] Implement validateHardMode() in wordle-validator.ts
-3. [ ] Integrate validation in guess submission
-4. [ ] Add E2E test for hard mode flow
+1. [ ] [Subtask 1 - broken down from feature]
+2. [ ] [Subtask 2]
+3. [ ] [Subtask 3]
+4. [ ] [Test task if applicable]
 
 ## Files
-- wordle.js - UI toggle
-- wordle-room.ts - Setting storage
-- wordle-validator.ts - Validation logic
+- [file1] - [what changes]
+- [file2] - [what changes]
 
 ⚡ FIRST STEP:
-Add hard mode toggle to room configuration UI
+[First concrete subtask]
 
 Ready to proceed? [Y/n]
 ```
+
+**Note:** All brackets [...] are placeholders. Fill with actual data from BACKLOG.md and feature analysis.
