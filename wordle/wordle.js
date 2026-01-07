@@ -194,6 +194,7 @@ function hideReconnectingOverlay() {
 const views = {
   lobby: document.getElementById('lobby'),
   roomConfig: document.getElementById('roomConfig'),
+  soloSettings: document.getElementById('soloSettings'),
   waiting: document.getElementById('waiting'),
   wordSelection: document.getElementById('wordSelection'),
   game: document.getElementById('game'),
@@ -301,7 +302,14 @@ const elements = {
   dailyChallengeSection: document.getElementById('dailyChallengeSection'),
   dailyChallengeBtn: document.getElementById('dailyChallengeBtn'),
   dailyNum: document.getElementById('dailyNum'),
+  dailyIcon: document.getElementById('dailyIcon'),
+  dailySubtitle: document.getElementById('dailySubtitle'),
   dailyGuestMsg: document.getElementById('dailyGuestMsg'),
+
+  // Auth Banner (lobby)
+  authBanner: document.getElementById('authBanner'),
+  bannerSignUp: document.getElementById('bannerSignUp'),
+  bannerLogIn: document.getElementById('bannerLogIn'),
 
   // Daily Completed View
   dailyCompletedView: document.getElementById('dailyCompleted'),
@@ -373,6 +381,7 @@ const elements = {
   configModeCompetitive: document.getElementById('configModeCompetitive'),
   configWordDaily: document.getElementById('configWordDaily'),
   configWordRandom: document.getElementById('configWordRandom'),
+  configHardMode: document.getElementById('configHardMode'),
   configVisPublic: document.getElementById('configVisPublic'),
   configVisPrivate: document.getElementById('configVisPrivate'),
   configCancel: document.getElementById('configCancel'),
@@ -415,6 +424,7 @@ const elements = {
 
   // Simplified Lobby
   playWithFriendsLobbyBtn: document.getElementById('playWithFriendsLobbyBtn'),
+  soloPracticeBtn: document.getElementById('soloPracticeBtn'),
   statsStrip: document.getElementById('statsStrip'),
   statsWins: document.getElementById('statsWins'),
   statsStreakStrip: document.getElementById('statsStreak'),
@@ -426,6 +436,21 @@ const elements = {
   friendsSheet: document.getElementById('friendsSheet'),
   closeFriendsSheet: document.getElementById('closeFriendsSheet'),
   sheetBackdrop: document.querySelector('.sheet-backdrop'),
+
+  // Solo Settings View
+  soloSettings: document.getElementById('soloSettings'),
+  soloQuickPlayBtn: document.getElementById('soloQuickPlayBtn'),
+  soloWordDaily: document.getElementById('soloWordDaily'),
+  soloWordRandom: document.getElementById('soloWordRandom'),
+  soloWordHint: document.getElementById('soloWordHint'),
+  soloSignInLink: document.getElementById('soloSignInLink'),
+  soloModeStandard: document.getElementById('soloModeStandard'),
+  sabotageTeaser: document.getElementById('sabotageTeaser'),
+  sabotageExpanded: document.getElementById('sabotageExpanded'),
+  sabotageToMultiplayer: document.getElementById('sabotageToMultiplayer'),
+  soloHardMode: document.getElementById('soloHardMode'),
+  soloCancel: document.getElementById('soloCancel'),
+  soloStart: document.getElementById('soloStart'),
 
   // Settings View
   settingsView: document.getElementById('settingsView'),
@@ -757,6 +782,19 @@ function updateAuthUI() {
     }
   }
 
+  // Update auth banner visibility (shown for guests only)
+  if (elements.authBanner) {
+    elements.authBanner.classList.toggle('hidden', !!state.authUser);
+  }
+
+  // Update daily button icon and subtitle based on auth state
+  if (elements.dailyIcon) {
+    elements.dailyIcon.textContent = state.authUser ? '🎯' : '🔒';
+  }
+  if (elements.dailySubtitle) {
+    elements.dailySubtitle.textContent = state.authUser ? 'One attempt per day' : 'Sign in to play';
+  }
+
   // Update daily number display
   if (elements.dailyNum && state.todaysDailyNumber) {
     elements.dailyNum.textContent = state.todaysDailyNumber;
@@ -978,6 +1016,141 @@ function closeFriendsSheet() {
 }
 
 /**
+ * Open the Solo Settings view.
+ * Updates UI based on auth state (Daily gated to logged-in users).
+ */
+function openSoloSettings() {
+  // Update UI based on auth state
+  const isLoggedIn = !!state.authUser;
+
+  // Daily button: enabled only if logged in
+  if (elements.soloWordDaily) {
+    elements.soloWordDaily.disabled = !isLoggedIn;
+    // If Daily was selected but user logged out, switch to Random
+    if (!isLoggedIn && elements.soloWordDaily.classList.contains('active')) {
+      elements.soloWordDaily.classList.remove('active');
+      elements.soloWordRandom.classList.add('active');
+    }
+  }
+
+  // Show/hide sign-in hint based on auth state
+  if (elements.soloWordHint) {
+    elements.soloWordHint.classList.toggle('hidden', isLoggedIn);
+  }
+
+  // Reset sabotage expanded state
+  if (elements.sabotageExpanded) {
+    elements.sabotageExpanded.classList.add('hidden');
+  }
+
+  // Show solo settings view
+  showView('soloSettings');
+}
+
+// Track if room config is being opened for solo mode
+let configForSolo = false;
+
+/**
+ * Open the room config view.
+ * @param {Object} options - Options for config view
+ * @param {boolean} options.isSolo - Whether this is for solo mode
+ */
+function openRoomConfig(options = {}) {
+  configForSolo = options.isSolo || false;
+
+  // Update title based on mode
+  const titleEl = document.querySelector('#roomConfig .view-header h2');
+  if (titleEl) {
+    titleEl.textContent = configForSolo ? 'Solo Settings' : 'Create Room';
+  }
+
+  // Update subtitle
+  const subtitleEl = document.querySelector('#roomConfig .view-header .view-subtitle');
+  if (subtitleEl) {
+    subtitleEl.textContent = configForSolo
+      ? 'Configure your practice game'
+      : 'Configure your game settings';
+  }
+
+  // Hide Game Mode card for solo (no opponent to race)
+  const gameModeCard = document.querySelector('#roomConfig .config-card:has(#configModeCasual)');
+  if (gameModeCard) {
+    gameModeCard.classList.toggle('hidden', configForSolo);
+  }
+
+  // Hide visibility card for solo (always private)
+  const visibilityCard = document.querySelector('#roomConfig .config-card:has(#configVisPublic)');
+  if (visibilityCard) {
+    visibilityCard.classList.toggle('hidden', configForSolo);
+  }
+
+  // Disable Sabotage for solo (requires opponent)
+  if (elements.configWordSabotage) {
+    elements.configWordSabotage.classList.toggle('disabled', configForSolo);
+    elements.configWordSabotage.disabled = configForSolo;
+  }
+
+  // If solo and Sabotage was selected, switch to Random
+  if (configForSolo && state.pendingConfig.wordMode === 'sabotage') {
+    state.pendingConfig.wordMode = 'random';
+    updateConfigWordModeButtons();
+  }
+
+  // Update create button text
+  if (elements.configCreate) {
+    elements.configCreate.textContent = configForSolo ? 'Start Game' : 'Create Room';
+  }
+
+  showView('roomConfig');
+}
+
+/**
+ * Update the word mode buttons in config view to match pending config state.
+ */
+function updateConfigWordModeButtons() {
+  if (elements.configWordDaily) {
+    elements.configWordDaily.classList.toggle('active', state.pendingConfig.wordMode === 'daily');
+  }
+  if (elements.configWordRandom) {
+    elements.configWordRandom.classList.toggle('active', state.pendingConfig.wordMode === 'random');
+  }
+  if (elements.configWordSabotage) {
+    elements.configWordSabotage.classList.toggle(
+      'active',
+      state.pendingConfig.wordMode === 'sabotage'
+    );
+  }
+}
+
+/**
+ * Start a solo practice game.
+ * Creates a solo room with random word mode and auto-starts.
+ * No stats tracking - this is for practice only.
+ * @param {Object} options - Optional configuration
+ * @param {string} options.wordMode - Word mode ('random' or 'daily')
+ * @param {boolean} options.hardMode - Whether to enable hard mode
+ */
+function startSoloPractice(options = {}) {
+  const name = getPlayerName();
+  localStorage.setItem('wordle_playerName', name);
+
+  // Track that this is a solo practice session (for UI adjustments)
+  state.isSolo = true;
+
+  send({
+    type: 'createRoom',
+    playerName: name,
+    playerEmail: state.authUser?.email || null,
+    gameMode: 'casual', // Always casual for solo (no opponent)
+    wordMode: options.wordMode || 'random',
+    isPublic: false, // Solo rooms are always private
+    hardMode: options.hardMode || false,
+    isSolo: true, // Key flag - server will auto-start
+    testWord: window.__WORDLE_TEST_WORD__ || null, // For E2E tests
+  });
+}
+
+/**
  * Show the Settings view.
  */
 function showSettings() {
@@ -1099,7 +1272,7 @@ async function handlePasswordChange() {
     setTimeout(() => {
       hideChangePasswordForm();
     }, 2000);
-  } catch (_err) {
+  } catch {
     showChangePasswordError('Failed to update password. Please try again.');
   }
 }
@@ -2023,6 +2196,13 @@ async function init() {
     console.log('[Wordle] Test mode: Slow timers enabled (client display only)');
   }
 
+  // testWord=XXXXX: Seed a deterministic word for E2E tests (ignored in production)
+  const testWord = urlParams.get('testWord');
+  if (testWord) {
+    window.__WORDLE_TEST_WORD__ = testWord.toUpperCase();
+    console.log('[Wordle] Test mode: Will use seeded word', testWord.toUpperCase());
+  }
+
   // Store autoJoin for later (after WebSocket connects)
   const autoJoinRoom = urlParams.get('autoJoin');
   if (autoJoinRoom) {
@@ -2251,6 +2431,12 @@ function handleMessage(msg) {
       break;
     case 'wordModeChanged':
       handleWordModeChanged(msg);
+      break;
+    case 'hardModeChanged':
+      handleHardModeChanged(msg);
+      break;
+    case 'hardModeViolation':
+      handleHardModeViolation(msg);
       break;
     case 'playerReadyChanged':
       handlePlayerReadyChanged(msg);
@@ -2588,6 +2774,7 @@ function handleRoomCreated(msg) {
   // Use settings from server (configured in pre-creation screen)
   state.gameMode = msg.gameMode || 'casual';
   state.wordMode = msg.wordMode || 'daily';
+  state.hardMode = msg.hardMode || false;
   state.dailyNumber = msg.dailyNumber || null;
   state.isRoomPublic = msg.isPublic !== undefined ? msg.isPublic : true;
 
@@ -2619,6 +2806,8 @@ function handleRoomJoined(msg) {
   state.isCreator = msg.isCreator;
   state.gameMode = msg.gameMode || 'casual';
   state.wordMode = msg.wordMode || 'daily';
+  state.hardMode = msg.hardMode || false;
+  state.isSolo = msg.isSolo || false;
   state.isReady = false;
   // allPlayersReady is now computed from state.playersInRoom
 
@@ -2628,10 +2817,10 @@ function handleRoomJoined(msg) {
   // Save session for reconnection
   saveSession(state.roomCode, state.playerId);
 
-  // For solo daily: skip waiting room, countdown will start automatically
+  // For solo mode (daily or practice): skip waiting room, countdown will start automatically
   // The countdown overlay is position:fixed, so it shows over any view
   if (msg.isSolo) {
-    console.log('[DAILY] Solo mode - waiting for countdown');
+    console.log('[Wordle] Solo mode - waiting for countdown');
     // Stay on lobby view - the countdown overlay will appear shortly
     return;
   }
@@ -2736,6 +2925,17 @@ function handleWordModeChanged(msg) {
   updateWordModeButtons();
 }
 
+function handleHardModeChanged(msg) {
+  state.hardMode = msg.hardMode;
+  showGameMessage(`Hard Mode ${msg.hardMode ? 'enabled' : 'disabled'}`);
+}
+
+function handleHardModeViolation(msg) {
+  // Show error and shake the current row
+  showGameMessage(msg.message);
+  shakeCurrentRow();
+}
+
 function handlePlayerReadyChanged(msg) {
   // Update player in our list
   const player = state.playersInRoom.find((p) => p.id === msg.playerId);
@@ -2822,6 +3022,13 @@ function handleGameStarted(msg) {
 
   showView('game');
   buildGrid();
+
+  // Hide opponents panel in solo mode (no opponents to show)
+  const opponentsPanel = document.querySelector('.opponents-panel');
+  if (opponentsPanel) {
+    opponentsPanel.style.display = state.isSolo ? 'none' : '';
+  }
+
   renderOpponentBoards();
   resetKeyboard();
   elements.message.textContent = '';
@@ -3432,6 +3639,7 @@ function resetPendingConfig() {
   state.pendingConfig.gameMode = 'casual';
   state.pendingConfig.wordMode = 'daily';
   state.pendingConfig.isPublic = true;
+  state.pendingConfig.hardMode = false;
 }
 
 function updateConfigButtons() {
@@ -3468,6 +3676,13 @@ function updateConfigButtons() {
   }
   if (elements.configVisPrivate) {
     elements.configVisPrivate.classList.toggle('active', state.pendingConfig.isPublic === false);
+  }
+  // Update hard mode toggle
+  if (elements.configHardMode) {
+    const isHard = state.pendingConfig.hardMode;
+    elements.configHardMode.textContent = isHard ? 'On' : 'Off';
+    elements.configHardMode.setAttribute('aria-pressed', isHard.toString());
+    elements.configHardMode.classList.toggle('active', isHard);
   }
 }
 
@@ -3854,7 +4069,7 @@ function setupEventListeners() {
     closeFriendsSheet();
     resetPendingConfig();
     updateConfigButtons();
-    showView('roomConfig');
+    openRoomConfig({ isSolo: false }); // Multiplayer mode
   });
 
   elements.joinRoom.addEventListener('click', () => {
@@ -3929,6 +4144,13 @@ function setupEventListeners() {
     });
   }
 
+  if (elements.configHardMode) {
+    elements.configHardMode.addEventListener('click', () => {
+      state.pendingConfig.hardMode = !state.pendingConfig.hardMode;
+      updateConfigButtons();
+    });
+  }
+
   if (elements.configCancel) {
     elements.configCancel.addEventListener('click', () => {
       showView('lobby');
@@ -3937,16 +4159,27 @@ function setupEventListeners() {
 
   if (elements.configCreate) {
     elements.configCreate.addEventListener('click', () => {
-      const name = getPlayerName();
-      localStorage.setItem('wordle_playerName', name);
-      send({
-        type: 'createRoom',
-        playerName: name,
-        playerEmail: state.authUser?.email || null,
-        gameMode: state.pendingConfig.gameMode,
-        wordMode: state.pendingConfig.wordMode,
-        isPublic: state.pendingConfig.isPublic,
-      });
+      if (configForSolo) {
+        // Solo mode: start practice game with configured settings
+        startSoloPractice({
+          wordMode: state.pendingConfig.wordMode,
+          hardMode: state.pendingConfig.hardMode,
+        });
+      } else {
+        // Multiplayer mode: create room with full settings
+        const name = getPlayerName();
+        localStorage.setItem('wordle_playerName', name);
+        send({
+          type: 'createRoom',
+          playerName: name,
+          playerEmail: state.authUser?.email || null,
+          gameMode: state.pendingConfig.gameMode,
+          wordMode: state.pendingConfig.wordMode,
+          isPublic: state.pendingConfig.isPublic,
+          hardMode: state.pendingConfig.hardMode,
+          testWord: window.__WORDLE_TEST_WORD__ || null, // For E2E tests (ignored in production)
+        });
+      }
     });
   }
 
@@ -4147,6 +4380,17 @@ function setupEventListeners() {
 
   // Results
   elements.playAgain.addEventListener('click', () => {
+    // For solo mode: start a new solo game directly
+    if (state.isSolo) {
+      // Leave current room and start fresh
+      send({ type: 'leaveRoom' });
+      clearSession();
+      state.resetRoom();
+      // Start new solo practice game
+      startSoloPractice();
+      return;
+    }
+    // For multiplayer: request rematch
     send({ type: 'playAgain' });
   });
 
@@ -4507,6 +4751,19 @@ function setupEventListeners() {
     });
   }
 
+  // Auth Banner buttons (lobby)
+  if (elements.bannerSignUp) {
+    elements.bannerSignUp.addEventListener('click', () => {
+      showAuthModal(true); // true = signup mode
+    });
+  }
+
+  if (elements.bannerLogIn) {
+    elements.bannerLogIn.addEventListener('click', () => {
+      showAuthModal(false); // false = login mode
+    });
+  }
+
   // Daily Challenge tooltip (UX-001) - show when guest taps disabled button
   // Use container because click events don't fire on disabled buttons
   if (elements.dailyBtnContainer) {
@@ -4532,6 +4789,11 @@ function setupEventListeners() {
     elements.playWithFriendsLobbyBtn.addEventListener('click', openFriendsSheet);
   }
 
+  // Solo Practice button (opens solo settings view directly)
+  if (elements.soloPracticeBtn) {
+    elements.soloPracticeBtn.addEventListener('click', openSoloSettings);
+  }
+
   // Friends sheet close button
   if (elements.closeFriendsSheet) {
     elements.closeFriendsSheet.addEventListener('click', closeFriendsSheet);
@@ -4543,6 +4805,76 @@ function setupEventListeners() {
     if (backdrop) {
       backdrop.addEventListener('click', closeFriendsSheet);
     }
+  }
+
+  // Solo Settings: Quick Play button (starts immediately with defaults)
+  if (elements.soloQuickPlayBtn) {
+    elements.soloQuickPlayBtn.addEventListener('click', () => {
+      startSoloPractice({ wordMode: 'random', hardMode: false });
+    });
+  }
+
+  // Solo Settings: Word selection buttons
+  if (elements.soloWordDaily && elements.soloWordRandom) {
+    elements.soloWordDaily.addEventListener('click', () => {
+      if (!elements.soloWordDaily.disabled) {
+        elements.soloWordDaily.classList.add('active');
+        elements.soloWordRandom.classList.remove('active');
+      }
+    });
+    elements.soloWordRandom.addEventListener('click', () => {
+      elements.soloWordRandom.classList.add('active');
+      elements.soloWordDaily.classList.remove('active');
+    });
+  }
+
+  // Solo Settings: Hard mode toggle
+  if (elements.soloHardMode) {
+    elements.soloHardMode.addEventListener('click', () => {
+      const isPressed = elements.soloHardMode.getAttribute('aria-pressed') === 'true';
+      elements.soloHardMode.setAttribute('aria-pressed', !isPressed);
+      elements.soloHardMode.textContent = isPressed ? 'Off' : 'On';
+      elements.soloHardMode.classList.toggle('active', !isPressed);
+    });
+  }
+
+  // Solo Settings: Sabotage teaser click (expand/collapse)
+  if (elements.sabotageTeaser && elements.sabotageExpanded) {
+    elements.sabotageTeaser.addEventListener('click', () => {
+      elements.sabotageExpanded.classList.toggle('hidden');
+    });
+  }
+
+  // Solo Settings: Sabotage "Play With Friends" button
+  if (elements.sabotageToMultiplayer) {
+    elements.sabotageToMultiplayer.addEventListener('click', () => {
+      showView('lobby');
+      openFriendsSheet();
+    });
+  }
+
+  // Solo Settings: Sign in link
+  if (elements.soloSignInLink) {
+    elements.soloSignInLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      showAuthModal(false); // false = login mode
+    });
+  }
+
+  // Solo Settings: Cancel button
+  if (elements.soloCancel) {
+    elements.soloCancel.addEventListener('click', () => {
+      showView('lobby');
+    });
+  }
+
+  // Solo Settings: Start button
+  if (elements.soloStart) {
+    elements.soloStart.addEventListener('click', () => {
+      const wordMode = elements.soloWordDaily?.classList.contains('active') ? 'daily' : 'random';
+      const hardMode = elements.soloHardMode?.getAttribute('aria-pressed') === 'true';
+      startSoloPractice({ wordMode, hardMode });
+    });
   }
 
   // Stats strip (opens stats view)

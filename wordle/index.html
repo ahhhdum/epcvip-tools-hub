@@ -58,12 +58,26 @@
     <!-- Lobby View -->
     <div id="lobby" class="view" data-testid="lobby">
       <div class="lobby-content lobby-simplified">
+        <!-- Auth Banner (shown for guests) -->
+        <div id="authBanner" class="auth-banner hidden">
+          <div class="auth-banner-title">✨ Create an account to unlock:</div>
+          <p class="auth-banner-benefits">
+            Daily Challenges, stats tracking, streaks, and leaderboards
+          </p>
+          <div class="auth-banner-actions">
+            <button id="bannerSignUp" class="auth-btn auth-btn-primary">Sign Up</button>
+            <button id="bannerLogIn" class="auth-btn auth-btn-secondary">Log In</button>
+          </div>
+        </div>
+
         <!-- Primary CTA: Daily Challenge -->
         <div id="dailyBtnContainer" class="daily-btn-container">
-          <button id="dailyChallengeBtn" class="btn btn-daily-large" disabled>
-            <span class="btn-icon">🎯</span>
-            <span class="btn-text">Daily Challenge</span>
-            <span class="btn-number">#<span id="dailyNum">---</span></span>
+          <button id="dailyChallengeBtn" class="btn-lobby btn-lobby-primary" disabled>
+            <span class="btn-lobby-icon" id="dailyIcon">🔒</span>
+            <div class="btn-lobby-content">
+              <span class="btn-lobby-title">Daily Challenge #<span id="dailyNum">---</span></span>
+              <span class="btn-lobby-subtitle" id="dailySubtitle">Sign in to play</span>
+            </div>
           </button>
           <!-- Tooltip shown when logged out and tapping disabled daily -->
           <div id="dailyTooltip" class="feature-tooltip hidden">
@@ -73,16 +87,30 @@
         </div>
 
         <!-- Secondary CTA: Play With Friends -->
-        <button id="playWithFriendsLobbyBtn" class="btn btn-friends">
-          <span class="btn-icon">👥</span>
-          <span class="btn-text">Play With Friends</span>
+        <button id="playWithFriendsLobbyBtn" class="btn-lobby btn-lobby-secondary">
+          <span class="btn-lobby-icon">👥</span>
+          <div class="btn-lobby-content">
+            <span class="btn-lobby-title">Play With Friends</span>
+            <span class="btn-lobby-subtitle">Create or join a room</span>
+          </div>
+        </button>
+
+        <!-- Solo Practice -->
+        <button id="soloPracticeBtn" class="btn-lobby btn-lobby-tertiary" data-testid="solo-practice">
+          <span class="btn-lobby-icon">🎲</span>
+          <div class="btn-lobby-content">
+            <span class="btn-lobby-title">Solo Practice</span>
+            <span class="btn-lobby-subtitle">Random words, no pressure</span>
+          </div>
         </button>
 
         <!-- Tertiary CTA: Past Dailies -->
-        <button id="historicalDailiesBtn" class="btn btn-tertiary">
-          <span class="btn-icon">📅</span>
-          <span class="btn-text">Past Dailies</span>
-          <span class="btn-subtitle">Solo or with friends</span>
+        <button id="historicalDailiesBtn" class="btn-lobby btn-lobby-tertiary">
+          <span class="btn-lobby-icon">📅</span>
+          <div class="btn-lobby-content">
+            <span class="btn-lobby-title">Past Dailies</span>
+            <span class="btn-lobby-subtitle">Solo or with friends</span>
+          </div>
         </button>
 
         <!-- Compact Stats Strip -->
@@ -128,6 +156,81 @@
       </div>
     </div>
 
+    <!-- Solo Settings View -->
+    <div id="soloSettings" class="view hidden" data-testid="solo-settings">
+      <div class="solo-settings-content">
+        <div class="view-header">
+          <h2>Solo Practice</h2>
+          <p class="view-subtitle">Configure your game</p>
+        </div>
+
+        <!-- Quick Play CTA -->
+        <button id="soloQuickPlayBtn" class="btn-solo-quick" data-testid="solo-quick-play">
+          <span class="quick-icon">⚡</span>
+          <span class="quick-text">Quick Play</span>
+        </button>
+
+        <!-- Word Selection -->
+        <div class="config-card">
+          <label>Word Selection</label>
+          <div class="mode-buttons mode-buttons-solo">
+            <button id="soloWordDaily" class="mode-btn" disabled data-mode="daily">Daily</button>
+            <button id="soloWordRandom" class="mode-btn active" data-mode="random">Random</button>
+          </div>
+          <p id="soloWordHint" class="config-hint-link">
+            <a href="#" id="soloSignInLink">Sign in</a> to play daily challenges
+          </p>
+        </div>
+
+        <!-- Game Mode -->
+        <div class="config-card">
+          <label>Game Mode</label>
+          <div class="mode-buttons mode-buttons-solo">
+            <button id="soloModeStandard" class="mode-btn-rich active">
+              <span class="mode-title">Standard</span>
+              <span class="mode-desc">Random word from our list</span>
+            </button>
+          </div>
+          <!-- Sabotage Teaser -->
+          <div id="sabotageTeaser" class="sabotage-teaser">
+            <span class="teaser-icon">🎭</span>
+            <div class="teaser-content">
+              <div class="teaser-title">Sabotage Mode</div>
+              <div class="teaser-subtitle">Pick your opponent's word</div>
+            </div>
+            <span class="teaser-badge">Multiplayer</span>
+          </div>
+          <!-- Sabotage Expanded (hidden by default) -->
+          <div id="sabotageExpanded" class="sabotage-expanded hidden">
+            <div class="expanded-title">🎭 What is Sabotage Mode?</div>
+            <p class="expanded-desc">
+              In Sabotage, you pick the word your opponent has to guess - and they pick yours!
+              Choose tricky words to stump your friends.
+            </p>
+            <button id="sabotageToMultiplayer" class="btn-try-multiplayer">
+              👥 Play With Friends
+            </button>
+          </div>
+        </div>
+
+        <!-- Hard Mode -->
+        <div class="config-card">
+          <label>Hard Mode</label>
+          <div class="config-toggle-row">
+            <span class="config-toggle-label">Require revealed hints</span>
+            <button id="soloHardMode" class="toggle-btn" aria-pressed="false">Off</button>
+          </div>
+          <p class="config-hint">Green letters must stay in position, yellow letters must be reused</p>
+        </div>
+
+        <!-- Actions -->
+        <div class="config-actions">
+          <button id="soloCancel" class="btn btn-secondary">Cancel</button>
+          <button id="soloStart" class="btn btn-primary" data-testid="solo-start">Start Game</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Hidden: Player name stored in settings, used when creating/joining -->
     <input type="hidden" id="playerName" value="">
 
@@ -157,6 +260,16 @@
             <button id="configWordSabotage" class="mode-btn" data-mode="sabotage">Sabotage</button>
           </div>
           <p id="sabotageHintConfig" class="config-hint hidden">Pick words for your opponents!</p>
+        </div>
+
+        <!-- Hard Mode Card -->
+        <div class="config-card">
+          <label>Hard Mode</label>
+          <div class="config-toggle-row">
+            <span class="config-toggle-label">Require revealed hints</span>
+            <button id="configHardMode" class="toggle-btn" aria-pressed="false">Off</button>
+          </div>
+          <p class="config-hint">Green letters must stay in position, yellow letters must be reused</p>
         </div>
 
         <!-- Room Visibility Card -->

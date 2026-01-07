@@ -14,6 +14,8 @@
   --key-text: #ffffff;
   --accent: #538d4e;
   --danger: #d32f2f;
+  --gold: #c9a227;
+  --gold-dark: #9a7b1c;
 }
 
 * {
@@ -626,6 +628,64 @@ body {
   margin: 0 auto;
   width: 100%;
   padding: 40px 20px;
+}
+
+/* Auth Banner (for guests) */
+.auth-banner {
+  background: linear-gradient(135deg, rgba(201, 162, 39, 0.15) 0%, rgba(83, 141, 78, 0.15) 100%);
+  border: 1px solid var(--gold);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.auth-banner.hidden {
+  display: none;
+}
+
+.auth-banner-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.auth-banner-benefits {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+  line-height: 1.4;
+}
+
+.auth-banner-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.auth-btn {
+  flex: 1;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: opacity 0.2s ease;
+}
+
+.auth-btn:hover {
+  opacity: 0.9;
+}
+
+.auth-btn-primary {
+  background: var(--gold);
+  border: none;
+  color: #1a1a1b;
+}
+
+.auth-btn-secondary {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-primary);
 }
 
 .name-input {
@@ -2504,6 +2564,18 @@ body {
   font-size: 1rem;
 }
 
+.config-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.config-toggle-label {
+  color: var(--text-primary);
+  font-size: 0.95rem;
+}
+
 /* ===========================================
    Stats Dashboard View
    =========================================== */
@@ -2846,6 +2918,298 @@ body {
   margin: 0 auto;
 }
 
+/* ===========================================
+   UNIFIED LOBBY BUTTON SYSTEM
+   =========================================== */
+
+.btn-lobby {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  width: 100%;
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.btn-lobby-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.btn-lobby-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.btn-lobby-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.btn-lobby-subtitle {
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+/* Primary - Daily Challenge (slightly taller) */
+.btn-lobby-primary {
+  padding: 20px 18px;
+  background: linear-gradient(135deg, #c9a227 0%, #9a7b1c 100%);
+  border: 2px solid #c9a227;
+  color: var(--text-primary);
+}
+
+.btn-lobby-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(201, 162, 39, 0.35);
+}
+
+.btn-lobby-primary:disabled {
+  background: var(--bg-secondary);
+  border-color: var(--border);
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-lobby-primary .btn-lobby-icon {
+  font-size: 1.75rem;
+}
+
+.btn-lobby-primary .btn-lobby-title {
+  font-size: 1.1rem;
+}
+
+/* Secondary - Play With Friends */
+.btn-lobby-secondary {
+  background: var(--accent);
+  border: 2px solid var(--accent);
+  color: var(--text-primary);
+}
+
+.btn-lobby-secondary:hover {
+  background: #477841;
+  border-color: #477841;
+  transform: translateY(-1px);
+}
+
+/* Tertiary - Solo, Past Dailies */
+.btn-lobby-tertiary {
+  background: var(--bg-primary);
+  border: 2px solid var(--border);
+  color: var(--text-primary);
+}
+
+.btn-lobby-tertiary:hover {
+  border-color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.btn-lobby-tertiary .btn-lobby-subtitle {
+  color: var(--text-secondary);
+  opacity: 1;
+}
+
+/* Hover only on devices that support it */
+@media (hover: hover) {
+  .btn-lobby:hover:not(:disabled) {
+    transform: translateY(-2px);
+  }
+}
+
+/* Desktop max-width */
+@media (min-width: 600px) {
+  .lobby-simplified {
+    max-width: 400px;
+    margin: 0 auto;
+  }
+}
+
+/* ===========================================
+   SOLO SETTINGS VIEW
+   =========================================== */
+
+.solo-settings-content {
+  max-width: 400px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* Quick Play CTA */
+.btn-solo-quick {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 16px;
+  margin-bottom: 20px;
+  background: var(--accent);
+  border: 2px solid var(--accent);
+  border-radius: 12px;
+  color: var(--text-primary);
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-solo-quick:hover {
+  background: #477841;
+  border-color: #477841;
+  transform: translateY(-1px);
+}
+
+.btn-solo-quick .quick-icon {
+  font-size: 1.25rem;
+}
+
+/* Hint with inline link */
+.config-hint-link {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 10px;
+}
+
+.config-hint-link a {
+  color: #c9a227;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.config-hint-link a:hover {
+  color: #dab32e;
+}
+
+/* Mode button with description */
+.mode-btn-rich {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  flex: 1;
+  padding: 12px 14px;
+  background: var(--accent);
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+}
+
+.mode-btn-rich .mode-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.mode-btn-rich .mode-desc {
+  font-size: 0.75rem;
+  opacity: 0.85;
+}
+
+/* Sabotage Teaser */
+.sabotage-teaser {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  margin-top: 12px;
+  background: rgba(83, 141, 78, 0.1);
+  border: 1px dashed var(--accent);
+  border-radius: 8px;
+  opacity: 0.7;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sabotage-teaser:hover {
+  opacity: 0.9;
+  border-color: var(--accent);
+  background: rgba(83, 141, 78, 0.15);
+}
+
+.teaser-icon {
+  font-size: 1.2rem;
+}
+
+.teaser-content {
+  flex: 1;
+}
+
+.teaser-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.teaser-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.teaser-badge {
+  font-size: 0.65rem;
+  padding: 3px 8px;
+  background: var(--accent);
+  color: white;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+/* Sabotage Expanded */
+.sabotage-expanded {
+  padding: 14px;
+  margin-top: 10px;
+  background: rgba(83, 141, 78, 0.15);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+}
+
+.sabotage-expanded .expanded-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sabotage-expanded .expanded-desc {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin-bottom: 12px;
+}
+
+.btn-try-multiplayer {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background: var(--accent);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-try-multiplayer:hover {
+  background: #477841;
+}
+
+/* ===========================================
+   LEGACY BUTTON STYLES (kept for compatibility)
+   =========================================== */
+
 /* Primary CTA - Daily Challenge */
 .btn-daily-large {
   display: flex;
@@ -2920,6 +3284,42 @@ body {
 
 .btn-friends .btn-text {
   font-size: 1.05rem;
+}
+
+/* Solo Practice Button */
+.btn-practice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 16px 20px;
+  background: var(--bg-secondary);
+  border: 2px solid var(--present);
+  border-radius: 12px;
+  color: var(--text-primary);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.btn-practice:hover {
+  background: var(--present);
+  transform: translateY(-1px);
+}
+
+.btn-practice .btn-icon {
+  font-size: 1.4rem;
+}
+
+.btn-practice .btn-text {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.btn-practice .btn-subtitle {
+  font-size: 0.8rem;
+  opacity: 0.7;
 }
 
 /* Tertiary CTA - Past Dailies */
