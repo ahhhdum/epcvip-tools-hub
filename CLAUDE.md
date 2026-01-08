@@ -82,7 +82,25 @@ npx supabase login              # Authenticate CLI
 npx supabase link --project-ref yuithqxycicgokkgmpzg
 npx supabase db push            # Apply migrations to remote
 npx supabase migration list     # Check migration status
+
+# Testing
+cd server && npm test                           # Unit tests
+npx playwright test                             # E2E tests
+npx playwright test --ui                        # Interactive debugger
+npx playwright test visual.spec.ts              # Visual regression
+npx playwright test --update-snapshots          # Update baselines
 ```
+
+## Testing Strategy
+
+See `docs/TESTING_GUIDE.md` for comprehensive testing documentation.
+
+| Layer | Type | Cost | Trigger |
+|-------|------|------|---------|
+| Unit tests | Jest | Free | Every commit |
+| E2E tests | Playwright | Free | Every PR |
+| Visual regression | Playwright snapshots | Free | Every PR |
+| AI QA | Claude + Playwright MCP | ~$0.60 | UI changes |
 
 ## Database Schema
 
@@ -164,6 +182,7 @@ Reverse proxy routes in `server/src/index.ts`:
 |-----|---------|
 | `STANDARDS.md` | Comprehensive code standards |
 | `BACKLOG.md` | Feature backlog and priorities |
+| `docs/TESTING_GUIDE.md` | Testing strategy and commands |
 | `docs/WORDLE_BATTLE_PLAN.md` | Wordle feature design |
 | `docs/MULTIPLAYER_PLAN.md` | Multiplayer architecture |
 | `docs/AUTH_AND_PERSISTENCE_PLAN.md` | Auth design |
