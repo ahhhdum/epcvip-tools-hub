@@ -8,8 +8,11 @@
 name: Security Review
 
 on:
+  push:
+    branches: [main]
   pull_request:
     types: [opened, synchronize, reopened]
+  workflow_dispatch:  # Manual trigger
 
 permissions:
   contents: read

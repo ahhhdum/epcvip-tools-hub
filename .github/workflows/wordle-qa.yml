@@ -10,6 +10,14 @@
 name: Wordle QA
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'wordle/**'
+      - 'server/src/rooms/wordle-*'
+      - 'server/src/services/wordle-*'
+      - 'server/src/utils/daily-word.ts'
+      - 'server/src/utils/word-list.ts'
   pull_request:
     paths:
       - 'wordle/**'
@@ -20,6 +28,7 @@ on:
     types: [opened, synchronize, reopened]
   pull_request_target:
     types: [labeled]
+  workflow_dispatch:  # Manual trigger
 
 permissions:
   contents: read
