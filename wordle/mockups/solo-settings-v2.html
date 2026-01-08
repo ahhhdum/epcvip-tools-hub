@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Solo Settings v2 - Disabled State Alternatives</title>
+  <style>
+    :root {
+      --bg-primary: #121213;
+      --bg-secondary: #1a1a1b;
+      --text-primary: #ffffff;
+      --text-secondary: #818384;
+      --accent: #538d4e;
+      --border: #3a3a3c;
+      --gold: #c9a227;
+      --disabled-bg: #252526;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      padding: 20px;
+      min-height: 100vh;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 1.5rem;
+    }
+
+    .description {
+      text-align: center;
+      color: var(--text-secondary);
+      margin-bottom: 30px;
+      font-size: 0.9rem;
+    }
+
+    .mockup-container {
+      display: flex;
+      gap: 30px;
+      justify-content: center;
+      flex-wrap: wrap;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .mockup-section {
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      padding: 20px;
+      width: 380px;
+    }
+
+    .mockup-section.recommended {
+      border: 2px solid var(--accent);
+    }
+
+    .recommended-badge {
+      background: var(--accent);
+      color: white;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      display: inline-block;
+      margin-bottom: 10px;
+    }
+
+    .mockup-section h2 {
+      font-size: 1rem;
+      margin-bottom: 5px;
+      color: var(--text-primary);
+    }
+
+    .mockup-section .subtitle {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      margin-bottom: 20px;
+    }
+
+    /* Settings view styles */
+    .settings-view {
+      background: var(--bg-primary);
+      border-radius: 12px;
+      padding: 20px;
+    }
+
+    .view-header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .view-header h3 {
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .view-header p {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    .config-card {
+      background: var(--bg-secondary);
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+
+    .config-card label {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-bottom: 10px;
+      font-weight: 500;
+    }
+
+    .mode-buttons {
+      display: flex;
+      gap: 8px;
+    }
+
+    .mode-btn {
+      flex: 1;
+      padding: 10px 12px;
+      background: var(--bg-primary);
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .mode-btn:hover:not(:disabled) {
+      border-color: var(--text-secondary);
+    }
+
+    .mode-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .mode-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    /* Toggle row */
+    .config-toggle-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .config-toggle-label {
+      font-size: 0.9rem;
+    }
+
+    .toggle-btn {
+      padding: 8px 16px;
+      background: var(--bg-primary);
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .toggle-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--text-primary);
+    }
+
+    .config-hint {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      margin-top: 10px;
+    }
+
+    /* Action buttons */
+    .config-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 14px 20px;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-secondary {
+      background: var(--bg-secondary);
+      border: 2px solid var(--border);
+      color: var(--text-primary);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      border: 2px solid var(--accent);
+      color: var(--text-primary);
+    }
+
+    /* ==========================================
+       ALT A: CTA Buttons
+       ========================================== */
+
+    .alt-a .mode-btn-with-cta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
+      padding: 10px 12px;
+      background: var(--bg-primary);
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+
+    .alt-a .mode-btn-with-cta.disabled {
+      opacity: 0.5;
+    }
+
+    .alt-a .mode-btn-with-cta .btn-label {
+      flex: 1;
+      text-align: left;
+    }
+
+    .alt-a .cta-link {
+      font-size: 0.7rem;
+      padding: 4px 8px;
+      background: var(--gold);
+      color: var(--bg-primary);
+      border-radius: 4px;
+      font-weight: 600;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .alt-a .cta-link:hover {
+      background: #dab32e;
+    }
+
+    .alt-a .cta-link.subtle {
+      background: var(--border);
+      color: var(--text-secondary);
+    }
+
+    /* ==========================================
+       ALT B: No Sabotage
+       ========================================== */
+
+    .alt-b .mode-buttons {
+      display: flex;
+      gap: 8px;
+    }
+
+    .alt-b .mode-btn {
+      flex: 1;
+    }
+
+    /* ==========================================
+       ALT C: Sabotage Teaser
+       ========================================== */
+
+    .alt-c .mode-buttons-main {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .alt-c .sabotage-teaser {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      background: rgba(83, 141, 78, 0.1);
+      border: 1px dashed var(--accent);
+      border-radius: 8px;
+      opacity: 0.7;
+    }
+
+    .alt-c .sabotage-teaser .teaser-icon {
+      font-size: 1.2rem;
+    }
+
+    .alt-c .sabotage-teaser .teaser-content {
+      flex: 1;
+    }
+
+    .alt-c .sabotage-teaser .teaser-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .alt-c .sabotage-teaser .teaser-subtitle {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+    .alt-c .sabotage-teaser .teaser-badge {
+      font-size: 0.65rem;
+      padding: 3px 8px;
+      background: var(--accent);
+      color: white;
+      border-radius: 10px;
+      font-weight: 600;
+    }
+
+    .alt-c .sabotage-teaser {
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .alt-c .sabotage-teaser:hover {
+      opacity: 0.9;
+      border-color: var(--accent);
+      background: rgba(83, 141, 78, 0.15);
+    }
+
+    /* Sabotage expanded state */
+    .alt-c .sabotage-expanded {
+      display: none;
+      padding: 14px;
+      background: rgba(83, 141, 78, 0.15);
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      margin-top: 10px;
+    }
+
+    .alt-c .sabotage-expanded.show {
+      display: block;
+    }
+
+    .alt-c .sabotage-expanded .expanded-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .alt-c .sabotage-expanded .expanded-desc {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      line-height: 1.4;
+      margin-bottom: 12px;
+    }
+
+    .alt-c .sabotage-expanded .try-multiplayer-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 16px;
+      background: var(--accent);
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .alt-c .sabotage-expanded .try-multiplayer-btn:hover {
+      background: #477841;
+    }
+
+    /* Alt C: Mode button with description */
+    .alt-c .mode-btn-rich {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 4px;
+      flex: 1;
+      padding: 12px 14px;
+      background: var(--accent);
+      border: 2px solid var(--accent);
+      border-radius: 8px;
+      color: var(--text-primary);
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .alt-c .mode-btn-rich .mode-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .alt-c .mode-btn-rich .mode-desc {
+      font-size: 0.75rem;
+      opacity: 0.85;
+    }
+
+    /* Alt C: Hint with inline link */
+    .alt-c .config-hint-with-link {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      margin-top: 10px;
+    }
+
+    .alt-c .config-hint-with-link a {
+      color: var(--gold);
+      text-decoration: underline;
+      cursor: pointer;
+    }
+
+    .alt-c .config-hint-with-link a:hover {
+      color: #dab32e;
+    }
+
+    /* Notes */
+    .notes {
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid var(--border);
+    }
+
+    .notes h4 {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+
+    .notes ul {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      padding-left: 16px;
+    }
+
+    .notes li {
+      margin-bottom: 4px;
+    }
+
+    .notes .good {
+      color: var(--accent);
+    }
+
+    .notes .bad {
+      color: #c9534e;
+    }
+
+    .notes .neutral {
+      color: var(--gold);
+    }
+
+    .user-state {
+      background: rgba(201, 83, 78, 0.2);
+      border: 1px solid #c9534e;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 0.75rem;
+      margin-bottom: 15px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h1>Solo Settings v2 - Disabled States</h1>
+  <p class="description">3 alternatives for handling disabled options (Guest view)</p>
+
+  <div class="mockup-container">
+    <!-- ALT A: CTA Buttons -->
+    <div class="mockup-section alt-a">
+      <h2>Alternative A: CTA Buttons</h2>
+      <p class="subtitle">Login button on disabled Daily</p>
+
+      <div class="settings-view">
+        <div class="user-state">Viewing as: Guest (not signed in)</div>
+
+        <div class="view-header">
+          <h3>Solo Practice</h3>
+          <p>Configure your game</p>
+        </div>
+
+        <div class="config-card">
+          <label>Word Selection</label>
+          <div class="mode-buttons">
+            <div class="mode-btn-with-cta disabled">
+              <span class="btn-label">Daily</span>
+              <a href="#" class="cta-link">Login</a>
+            </div>
+            <button class="mode-btn active">Random</button>
+          </div>
+        </div>
+
+        <div class="config-card">
+          <label>Game Mode</label>
+          <div class="mode-buttons">
+            <button class="mode-btn active">Normal</button>
+            <div class="mode-btn-with-cta disabled">
+              <span class="btn-label">Sabotage</span>
+              <a href="#" class="cta-link subtle">Multiplayer</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="config-card">
+          <label>Hard Mode</label>
+          <div class="config-toggle-row">
+            <span class="config-toggle-label">Require revealed hints</span>
+            <button class="toggle-btn">Off</button>
+          </div>
+          <p class="config-hint">Green letters must stay in position, yellow letters must be reused</p>
+        </div>
+
+        <div class="config-actions">
+          <button class="btn btn-secondary">Cancel</button>
+          <button class="btn btn-primary">Start Game</button>
+        </div>
+      </div>
+
+      <div class="notes">
+        <h4>Analysis</h4>
+        <ul>
+          <li class="good">Clear path to enable feature (Login CTA)</li>
+          <li class="good">Sabotage links to multiplayer explanation</li>
+          <li class="good">User knows exactly what to do</li>
+          <li class="bad">More visual noise</li>
+          <li class="bad">CTAs might feel pushy</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ALT B: No Sabotage -->
+    <div class="mockup-section alt-b">
+      <h2>Alternative B: No Sabotage</h2>
+      <p class="subtitle">Simplest - only show available options</p>
+
+      <div class="settings-view">
+        <div class="user-state">Viewing as: Guest (not signed in)</div>
+
+        <div class="view-header">
+          <h3>Solo Practice</h3>
+          <p>Configure your game</p>
+        </div>
+
+        <div class="config-card">
+          <label>Word Selection</label>
+          <div class="mode-buttons">
+            <button class="mode-btn" disabled>Daily</button>
+            <button class="mode-btn active">Random</button>
+          </div>
+          <p class="config-hint">Sign in to play daily challenges</p>
+        </div>
+
+        <div class="config-card">
+          <label>Hard Mode</label>
+          <div class="config-toggle-row">
+            <span class="config-toggle-label">Require revealed hints</span>
+            <button class="toggle-btn">Off</button>
+          </div>
+          <p class="config-hint">Green letters must stay in position, yellow letters must be reused</p>
+        </div>
+
+        <div class="config-actions">
+          <button class="btn btn-secondary">Cancel</button>
+          <button class="btn btn-primary">Start Game</button>
+        </div>
+      </div>
+
+      <div class="notes">
+        <h4>Analysis</h4>
+        <ul>
+          <li class="good">Cleanest UI - no distractions</li>
+          <li class="good">Only shows what you can use</li>
+          <li class="good">No confusion about disabled states</li>
+          <li class="bad">User doesn't discover Sabotage exists</li>
+          <li class="bad">Less motivation to try multiplayer</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ALT C: Sabotage Teaser -->
+    <div class="mockup-section alt-c recommended">
+      <span class="recommended-badge">RECOMMENDED</span>
+      <h2>Alternative C: Sabotage Teaser</h2>
+      <p class="subtitle">Visible but clearly separate - sparks curiosity</p>
+
+      <div class="settings-view">
+        <div class="user-state">Viewing as: Guest (not signed in)</div>
+
+        <div class="view-header">
+          <h3>Solo Practice</h3>
+          <p>Configure your game</p>
+        </div>
+
+        <div class="config-card">
+          <label>Word Selection</label>
+          <div class="mode-buttons-main">
+            <button class="mode-btn" disabled>Daily</button>
+            <button class="mode-btn active">Random</button>
+          </div>
+          <p class="config-hint-with-link"><a href="#">Sign in</a> to play daily challenges</p>
+        </div>
+
+        <div class="config-card">
+          <label>Game Mode</label>
+          <div class="mode-buttons-main">
+            <button class="mode-btn-rich">
+              <span class="mode-title">Standard</span>
+              <span class="mode-desc">Random word from our list</span>
+            </button>
+          </div>
+          <div class="sabotage-teaser" onclick="toggleSabotageExpand()">
+            <span class="teaser-icon">🎭</span>
+            <div class="teaser-content">
+              <div class="teaser-title">Sabotage Mode</div>
+              <div class="teaser-subtitle">Pick your opponent's word</div>
+            </div>
+            <span class="teaser-badge">Multiplayer</span>
+          </div>
+          <div id="sabotageExpanded" class="sabotage-expanded">
+            <div class="expanded-title">
+              🎭 What is Sabotage Mode?
+            </div>
+            <p class="expanded-desc">
+              In Sabotage, you pick the word your opponent has to guess - and they pick yours!
+              Choose tricky words to stump your friends.
+            </p>
+            <button class="try-multiplayer-btn">
+              👥 Play With Friends
+            </button>
+          </div>
+        </div>
+
+        <div class="config-card">
+          <label>Hard Mode</label>
+          <div class="config-toggle-row">
+            <span class="config-toggle-label">Require revealed hints</span>
+            <button class="toggle-btn">Off</button>
+          </div>
+          <p class="config-hint">Green letters must stay in position, yellow letters must be reused</p>
+        </div>
+
+        <div class="config-actions">
+          <button class="btn btn-secondary">Cancel</button>
+          <button class="btn btn-primary">Start Game</button>
+        </div>
+      </div>
+
+      <div class="notes">
+        <h4>Analysis</h4>
+        <ul>
+          <li class="good">Sabotage is visible - sparks curiosity</li>
+          <li class="good">Clearly separate visual treatment (dashed border)</li>
+          <li class="good">"Multiplayer" badge explains why unavailable</li>
+          <li class="good">Clicking expands to explain + CTA (try it!)</li>
+          <li class="good">Not frustrating - rewards curiosity</li>
+          <li class="good">"Sign in" link provides clear CTA without clutter</li>
+          <li class="good">"Standard" with description clarifies the default mode</li>
+          <li class="neutral">Slightly more vertical space used</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function toggleSabotageExpand() {
+      const expanded = document.getElementById('sabotageExpanded');
+      expanded.classList.toggle('show');
+    }
+  </script>
+</body>
+</html>

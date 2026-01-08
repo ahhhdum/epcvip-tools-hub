@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Solo Settings Mockup - Wordle Battle</title>
+  <style>
+    :root {
+      --bg-primary: #121213;
+      --bg-secondary: #1a1a1b;
+      --text-primary: #ffffff;
+      --text-secondary: #818384;
+      --accent: #538d4e;
+      --border: #3a3a3c;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      padding: 20px;
+      min-height: 100vh;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 1.5rem;
+    }
+
+    .description {
+      text-align: center;
+      color: var(--text-secondary);
+      margin-bottom: 30px;
+      font-size: 0.9rem;
+    }
+
+    .mockup-container {
+      display: flex;
+      gap: 40px;
+      justify-content: center;
+      flex-wrap: wrap;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .mockup-section {
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      padding: 20px;
+      width: 380px;
+    }
+
+    .mockup-section h2 {
+      font-size: 1rem;
+      margin-bottom: 5px;
+      color: var(--text-primary);
+    }
+
+    .mockup-section .subtitle {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      margin-bottom: 20px;
+    }
+
+    /* Settings view styles */
+    .settings-view {
+      background: var(--bg-primary);
+      border-radius: 12px;
+      padding: 20px;
+    }
+
+    .view-header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .view-header h3 {
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .view-header p {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    .config-card {
+      background: var(--bg-secondary);
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+
+    .config-card label {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-bottom: 10px;
+      font-weight: 500;
+    }
+
+    .mode-buttons {
+      display: flex;
+      gap: 8px;
+    }
+
+    .mode-btn {
+      flex: 1;
+      padding: 10px 12px;
+      background: var(--bg-primary);
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .mode-btn:hover:not(:disabled) {
+      border-color: var(--text-secondary);
+    }
+
+    .mode-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .mode-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .mode-btn.disabled-with-icon {
+      position: relative;
+    }
+
+    .mode-btn.disabled-with-icon::before {
+      content: "🚫";
+      margin-right: 4px;
+      font-size: 0.8em;
+    }
+
+    /* Disabled explanation text */
+    .disabled-hint {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      margin-top: 8px;
+      font-style: italic;
+    }
+
+    .disabled-hint.error {
+      color: #c9534e;
+    }
+
+    /* Toggle row */
+    .config-toggle-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .config-toggle-label {
+      font-size: 0.9rem;
+    }
+
+    .toggle-btn {
+      padding: 8px 16px;
+      background: var(--bg-primary);
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .toggle-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--text-primary);
+    }
+
+    .config-hint {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      margin-top: 10px;
+    }
+
+    /* Action buttons */
+    .config-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 14px 20px;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-secondary {
+      background: var(--bg-secondary);
+      border: 2px solid var(--border);
+      color: var(--text-primary);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      border: 2px solid var(--accent);
+      color: var(--text-primary);
+    }
+
+    /* Notes */
+    .notes {
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid var(--border);
+    }
+
+    .notes h4 {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+
+    .notes ul {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      padding-left: 16px;
+    }
+
+    .notes li {
+      margin-bottom: 4px;
+    }
+
+    .notes .good {
+      color: var(--accent);
+    }
+
+    .notes .bad {
+      color: #c9534e;
+    }
+
+    .user-state {
+      background: rgba(83, 141, 78, 0.2);
+      border: 1px solid var(--accent);
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 0.75rem;
+      margin-bottom: 15px;
+      text-align: center;
+    }
+
+    .user-state.guest {
+      background: rgba(201, 83, 78, 0.2);
+      border-color: #c9534e;
+    }
+  </style>
+</head>
+<body>
+  <h1>Solo Settings Mockup</h1>
+  <p class="description">Showing gated Daily + Sabotage explanation</p>
+
+  <div class="mockup-container">
+    <!-- GUEST VIEW -->
+    <div class="mockup-section">
+      <h2>Guest View</h2>
+      <p class="subtitle">Not logged in - Daily disabled</p>
+
+      <div class="settings-view">
+        <div class="user-state guest">Viewing as: Guest (not signed in)</div>
+
+        <div class="view-header">
+          <h3>Solo Settings</h3>
+          <p>Configure your practice game</p>
+        </div>
+
+        <div class="config-card">
+          <label>Word Selection</label>
+          <div class="mode-buttons">
+            <button class="mode-btn" disabled title="Sign in required">Daily</button>
+            <button class="mode-btn active">Random</button>
+            <button class="mode-btn disabled-with-icon" disabled>Sabotage</button>
+          </div>
+          <p class="disabled-hint">Daily requires sign in &bull; Sabotage requires opponent</p>
+        </div>
+
+        <div class="config-card">
+          <label>Hard Mode</label>
+          <div class="config-toggle-row">
+            <span class="config-toggle-label">Require revealed hints</span>
+            <button class="toggle-btn">Off</button>
+          </div>
+          <p class="config-hint">Green letters must stay in position, yellow letters must be reused</p>
+        </div>
+
+        <div class="config-actions">
+          <button class="btn btn-secondary">Cancel</button>
+          <button class="btn btn-primary">Start Game</button>
+        </div>
+      </div>
+
+      <div class="notes">
+        <h4>Changes from current</h4>
+        <ul>
+          <li class="good">Daily disabled with explanation</li>
+          <li class="good">Sabotage has "Requires opponent" hint</li>
+          <li class="good">Combined hint text for both disabled options</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- LOGGED IN VIEW -->
+    <div class="mockup-section">
+      <h2>Logged In View</h2>
+      <p class="subtitle">Signed in - Daily enabled</p>
+
+      <div class="settings-view">
+        <div class="user-state">Viewing as: user@example.com</div>
+
+        <div class="view-header">
+          <h3>Solo Settings</h3>
+          <p>Configure your practice game</p>
+        </div>
+
+        <div class="config-card">
+          <label>Word Selection</label>
+          <div class="mode-buttons">
+            <button class="mode-btn">Daily</button>
+            <button class="mode-btn active">Random</button>
+            <button class="mode-btn disabled-with-icon" disabled>Sabotage</button>
+          </div>
+          <p class="disabled-hint">Sabotage requires opponent</p>
+        </div>
+
+        <div class="config-card">
+          <label>Hard Mode</label>
+          <div class="config-toggle-row">
+            <span class="config-toggle-label">Require revealed hints</span>
+            <button class="toggle-btn active">On</button>
+          </div>
+          <p class="config-hint">Green letters must stay in position, yellow letters must be reused</p>
+        </div>
+
+        <div class="config-actions">
+          <button class="btn btn-secondary">Cancel</button>
+          <button class="btn btn-primary">Start Game</button>
+        </div>
+      </div>
+
+      <div class="notes">
+        <h4>Logged in differences</h4>
+        <ul>
+          <li class="good">Daily button enabled</li>
+          <li class="good">Can pick daily word for solo practice</li>
+          <li class="good">Still shows Sabotage hint</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

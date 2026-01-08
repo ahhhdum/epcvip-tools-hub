@@ -4,3 +4,8 @@ supabase/.temp/
 # Playwright test browser profiles (session data)
 .playwright-wordle-test/
 .playwright-mcp/
+
+# Test artifacts
+playwright-report/
+test-results/
+server/test-results/

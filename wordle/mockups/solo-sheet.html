@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Solo Practice Sheet Mockup - Wordle Battle</title>
+  <style>
+    :root {
+      --bg-primary: #121213;
+      --bg-secondary: #1a1a1b;
+      --bg-sheet: #2a2a2b;
+      --text-primary: #ffffff;
+      --text-secondary: #818384;
+      --accent: #538d4e;
+      --border: #3a3a3c;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      padding: 20px;
+      min-height: 100vh;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 1.5rem;
+    }
+
+    .description {
+      text-align: center;
+      color: var(--text-secondary);
+      margin-bottom: 30px;
+      font-size: 0.9rem;
+    }
+
+    .mockup-container {
+      display: flex;
+      gap: 30px;
+      justify-content: center;
+      flex-wrap: wrap;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .mockup-section {
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      padding: 15px;
+      width: 320px;
+    }
+
+    .mockup-section h2 {
+      font-size: 1rem;
+      margin-bottom: 5px;
+      color: var(--text-primary);
+    }
+
+    .mockup-section .subtitle {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      margin-bottom: 15px;
+    }
+
+    /* ==========================================
+       CURRENT (problematic)
+       ========================================== */
+
+    .sheet {
+      background: var(--bg-sheet);
+      border-radius: 16px 16px 0 0;
+      overflow: hidden;
+    }
+
+    .sheet-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sheet-header h3 {
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .sheet-close {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 4px 8px;
+    }
+
+    .sheet-content {
+      padding: 16px 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* Current broken buttons */
+    .current .btn-sheet {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 16px;
+      border-radius: 10px;
+      cursor: pointer;
+      width: 100%;
+      text-align: left;
+    }
+
+    .current .btn-sheet-primary {
+      background: var(--accent);
+      border: 2px solid var(--accent);
+      color: var(--text-primary);
+    }
+
+    .current .btn-sheet-secondary {
+      background: var(--bg-primary);
+      border: 2px solid var(--border);
+      color: var(--text-primary);
+    }
+
+    .current .btn-sheet .btn-text {
+      font-weight: 600;
+    }
+
+    .current .btn-sheet .btn-subtitle {
+      opacity: 0.8;
+    }
+
+    /* ==========================================
+       ALTERNATIVE A: Stacked Cards
+       ========================================== */
+
+    .alt-a .sheet-content {
+      gap: 14px;
+    }
+
+    .alt-a .btn-sheet {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 16px 18px;
+      border-radius: 12px;
+      cursor: pointer;
+      width: 100%;
+      text-align: left;
+    }
+
+    .alt-a .btn-sheet .btn-icon {
+      font-size: 1.5rem;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .alt-a .btn-sheet .btn-content {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .alt-a .btn-sheet .btn-title {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .alt-a .btn-sheet .btn-subtitle {
+      font-size: 0.85rem;
+      opacity: 0.7;
+    }
+
+    .alt-a .btn-sheet-primary {
+      background: var(--accent);
+      border: 2px solid var(--accent);
+      color: var(--text-primary);
+    }
+
+    .alt-a .btn-sheet-secondary {
+      background: var(--bg-primary);
+      border: 2px solid var(--border);
+      color: var(--text-primary);
+    }
+
+    /* ==========================================
+       ALTERNATIVE B: Icon-Left Inline (Menu-like)
+       ========================================== */
+
+    .alt-b .sheet-content {
+      padding: 0;
+      gap: 0;
+    }
+
+    .alt-b .btn-sheet {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 18px 20px;
+      cursor: pointer;
+      width: 100%;
+      text-align: left;
+      background: none;
+      border: none;
+      color: var(--text-primary);
+    }
+
+    .alt-b .btn-sheet:first-child {
+      border-bottom: 1px solid var(--border);
+    }
+
+    .alt-b .btn-sheet .btn-icon {
+      font-size: 1.4rem;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .alt-b .btn-sheet .btn-content {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .alt-b .btn-sheet .btn-title {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .alt-b .btn-sheet .btn-subtitle {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    .alt-b .btn-sheet:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    /* ==========================================
+       ALTERNATIVE C: Two-Column Grid
+       ========================================== */
+
+    .alt-c .sheet-content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .alt-c .btn-sheet {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      padding: 20px 12px;
+      border-radius: 12px;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .alt-c .btn-sheet .btn-icon {
+      font-size: 2rem;
+    }
+
+    .alt-c .btn-sheet .btn-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .alt-c .btn-sheet-primary {
+      background: var(--accent);
+      border: 2px solid var(--accent);
+      color: var(--text-primary);
+    }
+
+    .alt-c .btn-sheet-secondary {
+      background: var(--bg-primary);
+      border: 2px solid var(--border);
+      color: var(--text-primary);
+    }
+
+    /* Notes section */
+    .notes {
+      margin-top: 12px;
+      padding: 12px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 8px;
+      font-size: 0.75rem;
+    }
+
+    .notes h4 {
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+    }
+
+    .notes ul {
+      color: var(--text-secondary);
+      padding-left: 14px;
+    }
+
+    .notes li {
+      margin-bottom: 3px;
+    }
+
+    .notes .pro {
+      color: var(--accent);
+    }
+
+    .notes .con {
+      color: #c9534e;
+    }
+
+    .recommended {
+      border: 2px solid var(--accent);
+    }
+
+    .recommended-badge {
+      background: var(--accent);
+      color: white;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      display: inline-block;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Solo Practice Sheet Mockup</h1>
+  <p class="description">Compare 3 layout alternatives for the bottom sheet</p>
+
+  <div class="mockup-container">
+    <!-- CURRENT (problematic) -->
+    <div class="mockup-section current">
+      <h2>Current</h2>
+      <p class="subtitle">Text reads like a sentence</p>
+
+      <div class="sheet">
+        <div class="sheet-header">
+          <h3>Solo Practice</h3>
+          <button class="sheet-close">&times;</button>
+        </div>
+        <div class="sheet-content">
+          <button class="btn-sheet btn-sheet-primary">
+            <span class="btn-text">Quick Play</span>
+            <span class="btn-subtitle">Random word, start now</span>
+          </button>
+          <button class="btn-sheet btn-sheet-secondary">
+            <span class="btn-text">Customize</span>
+            <span class="btn-subtitle">Hard mode, settings</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="notes">
+        <h4>Problems</h4>
+        <ul>
+          <li class="con">"Quick Play Random word..." reads as one sentence</li>
+          <li class="con">No visual hierarchy</li>
+          <li class="con">No icons for scanning</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ALTERNATIVE A: Stacked Cards -->
+    <div class="mockup-section alt-a recommended">
+      <span class="recommended-badge">RECOMMENDED</span>
+      <h2>Alternative A: Stacked Cards</h2>
+      <p class="subtitle">Icon + Title above, Subtitle below</p>
+
+      <div class="sheet">
+        <div class="sheet-header">
+          <h3>Solo Practice</h3>
+          <button class="sheet-close">&times;</button>
+        </div>
+        <div class="sheet-content">
+          <button class="btn-sheet btn-sheet-primary">
+            <span class="btn-icon">🎲</span>
+            <div class="btn-content">
+              <span class="btn-title">Quick Play</span>
+              <span class="btn-subtitle">Random word, start now</span>
+            </div>
+          </button>
+          <button class="btn-sheet btn-sheet-secondary">
+            <span class="btn-icon">⚙️</span>
+            <div class="btn-content">
+              <span class="btn-title">Customize</span>
+              <span class="btn-subtitle">Hard mode, settings</span>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <div class="notes">
+        <h4>Analysis</h4>
+        <ul>
+          <li class="pro">Clear visual hierarchy</li>
+          <li class="pro">Matches lobby button structure</li>
+          <li class="pro">Room for longer descriptions</li>
+          <li class="pro">Easy to add more options</li>
+          <li class="con">Takes more vertical space</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ALTERNATIVE B: Icon-Left Inline -->
+    <div class="mockup-section alt-b">
+      <h2>Alternative B: Menu-like</h2>
+      <p class="subtitle">Compact with divider line</p>
+
+      <div class="sheet">
+        <div class="sheet-header">
+          <h3>Solo Practice</h3>
+          <button class="sheet-close">&times;</button>
+        </div>
+        <div class="sheet-content">
+          <button class="btn-sheet">
+            <span class="btn-icon">🎲</span>
+            <div class="btn-content">
+              <span class="btn-title">Quick Play</span>
+              <span class="btn-subtitle">Random word, start now</span>
+            </div>
+          </button>
+          <button class="btn-sheet">
+            <span class="btn-icon">⚙️</span>
+            <div class="btn-content">
+              <span class="btn-title">Customize</span>
+              <span class="btn-subtitle">Hard mode, settings</span>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <div class="notes">
+        <h4>Analysis</h4>
+        <ul>
+          <li class="pro">Very compact</li>
+          <li class="pro">Familiar menu pattern</li>
+          <li class="con">Less visual distinction between options</li>
+          <li class="con">Quick Play doesn't stand out as primary</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ALTERNATIVE C: Two-Column Grid -->
+    <div class="mockup-section alt-c">
+      <h2>Alternative C: Grid</h2>
+      <p class="subtitle">Side-by-side buttons</p>
+
+      <div class="sheet">
+        <div class="sheet-header">
+          <h3>Solo Practice</h3>
+          <button class="sheet-close">&times;</button>
+        </div>
+        <div class="sheet-content">
+          <button class="btn-sheet btn-sheet-primary">
+            <span class="btn-icon">🎲</span>
+            <span class="btn-title">Quick Play</span>
+          </button>
+          <button class="btn-sheet btn-sheet-secondary">
+            <span class="btn-icon">⚙️</span>
+            <span class="btn-title">Customize</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="notes">
+        <h4>Analysis</h4>
+        <ul>
+          <li class="pro">Most compact</li>
+          <li class="pro">Both visible at once</li>
+          <li class="con">No room for descriptions</li>
+          <li class="con">Doesn't scale (3+ options)</li>
+          <li class="con">Inconsistent with lobby layout</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
