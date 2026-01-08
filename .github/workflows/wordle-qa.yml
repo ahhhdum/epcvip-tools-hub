@@ -33,6 +33,7 @@ on:
 permissions:
   contents: read
   pull-requests: write
+  id-token: write  # Required for claude-code-action OIDC auth
 
 jobs:
   wordle-qa:
