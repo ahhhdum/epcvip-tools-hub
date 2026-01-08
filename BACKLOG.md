@@ -46,6 +46,7 @@
 | ID | Effort | Description | Files |
 |----|--------|-------------|-------|
 | **UX-004** | S | **Win celebration** - Confetti animation on victory | `wordle.js`, `wordle.css` |
+| **UX-005** | M | **Help/Info system** - How to play, game modes explained, tooltips | `index.html`, `wordle.css` |
 | **SOUND-001** | M | **Sound effects** - Keyboard clicks, win/lose sounds, countdown | `wordle.js`, `assets/` |
 | **FEAT-001** | L | **Spectate mode** + emoji reactions for watchers | `wordle-room.ts`, `wordle.js` |
 | **SHARE-001** | S | Share results - emoji grid to clipboard | `wordle.js` |

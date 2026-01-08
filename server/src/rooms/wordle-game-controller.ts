@@ -20,6 +20,7 @@ import {
 } from '../constants/wordle-constants';
 import {
   validateGuess,
+  validateHardMode,
   isWinningResult,
   isOutOfGuesses,
   countCorrectLetters,
@@ -394,7 +395,8 @@ export class WordleGameController {
       // Set room.word to null - individual words are in wordAssignments
       room.word = null;
     } else {
-      room.word = getRandomWord();
+      // Use testWord if set (for E2E tests), otherwise random
+      room.word = room.testWord || getRandomWord();
     }
     room.gameState = 'playing';
     room.startTime = Date.now();
@@ -513,6 +515,20 @@ export class WordleGameController {
     if (!isValidGuess(guess)) {
       this.send(socket, { type: 'error', message: 'Invalid guess. Must be 5 letters.' });
       return;
+    }
+
+    // Hard Mode validation - must use revealed hints
+    if (room.hardMode && player.guesses.length > 0) {
+      const hardModeCheck = validateHardMode(guess, player.guesses, player.guessResults);
+      if (!hardModeCheck.valid) {
+        this.send(socket, {
+          type: 'hardModeViolation',
+          message: hardModeCheck.violation,
+          letter: hardModeCheck.letter,
+          position: hardModeCheck.position,
+        });
+        return;
+      }
     }
 
     // Log forced words for dictionary review

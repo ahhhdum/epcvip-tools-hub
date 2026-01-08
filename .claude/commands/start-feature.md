@@ -41,23 +41,87 @@ Which feature? (Enter number, ID, or describe new feature)
 | **M** (3-4h) | Full plan with checkpoints |
 | **L+** (5h+) | Must split first |
 
-## Step 4: Testing Plan (Auto-Suggest)
+## Step 4: Testability Analysis
 
-**Analyze the feature type and auto-suggest testing:**
+**Before suggesting tests, analyze what kind of code will be written:**
+
+### 4.1 Pure Functions Check
+
+Does the feature add/modify functions that are:
+- Takes inputs, returns outputs
+- No side effects (no DB, WebSocket, DOM manipulation)
+- Deterministic (same inputs = same outputs)
+
+**If YES → Unit test is REQUIRED (not optional)**
+
+Examples in this codebase:
+- `validateGuess()` - wordle-validator.ts
+- `validateHardMode()` - wordle-validator.ts
+- `calculateScore()` - wordle-validator.ts
+- `generateRoomCode()` - room-codes.ts
+
+Pattern: `server/src/services/wordle-validator.test.ts`
+
+### 4.2 Integration Points Check
+
+Does the feature involve:
+- WebSocket message handling
+- Database operations
+- Multi-player coordination
+- User flows across multiple screens
+
+**If YES → E2E test recommended**
+
+Pattern: `test/e2e/*.spec.ts`
+
+**For deterministic gameplay testing**, use test word seeding:
+```typescript
+// In E2E test
+await host.createRoom({ testWord: 'CRANE' });
+// Now target word is CRANE - enables deterministic testing
+```
+
+### 4.3 UI Changes Check
+
+Does the feature change visual appearance?
+- New components/modals
+- CSS changes
+- Layout changes
+
+**If YES → Visual regression recommended**
+
+Pattern: `test/e2e/visual.spec.ts`
+
+---
+
+## Step 5: Testing Plan (Auto-Suggest)
+
+**Based on testability analysis, suggest testing:**
+
+### Testing Decision Matrix (Prescriptive)
+
+| Feature Type | Unit Test | E2E Test | Visual |
+|--------------|-----------|----------|--------|
+| Pure function logic | **REQUIRED** | Optional | - |
+| WebSocket/DB integration | Optional | **REQUIRED** | - |
+| UI components | - | Recommended | **REQUIRED** |
+| Bug fix | Match original | Regression | - |
+| Refactor | Existing only | - | - |
+| Trivial (config/text) | - | - | CI QA only |
 
 ### Feature Type Detection
 
 | If feature involves... | Type | Suggested Testing |
 |------------------------|------|-------------------|
 | Buttons, modals, views, CSS | UI Feature | Visual + E2E flow |
-| Game rules, validation, scoring | Game Logic | Unit + E2E |
+| Game rules, validation, scoring | Game Logic | **Unit REQUIRED** + E2E |
 | Fixing a bug | Bug Fix | Regression test |
 | Code reorganization only | Refactor | Existing tests only |
 | Config, text, minor tweak | Trivial | CI QA only |
 
 ### Generate Testing Suggestion
 
-Based on feature analysis, output:
+Based on testability analysis, output:
 
 ```
 📋 TESTING PLAN (auto-suggested):
@@ -69,6 +133,10 @@ Based on feature analysis, output:
 ├─ CI (automatic):
 │   ├─ Security Review: Always on PR
 │   └─ QA Workflow: On Wordle file changes
+├─ Testability:
+│   ├─ Pure Functions: [Yes/No] → [Unit test REQUIRED if Yes]
+│   ├─ Integration: [Yes/No] → [E2E recommended if Yes]
+│   └─ UI Changes: [Yes/No] → [Visual recommended if Yes]
 └─ Status: See docs/CI_TESTING_STATUS.md
 
 Adjust testing plan? [Y/n]
@@ -84,7 +152,7 @@ From `docs/CI_TESTING_STATUS.md`:
 
 **Flag if suggesting untested methods.**
 
-## Step 5: Create Feature Plan
+## Step 6: Create Feature Plan
 
 ### For XS/S Features (Lightweight)
 
@@ -122,7 +190,7 @@ Create `docs/features/[FEATURE-ID]/plan.md` with:
 - Testing plan section
 - Open questions
 
-## Step 6: Update Tracking
+## Step 7: Update Tracking
 
 **Update BACKLOG.md:**
 Move feature to "Current Sprint" if not already there, mark as "In Progress".
@@ -136,7 +204,7 @@ Move feature to "Current Sprint" if not already there, mark as "In Progress".
 ]
 ```
 
-## Step 7: Start Implementation
+## Step 8: Start Implementation
 
 **Output format:**
 
@@ -169,19 +237,23 @@ Wait for user confirmation before making changes.
 
 ## Quick Reference
 
-### Testing Decision Matrix
+### Testing Decision Matrix (Prescriptive)
 
-| Feature Type | E2E | Visual | Unit | Notes |
-|--------------|-----|--------|------|-------|
-| UI Feature | ✓ | ✓ | - | Focus on user flow |
-| Game Logic | ✓ | - | ✓ | Test rules + integration |
-| Bug Fix | ✓ | - | - | Regression test |
+| Feature Type | Unit Test | E2E Test | Visual | Notes |
+|--------------|-----------|----------|--------|-------|
+| Pure function logic | **REQUIRED** | Optional | - | Test logic directly |
+| WebSocket/DB | Optional | **REQUIRED** | - | Test integration |
+| UI components | - | Recommended | **REQUIRED** | Test appearance |
+| Bug fix | Match original | Regression | - | Prevent recurrence |
 | Refactor | - | - | - | Existing tests |
 | Trivial | - | - | - | CI QA only |
 
 ### Commands to Run Tests
 
 ```bash
+# Unit tests (server)
+cd server && npm test
+
 # E2E tests
 npx playwright test
 
@@ -194,6 +266,24 @@ npx playwright test --ui
 # Headed (visible)
 npx playwright test --headed
 ```
+
+### Test Word Seeding (E2E)
+
+For deterministic gameplay testing, use `testWord` parameter:
+
+```typescript
+// In your E2E test
+const roomCode = await host.createRoom({
+  wordMode: 'random',
+  testWord: 'CRANE', // Target word is now deterministic
+});
+
+// Now you can test specific game outcomes
+await host.guess('CRANE'); // Wins on first guess
+await host.page.waitForSelector('text=You won!');
+```
+
+**Note:** Test word seeding is ignored in production (`NODE_ENV=production`).
 
 ### Related Commands
 

@@ -25,8 +25,10 @@ class GameState {
     this.isReady = false;
     this.gameMode = 'casual'; // 'casual' | 'competitive'
     this.wordMode = 'daily'; // 'daily' | 'random' | 'sabotage'
+    this.hardMode = false; // Hard Mode: must use revealed hints
     this.dailyNumber = null;
     this.isRoomPublic = true;
+    this.isSolo = false; // Solo practice mode (no stats, skip waiting room)
     this.playersInRoom = []; // Array of { id, name, isCreator, isReady, connectionState }
 
     // Pending room config (before room creation)
@@ -34,6 +36,7 @@ class GameState {
       gameMode: 'casual',
       wordMode: 'daily',
       isPublic: true,
+      hardMode: false,
     };
 
     // ==========================================================================
@@ -148,6 +151,7 @@ class GameState {
     this.wordMode = 'daily';
     this.dailyNumber = null;
     this.isRoomPublic = true;
+    this.isSolo = false;
     this.playersInRoom = [];
     this.gamePhase = 'lobby';
 

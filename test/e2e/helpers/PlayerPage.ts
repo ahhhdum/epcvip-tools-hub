@@ -46,7 +46,16 @@ export class PlayerPage {
     wordMode?: 'daily' | 'random' | 'sabotage';
     gameMode?: 'casual' | 'competitive';
     isPublic?: boolean;
+    hardMode?: boolean;
+    testWord?: string; // Seed a deterministic word for testing (ignored in production)
   } = {}) {
+    // Set test word before creating room (for deterministic E2E tests)
+    if (options.testWord) {
+      await this.page.evaluate((word) => {
+        (window as unknown as { __WORDLE_TEST_WORD__: string }).__WORDLE_TEST_WORD__ = word.toUpperCase();
+      }, options.testWord);
+    }
+
     await this.openFriendsSheet();
     await this.page.click('[data-testid="create-room"]');
 
@@ -61,6 +70,11 @@ export class PlayerPage {
     // Set game mode
     if (options.gameMode) {
       await this.page.click(`button[data-mode="${options.gameMode}"]`);
+    }
+
+    // Set hard mode
+    if (options.hardMode) {
+      await this.page.click('#configHardMode');
     }
 
     // Set visibility
@@ -238,6 +252,19 @@ export class PlayerPage {
 
   async getMessage() {
     return this.page.textContent('#message');
+  }
+
+  async waitForMessage(text: string) {
+    await this.page.waitForSelector(`#message:has-text("${text}")`);
+  }
+
+  async getLetterResult(row: number, col: number) {
+    const cell = this.page.locator(`#board .row:nth-child(${row + 1}) .cell:nth-child(${col + 1})`);
+    const classes = await cell.getAttribute('class');
+    if (classes?.includes('correct')) return 'correct';
+    if (classes?.includes('present')) return 'present';
+    if (classes?.includes('absent')) return 'absent';
+    return 'empty';
   }
 
   // ==========================================================================

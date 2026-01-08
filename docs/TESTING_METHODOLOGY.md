@@ -38,6 +38,112 @@ Neither replaces the other. Use both.
 | **E2E Scripted** | Workflow breaks, regressions | Visual bugs, typos |
 | **Claude MCP** | Visual issues, UX problems | Nothing (but slower) |
 
+## Pure Function Testing (Unit Tests)
+
+### Definition
+
+A pure function:
+- Takes inputs, returns outputs
+- No side effects (no DB, WebSocket, DOM)
+- Deterministic (same inputs = same outputs)
+
+### The Rule
+
+> **If it's pure, unit test it. No exceptions.**
+
+Pure functions are the easiest to test and the most reliable. Don't skip unit tests just because you have E2E tests.
+
+### Examples in This Codebase
+
+| Function | Location | What It Does |
+|----------|----------|--------------|
+| `validateGuess()` | wordle-validator.ts | Compare guess to target word |
+| `validateHardMode()` | wordle-validator.ts | Check hard mode constraints |
+| `calculateScore()` | wordle-validator.ts | Compute competitive score |
+| `generateRoomCode()` | room-codes.ts | Generate 6-char room code |
+| `formatTime()` | wordle-utils.js | Format seconds as M:SS |
+
+### Unit Test Pattern
+
+```typescript
+// server/src/services/wordle-validator.test.ts
+
+describe('validateHardMode', () => {
+  it('requires green letter to stay in same position', () => {
+    const previousGuesses = ['CRANE'];
+    const previousResults: LetterResult[][] = [
+      ['absent', 'correct', 'present', 'absent', 'absent'], // R is green
+    ];
+
+    // SLATE doesn't have R at position 1
+    const result = validateHardMode('SLATE', previousGuesses, previousResults);
+    expect(result.valid).toBe(false);
+    expect(result.violation).toBe('2nd letter must be R');
+  });
+});
+```
+
+### When to Write Unit Tests
+
+- Adding new validation logic
+- Adding new calculation/transformation
+- Adding new pure utility function
+- Fixing a bug in pure logic (regression test)
+
+### Don't Skip Unit Tests Because You Have E2E
+
+E2E tests and unit tests serve different purposes:
+
+| Aspect | Unit Tests | E2E Tests |
+|--------|------------|-----------|
+| Speed | Fast (ms) | Slow (seconds) |
+| Reliability | Deterministic | May flake |
+| Debugging | Precise location | Harder to isolate |
+| Coverage | Logic edge cases | User flows |
+
+**Best practice:** Unit tests for logic, E2E for user experience. Both complement each other.
+
+## Test Word Seeding (Deterministic E2E)
+
+### The Problem
+
+Many features require testing actual gameplay outcomes, but the target word is random:
+- Win confetti (need to WIN)
+- Share results (need known outcome)
+- Hard mode violations (need known letter positions)
+- Achievements (need specific scenarios)
+
+### The Solution
+
+Use `testWord` parameter to seed a deterministic target word:
+
+```typescript
+// In E2E test
+const roomCode = await host.createRoom({
+  wordMode: 'random',
+  testWord: 'CRANE', // Target word is now CRANE
+});
+
+// Now gameplay is deterministic
+await host.guess('CRANE'); // Wins on first guess
+await host.page.waitForSelector('text=You won!');
+```
+
+### Security
+
+- Test word seeding is **ignored in production** (`NODE_ENV=production`)
+- Only works in development/test environments
+- No attack surface in production builds
+
+### Use Cases
+
+| Feature | Test Scenario |
+|---------|---------------|
+| Win detection | Seed word, guess it, verify "You won!" |
+| Hard mode | Seed CRANE, guess TRACE, verify constraints |
+| Share results | Seed word, play specific sequence, verify share text |
+| Achievements | Seed words to trigger specific achievement conditions |
+
 ## Scripted Tests: What They Actually Check
 
 ```typescript

@@ -175,3 +175,179 @@ describe('normalizeGuess', () => {
     expect(normalizeGuess('HeLLo')).toBe('HELLO');
   });
 });
+
+// =============================================================================
+// Hard Mode Validation Tests
+// =============================================================================
+
+import { validateHardMode } from './wordle-validator';
+
+describe('validateHardMode', () => {
+  describe('first guess (no constraints)', () => {
+    it('allows any valid word as first guess', () => {
+      const result = validateHardMode('CRANE', [], []);
+      expect(result.valid).toBe(true);
+    });
+  });
+
+  describe('green letter constraints', () => {
+    it('requires green letter to stay in same position', () => {
+      // Previous guess CRANE with R as green (position 1)
+      // Target was something like "GREAT" where R is at position 1
+      const previousGuesses = ['CRANE'];
+      const previousResults: LetterResult[][] = [
+        ['absent', 'correct', 'present', 'absent', 'absent'],
+      ];
+
+      // SLATE doesn't have R at position 1
+      const result = validateHardMode('SLATE', previousGuesses, previousResults);
+      expect(result.valid).toBe(false);
+      expect(result.violation).toBe('2nd letter must be R');
+      expect(result.letter).toBe('R');
+      expect(result.position).toBe(1);
+    });
+
+    it('accepts guess with green letter in correct position', () => {
+      const previousGuesses = ['CRANE'];
+      const previousResults: LetterResult[][] = [
+        ['absent', 'correct', 'present', 'absent', 'absent'],
+      ];
+
+      // BREAD has R at position 1 and includes A (yellow)
+      const result = validateHardMode('BREAD', previousGuesses, previousResults);
+      expect(result.valid).toBe(true);
+    });
+
+    it('enforces multiple green letters from same guess', () => {
+      // CRANE with C correct, R correct, A correct
+      const previousGuesses = ['CRANE'];
+      const previousResults: LetterResult[][] = [
+        ['correct', 'correct', 'correct', 'absent', 'absent'],
+      ];
+
+      // CRABS maintains C, R, A in positions 0, 1, 2
+      const valid = validateHardMode('CRABS', previousGuesses, previousResults);
+      expect(valid.valid).toBe(true);
+
+      // TRACK doesn't have C at position 0
+      const invalid = validateHardMode('TRACK', previousGuesses, previousResults);
+      expect(invalid.valid).toBe(false);
+      expect(invalid.violation).toBe('1st letter must be C');
+    });
+  });
+
+  describe('yellow letter constraints', () => {
+    it('requires yellow letter to appear somewhere in guess', () => {
+      // CRANE with C as yellow (exists but wrong position)
+      const previousGuesses = ['CRANE'];
+      const previousResults: LetterResult[][] = [
+        ['present', 'absent', 'absent', 'absent', 'absent'],
+      ];
+
+      // SLATE doesn't include C
+      const result = validateHardMode('SLATE', previousGuesses, previousResults);
+      expect(result.valid).toBe(false);
+      expect(result.violation).toBe('Guess must contain C');
+      expect(result.letter).toBe('C');
+    });
+
+    it('accepts yellow letter in any position', () => {
+      // C was yellow at position 0
+      const previousGuesses = ['CRANE'];
+      const previousResults: LetterResult[][] = [
+        ['present', 'absent', 'absent', 'absent', 'absent'],
+      ];
+
+      // TEACH has C at position 3 (different position, but still valid)
+      const result = validateHardMode('TEACH', previousGuesses, previousResults);
+      expect(result.valid).toBe(true);
+    });
+
+    it('handles multiple yellow letters from one guess', () => {
+      // TRACE with T, R, C, E all yellow
+      const previousGuesses = ['TRACE'];
+      const previousResults: LetterResult[][] = [
+        ['present', 'present', 'absent', 'present', 'present'],
+      ];
+
+      // CREST includes T, R, C, E
+      const valid = validateHardMode('CREST', previousGuesses, previousResults);
+      expect(valid.valid).toBe(true);
+
+      // PLUMB doesn't include any
+      const invalid = validateHardMode('PLUMB', previousGuesses, previousResults);
+      expect(invalid.valid).toBe(false);
+    });
+  });
+
+  describe('combined constraints from multiple guesses', () => {
+    it('accumulates constraints across guesses', () => {
+      const previousGuesses = ['CRANE', 'BREAD'];
+      const previousResults: LetterResult[][] = [
+        ['absent', 'correct', 'present', 'absent', 'absent'], // R green, A yellow
+        ['absent', 'correct', 'present', 'present', 'absent'], // R green, E yellow, A yellow
+      ];
+
+      // Must have: R at position 1, A somewhere, E somewhere
+      // GREAT: R at position 1, E at 2, A at 3 - valid
+      const valid = validateHardMode('GREAT', previousGuesses, previousResults);
+      expect(valid.valid).toBe(true);
+
+      // PRISM: R at position 1, but missing A and E
+      const invalid = validateHardMode('PRISM', previousGuesses, previousResults);
+      expect(invalid.valid).toBe(false);
+    });
+  });
+
+  describe('edge cases', () => {
+    it('handles all correct (winning) guess followed by another (impossible scenario)', () => {
+      // All green - shouldn't happen in real game but test anyway
+      const previousGuesses = ['CRANE'];
+      const previousResults: LetterResult[][] = [
+        ['correct', 'correct', 'correct', 'correct', 'correct'],
+      ];
+
+      // Next guess must be exactly CRANE
+      const valid = validateHardMode('CRANE', previousGuesses, previousResults);
+      expect(valid.valid).toBe(true);
+
+      const invalid = validateHardMode('SLATE', previousGuesses, previousResults);
+      expect(invalid.valid).toBe(false);
+    });
+
+    it('prioritizes green violations over yellow violations', () => {
+      // R is green at position 1, A is yellow
+      const previousGuesses = ['CRANE'];
+      const previousResults: LetterResult[][] = [
+        ['absent', 'correct', 'present', 'absent', 'absent'],
+      ];
+
+      // SLATE fails both: no R at position 1, no A
+      // Should report green violation first (position constraint)
+      const result = validateHardMode('SLATE', previousGuesses, previousResults);
+      expect(result.valid).toBe(false);
+      expect(result.violation).toBe('2nd letter must be R');
+    });
+
+    it('ordinal suffixes are correct', () => {
+      // Test 1st, 2nd, 3rd, 4th, 5th positions
+      const testCases = [
+        { pos: 0, expected: '1st' },
+        { pos: 1, expected: '2nd' },
+        { pos: 2, expected: '3rd' },
+        { pos: 3, expected: '4th' },
+        { pos: 4, expected: '5th' },
+      ];
+
+      for (const { pos, expected } of testCases) {
+        const results: LetterResult[] = ['absent', 'absent', 'absent', 'absent', 'absent'];
+        results[pos] = 'correct';
+
+        const result = validateHardMode('WRONG', ['TESTS'], [results]);
+        if (!result.valid && result.violation) {
+          expect(result.violation.startsWith(expected)).toBe(true);
+        }
+      }
+    });
+  });
+});

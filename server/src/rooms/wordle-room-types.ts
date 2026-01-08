@@ -77,6 +77,8 @@ export interface WordleRoom {
   gameState: GameState;
   gameMode: GameMode;
   wordMode: WordMode;
+  hardMode: boolean; // True if Hard Mode is enabled (must use revealed hints)
+  testWord: string | null; // For E2E tests: deterministic word (ignored in production)
   word: string | null;
   startTime: number | null;
   creatorId: string;

@@ -95,7 +95,10 @@ export class WordleRoomManager {
     playerEmail?: string,
     isPublic: boolean = true,
     gameMode: GameMode = 'casual',
-    wordMode: WordMode = 'daily'
+    wordMode: WordMode = 'daily',
+    hardMode: boolean = false,
+    testWord?: string, // For E2E tests: seed a deterministic word (ignored in production)
+    isSolo: boolean = false // Solo practice mode (no stats, auto-start)
   ): { roomCode: string; playerId: string } | null {
     const existingCodes = new Set(this.rooms.keys());
     const roomCode = generateUniqueRoomCode(existingCodes);
@@ -130,12 +133,18 @@ export class WordleRoomManager {
       lastGuessTime: null,
     };
 
+    // Only allow testWord in non-production environments
+    const effectiveTestWord =
+      process.env.NODE_ENV !== 'production' && testWord ? testWord.toUpperCase() : null;
+
     const room: WordleRoom = {
       code: roomCode,
       players: new Map([[playerId, player]]),
       gameState: 'waiting',
       gameMode,
       wordMode,
+      hardMode,
+      testWord: effectiveTestWord,
       word: null,
       startTime: null,
       creatorId: playerId,
@@ -143,7 +152,7 @@ export class WordleRoomManager {
       timerInterval: null,
       isDailyChallenge: wordMode === 'daily',
       dailyNumber: wordMode === 'daily' ? getDailyNumber() : null,
-      isSolo: false,
+      isSolo: isSolo && wordMode !== 'sabotage', // Sabotage can't be solo
       gameId: null,
       isPublic, // Visible in lobby (default true)
 
@@ -158,17 +167,43 @@ export class WordleRoomManager {
     this.playerToRoom.set(playerId, roomCode);
     this.socketToPlayer.set(socket, playerId);
 
+    // For solo mode: mark player ready and send roomJoined instead of roomCreated
+    if (room.isSolo) {
+      player.isReady = true;
+
+      this.send(socket, {
+        type: 'roomJoined',
+        roomCode,
+        playerId,
+        isHost: true,
+        players: [{ id: playerId, name: playerName, isReady: true, isCreator: true }],
+        gameMode,
+        wordMode,
+        hardMode,
+        dailyNumber: room.dailyNumber,
+        isSolo: true,
+      });
+
+      console.log(`[Wordle] Solo practice room ${roomCode} created by ${playerName}`);
+
+      // Start countdown after a brief delay to let client receive roomJoined
+      setTimeout(() => this.gameController.startCountdown(room), SOLO_START_DELAY_MS);
+
+      return { roomCode, playerId };
+    }
+
     this.send(socket, {
       type: 'roomCreated',
       roomCode,
       playerId,
       gameMode,
       wordMode,
+      hardMode,
       dailyNumber: room.dailyNumber,
       isPublic,
     });
 
-    // Notify lobby subscribers about new room
+    // Notify lobby subscribers about new room (not for solo - it's private)
     this.broadcastPublicRoomsList();
 
     console.log(`[Wordle] Room ${roomCode} created by ${playerName}`);
@@ -252,6 +287,7 @@ export class WordleRoomManager {
             players: [{ id: result.playerId, name: playerName, isReady: true, isCreator: true }],
             gameMode: room.gameMode,
             wordMode: room.wordMode,
+            hardMode: room.hardMode,
             dailyNumber: dailyNumber,
             isSolo: true,
           });
@@ -344,6 +380,7 @@ export class WordleRoomManager {
       gameState: room.gameState,
       gameMode: room.gameMode,
       wordMode: room.wordMode,
+      hardMode: room.hardMode,
     });
 
     // Notify other players
@@ -503,7 +540,10 @@ export class WordleRoomManager {
             msg.playerEmail,
             msg.isPublic ?? true,
             msg.gameMode ?? 'casual',
-            msg.wordMode ?? 'daily'
+            msg.wordMode ?? 'daily',
+            msg.hardMode ?? false,
+            msg.testWord, // For E2E tests (ignored in production)
+            msg.isSolo ?? false // Solo practice mode
           );
           break;
         case 'subscribeLobby':
@@ -514,6 +554,9 @@ export class WordleRoomManager {
           break;
         case 'setRoomVisibility':
           this.setRoomVisibility(socket, msg.isPublic);
+          break;
+        case 'setHardMode':
+          this.setHardMode(socket, msg.hardMode);
           break;
         case 'createDailyChallenge':
           this.createDailyChallengeRoom(
@@ -673,5 +716,41 @@ export class WordleRoomManager {
     console.log(
       `[Wordle] Room ${roomCode} visibility changed to ${isPublic ? 'public' : 'private'}`
     );
+  }
+
+  /**
+   * Set Hard Mode (on/off) - creator only, only in waiting state
+   * Hard Mode: Must use revealed hints in subsequent guesses
+   */
+  setHardMode(socket: WebSocket, hardMode: boolean): void {
+    const playerId = this.socketToPlayer.get(socket);
+    if (!playerId) return;
+
+    const roomCode = this.playerToRoom.get(playerId);
+    if (!roomCode) return;
+
+    const room = this.rooms.get(roomCode);
+    if (!room) return;
+
+    const player = room.players.get(playerId);
+    if (!player?.isCreator) {
+      this.send(socket, { type: 'error', message: 'Only the room creator can change Hard Mode.' });
+      return;
+    }
+
+    if (room.gameState !== 'waiting') {
+      this.send(socket, {
+        type: 'error',
+        message: 'Cannot change Hard Mode after game has started.',
+      });
+      return;
+    }
+
+    room.hardMode = hardMode;
+
+    // Notify room members
+    this.broadcastToRoom(roomCode, { type: 'hardModeChanged', hardMode });
+
+    console.log(`[Wordle] Room ${roomCode} Hard Mode ${hardMode ? 'enabled' : 'disabled'}`);
   }
 }
