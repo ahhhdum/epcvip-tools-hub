@@ -10,6 +10,7 @@
     "format": "prettier --write \"js/**/*.js\" \"tools/js/**/*.js\"",
     "format:check": "prettier --check \"js/**/*.js\" \"tools/js/**/*.js\"",
     "prepare": "husky",
+    "test": "cd server && npm test",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:ui": "playwright test --ui"

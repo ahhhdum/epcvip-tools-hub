@@ -505,55 +505,79 @@ Allow player to walk "behind" buildings and trees for proper 2D depth illusion.
 
 ## Priority 0: Code Quality & Standards
 
-### Latest Audit (2026-01-05)
+### Latest Audit (2026-01-08)
 
 **Summary:**
-- 0 critical issues (vulnerability fixed)
-- 3 warnings (file complexity)
-- 0 ESLint errors (cleaned)
+- 0 critical issues (qs vulnerability fixed)
+- 5 warnings (file complexity, console.logs, innerHTML, outdated deps)
+- 12 checks passed (ESLint, TypeScript, security, tests)
 
 **File Complexity Concerns:**
-| File | Lines | Functions | Status |
-|------|-------|-----------|--------|
-| `wordle/wordle.js` | 3129 | 112 | ⚠️ Needs splitting |
-| `server/src/rooms/wordle-room.ts` | 1611 | 66 | ⚠️ Needs splitting |
-| `wordle/wordle.css` | 2453 | - | ⚠️ Consider splitting |
+| File | Lines | Status |
+|------|-------|--------|
+| `wordle/wordle.js` | 5,045 | ⚠️ Needs splitting |
+| `wordle/wordle.css` | 4,099 | ⚠️ Needs splitting |
+| `server/src/index.ts` | 826 | Acceptable |
+| Server room modules | 600-800 each | ✅ Well-split |
+
+**Other Findings:**
+- 46 console.log statements in server code (should use structured logging)
+- 22 innerHTML usages (need XSS audit)
+- eslint-config-prettier outdated (9.1.2 → 10.1.8)
 
 ### Immediate Remediation Tasks
 
 - [x] **Fix npm vulnerability** - `qs` package updated via `npm audit fix`
 - [x] **ESLint clean** - 0 errors, 0 warnings
+- [x] **Add root test script** - `npm test` now works at project root
+- [ ] **SEC-002** - Audit innerHTML usages for XSS vulnerabilities
 
 ### High Priority - File Splitting
 
-- [~] **Split wordle.js (3175 lines → modular structure)** - IN PROGRESS
+- [~] **CODE-001: Split wordle.js (5,045 lines → modular structure)** - IN PROGRESS
   - [x] `wordle/utils/wordle-utils.js` (89 lines) - Pure utility functions with tests
   - [x] `wordle/utils/wordle-storage.js` (146 lines) - Session/progress storage with tests
-  - [ ] `wordle/js/auth.js` - Authentication (20+ functions)
-  - [ ] `wordle/js/daily.js` - Daily challenge logic (25+ functions)
-  - [ ] `wordle/js/room.js` - Room management (20+ functions)
-  - [ ] `wordle/js/game.js` - Game board/keyboard (20+ functions)
-  - [ ] `wordle/js/ui.js` - Views, toasts, modals (15+ functions)
-  - [ ] `wordle/js/websocket.js` - Connection handling (10+ functions)
+  - [x] `wordle/state/game-state.js` - Centralized state management with tests
+  - [x] `wordle/modules/game-logic.js` - Game calculation logic with tests
+  - [ ] `wordle/modules/auth.js` - Authentication (~400 lines)
+  - [ ] `wordle/modules/daily.js` - Daily challenge logic (~500 lines)
+  - [ ] `wordle/modules/room.js` - Room management (~600 lines)
+  - [ ] `wordle/modules/game.js` - Game board/input (~800 lines)
+  - [ ] `wordle/modules/ui.js` - Views, modals (~600 lines)
+  - [ ] `wordle/modules/websocket.js` - Connection handling (~400 lines)
 
-- [x] **Split wordle-room.ts (1611 lines → 5 focused modules)**
-  - `wordle-room.ts` (618 lines) - Coordinator, room CRUD, message dispatch
-  - `wordle-game-controller.ts` (525 lines) - Game lifecycle
-  - `wordle-player-handler.ts` (575 lines) - Player lifecycle, reconnection
+- [x] **Split wordle-room.ts (→ 5 focused modules)**
+  - `wordle-room.ts` (756 lines) - Coordinator, room CRUD, message dispatch
+  - `wordle-game-controller.ts` (789 lines) - Game lifecycle
+  - `wordle-player-handler.ts` (614 lines) - Player lifecycle, reconnection
   - `wordle-lobby-manager.ts` (98 lines) - Public room listing
-  - `wordle-room-types.ts` (118 lines) - Shared types and interfaces
+  - `wordle-room-types.ts` (139 lines) - Shared types and interfaces
 
-- [ ] **Split wordle.css (2453 lines → partials)**
+- [ ] **CODE-002: Split wordle.css (4,099 lines → partials)**
   - `wordle/css/variables.css` - Colors, spacing
   - `wordle/css/base.css` - Reset, typography
   - `wordle/css/layout.css` - Views, containers
   - `wordle/css/components.css` - Cards, buttons, modals
   - `wordle/css/game.css` - Grid, keyboard, boards
 
-### Medium Priority - Infrastructure
+### Medium Priority - Code Quality
 
-- [ ] **Set up Jest** - Add test infrastructure for server (4 hours)
-- [ ] **ESLint 9 migration** - Migrate to flat config (2-3 hours)
+- [ ] **CODE-003: Structured logging** - Replace 46 console.logs with pino/winston
+- [ ] **DEPS-001: Update dependencies** - eslint-config-prettier (9.1.2 → 10.1.8)
+
+### Medium Priority - Testing
+
+- [ ] **TEST-001** - Add WebSocket handler unit tests
+- [ ] **TEST-002** - Add auth flow tests
+- [ ] **TEST-003** - Add daily challenge E2E test
+- [ ] **TEST-004** - Add database integration tests
+
+### Long-term Scalability
+
+- [ ] **ARCH-001** - Extract shared game-logic module (client+server)
+- [ ] **ARCH-002** - Add TypeScript to client code
+- [ ] **PERF-001** - Implement WebSocket message batching
+- [ ] **OBS-001** - Add structured logging + log aggregation
 
 ### Quality Tools
 
