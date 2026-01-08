@@ -710,6 +710,8 @@ export class WordleGameController {
       results,
       gameMode: room.gameMode,
       wordAssignments, // Array of { targetId, targetName, word, pickerId, pickerName }
+      canRematch: !room.isDailyChallenge, // Dailies can't be rematched
+      dailyNumber: room.dailyNumber ?? null, // For UI messaging
     });
 
     console.log(`[Wordle] Game ended in room ${room.code}`);
@@ -752,6 +754,15 @@ export class WordleGameController {
 
     const room = this.rooms.get(roomCode);
     if (!room || room.gameState !== 'finished') return;
+
+    // Block rematch for Daily Challenges - they can only be played once
+    if (room.isDailyChallenge) {
+      this.send(socket, {
+        type: 'error',
+        message: 'Daily Challenge completed. Return to lobby for a new game.',
+      });
+      return;
+    }
 
     // Reset room to waiting state
     room.gameState = 'waiting';

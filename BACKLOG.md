@@ -23,7 +23,7 @@
 
 | ID | Priority | Effort | Description | Status |
 |----|----------|--------|-------------|--------|
-| GAME-001 | P1 | S | Hard Mode - Must use revealed hints | Pending |
+| GAME-001 | P1 | S | Hard Mode - Must use revealed hints | **DONE** |
 | GAME-002 | P1 | S | Rematch button | Pending |
 | UX-004 | P2 | S | Win celebration confetti | Pending |
 

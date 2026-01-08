@@ -50,6 +50,7 @@ class GameState {
     this.targetWord = null; // Server-provided word (never displayed to user)
     this.gameTimer = 0; // Current game time in ms
     this.playerTimes = {}; // Per-player timing: { [playerId]: { elapsed, finishTime, finished } }
+    this.canRematch = true; // Whether rematch is allowed (false for Daily Challenges)
 
     // Dictionary validation state
     this.lastRejectedWord = null;
@@ -172,6 +173,7 @@ class GameState {
     this.playerTimes = {};
     this.lastRejectedWord = null;
     this.rejectionCount = 0;
+    this.canRematch = true; // Reset for next game
 
     // Reset selection phase state
     this.selectionWord = '';

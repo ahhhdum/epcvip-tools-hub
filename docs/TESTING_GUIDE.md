@@ -307,6 +307,57 @@ await expect(page).toHaveScreenshot('game.png', {
 
 ---
 
+## Manual MCP Testing
+
+When using Claude + Playwright MCP for exploratory testing, use these URL parameters for faster iteration.
+
+### Debug URL Parameters
+
+| Parameter | Values | Description |
+|-----------|--------|-------------|
+| `playerName` | string | Override player name |
+| `fresh` | `true` | Clear session for clean state |
+| `testWord` | 5-letter word | Seed deterministic word (e.g., `CRANE`) |
+| `testMode` | `true` | Expose state as `window.__WORDLE_STATE__` |
+| `debugPhase` | `results` | Jump directly to results view |
+| `debugCanRematch` | `true`/`false` | Control rematch button visibility |
+| `debugDailyNumber` | number | Show daily completion notice |
+| `debugSolo` | `true` | Simulate solo mode button text |
+| `debugWord` | 5-letter word | Word to display in results |
+
+### Quick Test URLs
+
+```bash
+# Test Daily Challenge results (no rematch)
+/wordle/?debugPhase=results&debugCanRematch=false&debugDailyNumber=739
+
+# Test Multiplayer results (rematch allowed)
+/wordle/?debugPhase=results&debugCanRematch=true&debugWord=STARE
+
+# Test Solo results (play again)
+/wordle/?debugPhase=results&debugCanRematch=true&debugSolo=true
+
+# Play with deterministic word
+/wordle/?playerName=QA&fresh=true&testWord=CRANE
+```
+
+### MCP Testing Workflow
+
+1. **Start server**: `cd server && npm start`
+2. **Navigate with debug params**: Use URLs above to jump to specific states
+3. **Verify UI**: Check button text, notices, layout
+4. **Test interactions**: Click buttons to verify behavior
+
+### Common Starter Words
+
+For deterministic testing, use these common words:
+- `CRANE` - Good vowel/consonant mix
+- `STARE` - Different letter pattern
+- `AUDIO` - Heavy vowels
+- `GHOST` - Tests less common letters
+
+---
+
 ## Troubleshooting
 
 ### "Visual tests fail in CI"

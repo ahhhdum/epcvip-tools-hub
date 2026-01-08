@@ -303,6 +303,24 @@ body {
   margin-bottom: 24px;
 }
 
+/* Daily Completed Notice (in results view) */
+.daily-completed-notice {
+  background: var(--correct);
+  color: white;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 500;
+}
+
+.daily-completed-notice .check-icon {
+  font-size: 1.2rem;
+}
+
 .completed-grid-container {
   display: flex;
   justify-content: center;

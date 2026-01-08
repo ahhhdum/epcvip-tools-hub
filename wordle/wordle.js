@@ -243,6 +243,8 @@ const elements = {
   resultsList: document.getElementById('resultsList'),
   playAgain: document.getElementById('playAgain'),
   backToLobby: document.getElementById('backToLobby'),
+  dailyResultsNotice: document.getElementById('dailyResultsNotice'),
+  dailyResultsNum: document.getElementById('dailyResultsNum'),
 
   // Status
   connectionStatus: document.getElementById('connectionStatus'),
@@ -2203,6 +2205,36 @@ async function init() {
     console.log('[Wordle] Test mode: Will use seeded word', testWord.toUpperCase());
   }
 
+  // debugPhase=results: Jump directly to results view for UI testing
+  // Usage: /wordle/?debugPhase=results&debugCanRematch=false&debugDailyNumber=739
+  const debugPhase = urlParams.get('debugPhase');
+  if (debugPhase === 'results') {
+    const canRematch = urlParams.get('debugCanRematch') !== 'false';
+    const dailyNumber = urlParams.get('debugDailyNumber');
+    const word = urlParams.get('debugWord') || 'CRANE';
+
+    // Set flag to prevent normal lobby view from showing
+    window.__WORDLE_DEBUG_PHASE__ = 'results';
+
+    // Set up mock state for results view
+    state.gamePhase = 'results';
+    state.targetWord = word.toUpperCase();
+    state.canRematch = canRematch;
+    state.isSolo = urlParams.get('debugSolo') === 'true';
+    state.dailyNumber = dailyNumber ? parseInt(dailyNumber, 10) : null;
+    state.guesses = ['STARE', 'CLOUD', word.toUpperCase()];
+    state.guessResults = [
+      ['absent', 'absent', 'absent', 'absent', 'present'],
+      ['absent', 'absent', 'absent', 'absent', 'absent'],
+      ['correct', 'correct', 'correct', 'correct', 'correct'],
+    ];
+
+    // Show results view immediately (will be called again after init, but that's fine)
+    showDebugResults(word.toUpperCase(), canRematch, dailyNumber);
+
+    console.log('[Wordle] Debug mode: Showing results view', { canRematch, dailyNumber, word });
+  }
+
   // Store autoJoin for later (after WebSocket connects)
   const autoJoinRoom = urlParams.get('autoJoin');
   if (autoJoinRoom) {
@@ -3117,6 +3149,7 @@ function handleOpponentGuess(msg) {
 function handleGameEnded(msg) {
   state.gamePhase = 'results';
   state.targetWord = msg.word;
+  state.canRematch = msg.canRematch ?? true; // Default to true for backwards compatibility
 
   // Store word assignments for sabotage mode
   state.wordAssignments = msg.wordAssignments || null;
@@ -3136,6 +3169,21 @@ function handleGameEnded(msg) {
   } else {
     elements.revealedWord.textContent = msg.word;
     elements.revealedWord.parentElement?.classList.remove('sabotage-results');
+  }
+
+  // Update Play Again button and daily notice based on rematch eligibility
+  if (state.canRematch) {
+    // Multiplayer or solo: allow rematch
+    elements.playAgain.textContent = state.isSolo ? 'Play Again' : 'Rematch';
+    elements.dailyResultsNotice?.classList.add('hidden');
+  } else {
+    // Daily Challenge: no rematch allowed
+    elements.playAgain.textContent = 'New Game';
+    // Show daily completion notice
+    if (elements.dailyResultsNotice && msg.dailyNumber) {
+      elements.dailyResultsNum.textContent = msg.dailyNumber;
+      elements.dailyResultsNotice.classList.remove('hidden');
+    }
   }
 
   // Build results list
@@ -3564,6 +3612,12 @@ function handleReplacedByNewConnection(_msg) {
 
 // UI Helpers
 function showView(name) {
+  // In debug phase mode, prevent automatic lobby views from overriding
+  if (window.__WORDLE_DEBUG_PHASE__ && name === 'lobby') {
+    console.log('[Wordle] Debug mode: Blocked showView(lobby)');
+    return;
+  }
+
   for (const [key, view] of Object.entries(views)) {
     if (view) {
       view.classList.toggle('hidden', key !== name);
@@ -3573,6 +3627,42 @@ function showView(name) {
   updateBackButton(name);
   // Close profile dropdown when changing views
   closeProfileDropdown();
+}
+
+/**
+ * Show results view with mock data for debug/testing purposes.
+ * Usage: /wordle/?debugPhase=results&debugCanRematch=false&debugDailyNumber=739
+ */
+function showDebugResults(word, canRematch, dailyNumber) {
+  showView('results');
+
+  // Set revealed word
+  elements.revealedWord.textContent = word;
+
+  // Update button text based on canRematch
+  if (canRematch) {
+    elements.playAgain.textContent = state.isSolo ? 'Play Again' : 'Rematch';
+    elements.dailyResultsNotice?.classList.add('hidden');
+  } else {
+    elements.playAgain.textContent = 'New Game';
+    if (elements.dailyResultsNotice && dailyNumber) {
+      elements.dailyResultsNum.textContent = dailyNumber;
+      elements.dailyResultsNotice.classList.remove('hidden');
+    }
+  }
+
+  // Render mock results
+  elements.resultsList.innerHTML = '';
+  const mockResult = {
+    name: 'Debug Player',
+    guesses: 3,
+    time: 45000,
+    won: true,
+    score: 850,
+  };
+  elements.resultsList.appendChild(renderResultItem(mockResult, 0, null));
+
+  console.log('[Wordle] Debug results rendered:', { word, canRematch, dailyNumber });
 }
 
 function updatePlayerList(players, highlightPlayerId = null) {
@@ -4390,6 +4480,20 @@ function setupEventListeners() {
       startSoloPractice();
       return;
     }
+
+    // Daily Challenge completed - go to lobby instead of rematch
+    if (!state.canRematch) {
+      send({ type: 'leaveRoom' });
+      clearSession();
+      refreshStatsAndShowLobby();
+      state.roomCode = null;
+      state.playerId = null;
+      state.isCreator = false;
+      subscribeLobby();
+      showToast('Daily completed! Choose a new game from the lobby.');
+      return;
+    }
+
     // For multiplayer: request rematch
     send({ type: 'playAgain' });
   });
