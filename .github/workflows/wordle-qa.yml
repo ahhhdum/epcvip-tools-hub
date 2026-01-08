@@ -36,8 +36,10 @@ permissions:
 
 jobs:
   wordle-qa:
-    # Run if: Wordle files changed OR qa-verify label added
+    # Run if: push, workflow_dispatch, PR with wordle files, OR qa-verify label
     if: |
+      github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch' ||
       github.event_name == 'pull_request' ||
       (github.event_name == 'pull_request_target' && github.event.label.name == 'qa-verify')
     runs-on: ubuntu-latest
