@@ -21,6 +21,7 @@ import {
   clearDailyProgress as clearStoredDailyProgress,
 } from './utils/wordle-storage.js';
 import { state } from './state/game-state.js';
+import * as ws from './modules/websocket.js';
 
 // =============================================================================
 // NOTE: Most state is now centralized in state/game-state.js
@@ -29,7 +30,7 @@ import { state } from './state/game-state.js';
 // =============================================================================
 
 // Browser-specific variables (not in state)
-let socket = null;
+// Note: WebSocket is now managed by ./modules/websocket.js
 let pendingRoomJoin = null; // Room code from URL to join after connection
 
 // =============================================================================
@@ -2342,91 +2343,108 @@ async function init() {
   buildGrid();
 }
 
-// WebSocket Connection
+// =============================================================================
+// WebSocket Connection (using modules/websocket.js)
+// =============================================================================
+
+/**
+ * Initialize WebSocket connection.
+ * Uses the websocket module for connection management.
+ */
 function connect() {
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const wsUrl = `${protocol}//${window.location.host}/wordle`;
+  const wsUrl = ws.buildUrl('/wordle');
 
-  socket = new WebSocket(wsUrl);
+  ws.connect(wsUrl, {
+    onOpen: handleConnected,
+    onClose: handleDisconnected,
+    onError: handleConnectionError,
+    onMessage: handleMessage,
+  });
+}
 
-  socket.onopen = () => {
-    console.log('[Wordle] Connected');
-    updateConnectionStatus('connected');
+/**
+ * Handle successful WebSocket connection.
+ * Business logic for what happens after connecting.
+ */
+function handleConnected() {
+  console.log('[Wordle] Connected');
+  updateConnectionStatus('connected');
 
-    // Priority 1: If URL has room code, handle that first
-    if (pendingRoomJoin) {
-      const session = getSession();
+  // Priority 1: If URL has room code, handle that first
+  if (pendingRoomJoin) {
+    const session = getSession();
 
-      // Check if we have a session for this exact room
-      if (session && session.roomCode === pendingRoomJoin) {
-        // Rejoin existing session
-        console.log('[Wordle] Rejoining room from URL:', pendingRoomJoin);
-        attemptRejoin();
-      } else {
-        // Join as new player
-        console.log('[Wordle] Joining room from URL:', pendingRoomJoin);
-        const playerName = elements.playerName.value.trim() || 'Player';
-        send({
-          type: 'joinRoom',
-          roomCode: pendingRoomJoin,
-          playerName,
-          playerEmail: state.authUser?.email,
-        });
-      }
-      pendingRoomJoin = null; // Clear after handling
-      return;
-    }
-
-    // Priority 2: Auto-join from URL param (test mode)
-    const autoJoinRoom = sessionStorage.getItem('wordle_autoJoin');
-    if (autoJoinRoom) {
-      sessionStorage.removeItem('wordle_autoJoin');
-      console.log('[Wordle] Test mode: Auto-joining room', autoJoinRoom);
+    // Check if we have a session for this exact room
+    if (session && session.roomCode === pendingRoomJoin) {
+      // Rejoin existing session
+      console.log('[Wordle] Rejoining room from URL:', pendingRoomJoin);
+      attemptRejoin();
+    } else {
+      // Join as new player
+      console.log('[Wordle] Joining room from URL:', pendingRoomJoin);
       const playerName = elements.playerName.value.trim() || 'Player';
       send({
         type: 'joinRoom',
-        roomCode: autoJoinRoom,
+        roomCode: pendingRoomJoin,
         playerName,
         playerEmail: state.authUser?.email,
       });
-      return;
     }
+    pendingRoomJoin = null; // Clear after handling
+    return;
+  }
 
-    // Priority 3: Try to rejoin if we have a saved session
-    const hadSession = attemptRejoin();
+  // Priority 2: Auto-join from URL param (test mode)
+  const autoJoinRoom = sessionStorage.getItem('wordle_autoJoin');
+  if (autoJoinRoom) {
+    sessionStorage.removeItem('wordle_autoJoin');
+    console.log('[Wordle] Test mode: Auto-joining room', autoJoinRoom);
+    const playerName = elements.playerName.value.trim() || 'Player';
+    send({
+      type: 'joinRoom',
+      roomCode: autoJoinRoom,
+      playerName,
+      playerEmail: state.authUser?.email,
+    });
+    return;
+  }
 
-    // Priority 4: If no saved session, subscribe to lobby for public rooms
-    if (!hadSession) {
-      subscribeLobby();
-    }
-  };
+  // Priority 3: Try to rejoin if we have a saved session
+  const hadSession = attemptRejoin();
 
-  socket.onclose = () => {
-    console.log('[Wordle] Disconnected');
-    updateConnectionStatus('disconnected');
-
-    // Try to reconnect after delay
-    setTimeout(connect, 3000);
-  };
-
-  socket.onerror = (err) => {
-    console.error('[Wordle] Socket error:', err);
-  };
-
-  socket.onmessage = (event) => {
-    try {
-      const msg = JSON.parse(event.data);
-      handleMessage(msg);
-    } catch (e) {
-      console.error('[Wordle] Parse error:', e);
-    }
-  };
+  // Priority 4: If no saved session, subscribe to lobby for public rooms
+  if (!hadSession) {
+    subscribeLobby();
+  }
 }
 
+/**
+ * Handle WebSocket disconnection.
+ * Schedules automatic reconnection.
+ */
+function handleDisconnected() {
+  console.log('[Wordle] Disconnected');
+  updateConnectionStatus('disconnected');
+
+  // Schedule reconnection via websocket module
+  ws.scheduleReconnect(connect);
+}
+
+/**
+ * Handle WebSocket connection error.
+ */
+function handleConnectionError(err) {
+  console.error('[Wordle] Socket error:', err);
+}
+
+/**
+ * Send a message through the WebSocket.
+ * Wrapper around ws.send() for backwards compatibility.
+ *
+ * @param {Object} msg - Message object to send
+ */
 function send(msg) {
-  if (socket && socket.readyState === WebSocket.OPEN) {
-    socket.send(JSON.stringify(msg));
-  }
+  ws.send(msg);
 }
 
 function updateConnectionStatus(status) {
