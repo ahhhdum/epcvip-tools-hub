@@ -38,8 +38,16 @@
 | **GAME-001** | S | **Hard Mode** - Must use revealed hints in subsequent guesses | `wordle.js`, `wordle-room.ts` |
 | **GAME-002** | S | **Rematch button** - Quick "Play Again" with same players | `wordle.js`, `wordle-room.ts` |
 | **GAME-003** | M | **Custom letter count** - 4-7 letter word modes (Marathon) | `wordle-room.ts`, `word-list.ts` |
-| **WORDS-001** | M | **Expanded word list** - More words, especially for Sabotage mode | `word-list.ts`, `valid-guesses.js` |
 | **BUG-005** | M | localStorage resume exploit - track attempts server-side | `wordle-database.ts`, `wordle-room.ts` |
+
+### P1 - Word Intelligence (see `docs/plans/WORD_INTELLIGENCE_ROADMAP.md`)
+
+| ID | Effort | Description | Files |
+|----|--------|-------------|-------|
+| **TWL-002** | S | **Expand Sabotage word pool** - 2,000+ words including FUGUE, MAUVE, etc. | `word-list.ts` |
+| **SUX-004** | S | **Sabotage validation feedback** - Clear error messages when word rejected | `wordle-game-controller.ts`, `wordle.js` |
+| **WDI-001** | L | **Word metadata table** - Frequency scores, tiers, categories | `migrations/`, `wordle-database.ts` |
+| **TWL-001** | L | **Seed word tiers** - Categorize words by Google n-gram frequency | `scripts/`, `migrations/` |
 
 ### P2 - Medium Priority
 
@@ -65,6 +73,12 @@
 | **LEADER-001** | M | Daily leaderboard - fastest solvers |
 | **STATS-003** | M | Starting word analytics |
 | **STATS-004** | M | Matchup history UI |
+| **PSK-001** | M | **Player ratings table** - Glicko-2 rating, deviation, volatility |
+| **PSK-002** | L | **Rating calculator** - Glicko-2 algorithm for word games |
+| **SUX-001** | M | **Sabotage word recommendations** - Suggest 5 words based on target's skill |
+| **SUX-002** | S | **Difficulty preview** - Show how hard a word is for target |
+| **VWL-001** | L | **Variable word length** - 4-7 letter word support |
+| **WDI-003** | S | **Player word history** - Track seen words for de-duplication |
 | **CODE-001** | M | Split wordle.js into modules (incremental, as-needed) |
 | **CODE-002** | S | Split wordle.css into partials (defer unless adding bundler) |
 
