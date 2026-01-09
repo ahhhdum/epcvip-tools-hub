@@ -65,8 +65,31 @@
 | **LEADER-001** | M | Daily leaderboard - fastest solvers |
 | **STATS-003** | M | Starting word analytics |
 | **STATS-004** | M | Matchup history UI |
-| **CODE-001** | M | Split wordle.js into modules |
-| **CODE-002** | S | Split wordle.css into partials |
+| **CODE-001** | M | Split wordle.js into modules (incremental, as-needed) |
+| **CODE-002** | S | Split wordle.css into partials (defer unless adding bundler) |
+
+---
+
+## iOS Native App (Future)
+
+**Estimated Total Effort**: 2-4 weeks | **Tech**: SwiftUI + Supabase Swift SDK
+
+Server stays the same. iOS replaces web client only. See `docs/plans/` for full scoping.
+
+| ID | Effort | Description | Web Equivalent |
+|----|--------|-------------|----------------|
+| **MOBILE-001** | M | **Foundation** - Xcode project, Supabase SDK, AppState (@Observable), navigation | `game-state.js` |
+| **MOBILE-002** | M | **WebSocket Client** - URLSessionWebSocketTask, Codable messages, reconnection | `websocket.js` |
+| **MOBILE-003** | L | **Game Board UI** - 6x5 grid, tile animations, custom keyboard, theming | `wordle.js` (game) |
+| **MOBILE-004** | L | **Multiplayer** - Waiting room, opponent boards, real-time sync, player list | `wordle.js` (room) |
+| **MOBILE-005** | M | **Authentication** - Supabase auth, Sign in with Apple, session, guest mode | `wordle.js` (auth) |
+| **MOBILE-006** | M | **Polish & Ship** - Haptics, share sheet, App Store assets, TestFlight | N/A |
+
+**Portable code (translate to Swift)**:
+- ✅ `state/game-state.js` → `@Observable` AppState
+- ✅ `utils/wordle-utils.js` → Pure Swift functions
+- ✅ `modules/game-logic.js` → Pure Swift functions
+- ✅ `modules/websocket.js` → Protocol reference (extracted 2026-01-08)
 
 ---
 
