@@ -19,7 +19,8 @@ test.describe('Hard Mode', () => {
     // Open room creation modal
     await host.openFriendsSheet();
     await host.page.click('[data-testid="create-room"]');
-    await host.page.waitForSelector('text=Hard Mode');
+    // Wait for config view (not text - "Hard Mode" appears in multiple views)
+    await host.page.waitForSelector('#roomConfig:not(.hidden)');
 
     // Toggle should be Off by default
     const toggleBefore = await host.page.textContent('#configHardMode');

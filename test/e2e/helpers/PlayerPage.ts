@@ -59,31 +59,34 @@ export class PlayerPage {
     await this.openFriendsSheet();
     await this.page.click('[data-testid="create-room"]');
 
-    // Wait for config modal
-    await this.page.waitForSelector('text=Word Selection');
+    // Wait for config modal (use view ID, not text - labels appear in multiple views)
+    await this.page.waitForSelector('#roomConfig:not(.hidden)');
+
+    // All selectors scoped to #roomConfig to avoid matching hidden views
+    const configView = this.page.locator('#roomConfig');
 
     // Set word mode
     if (options.wordMode) {
-      await this.page.click(`button[data-mode="${options.wordMode}"]`);
+      await configView.locator(`button[data-mode="${options.wordMode}"]`).click();
     }
 
     // Set game mode
     if (options.gameMode) {
-      await this.page.click(`button[data-mode="${options.gameMode}"]`);
+      await configView.locator(`button[data-mode="${options.gameMode}"]`).click();
     }
 
     // Set hard mode
     if (options.hardMode) {
-      await this.page.click('#configHardMode');
+      await configView.locator('#configHardMode').click();
     }
 
     // Set visibility
     if (options.isPublic === false) {
-      await this.page.click('button[data-visibility="private"]');
+      await configView.locator('button[data-visibility="private"]').click();
     }
 
-    // Create the room
-    await this.page.click('button:has-text("Create Room"):not([data-testid])');
+    // Create the room (scoped to config view)
+    await configView.locator('button:has-text("Create Room")').click();
     await this.page.waitForSelector('[data-testid="room-code"]');
 
     return this.getRoomCode();
