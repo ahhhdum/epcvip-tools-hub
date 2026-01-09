@@ -446,6 +446,7 @@ export class WordleRoomManager {
 
     room.gameMode = mode;
     this.broadcastToRoom(roomCode, { type: 'gameModeChanged', mode });
+    this.broadcastPublicRoomsList(); // Update lobby with new mode
   }
 
   /**
@@ -473,6 +474,7 @@ export class WordleRoomManager {
       mode,
       dailyNumber: mode === 'daily' ? getDailyNumber() : null,
     });
+    this.broadcastPublicRoomsList(); // Update lobby with new mode
   }
 
   // ===========================================================================

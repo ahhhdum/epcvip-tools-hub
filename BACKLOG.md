@@ -45,8 +45,16 @@
 
 | ID | Effort | Description | Files |
 |----|--------|-------------|-------|
+| **GAME-004** | S | **Give Up button** - Forfeit current game, reveal word, count as loss | `wordle.js`, `wordle-room.ts` |
+| **GAME-005** | M | **Replay Mode** - Post-game view showing all players' guess paths step-by-step | `wordle.js`, `wordle.css`, `wordle-room.ts` |
+| **ROOM-001** | S | **Kick Player** - Host can remove players from waiting room | `wordle.js`, `wordle-room.ts` |
+| **ROOM-002** | S | **Toggle Visibility** - Host can change room public/private after creation | `wordle.js`, `wordle-room.ts` |
+| **ROOM-003** | M | **Host Settings Panel** - Host can change word mode, game mode, hard mode in waiting room | `wordle.js`, `wordle-room.ts` |
+| **BUG-006** | S | **Public Rooms Lobby** - Fix broken public room list in "Play With Friends" sheet | `wordle.js`, `index.html` |
 | **UX-004** | S | **Win celebration** - Confetti animation on victory | `wordle.js`, `wordle.css` |
 | **UX-005** | M | **Help/Info system** - How to play, game modes explained, tooltips | `index.html`, `wordle.css` |
+| **UX-006** | XS | **Mode explanations** - Explain Competitive vs Casual in UI (Competitive: timer, winner by speed; Casual: no pressure) | `index.html` |
+| **UX-007** | M | **Opponent board redesign** - Current boards too big/distracting. Use left+right sides of main board to show more opponents simultaneously. Revisit mobile & desktop layouts. | `wordle.css`, `wordle.js` |
 | **SOUND-001** | M | **Sound effects** - Keyboard clicks, win/lose sounds, countdown | `wordle.js`, `assets/` |
 | **FEAT-001** | L | **Spectate mode** + emoji reactions for watchers | `wordle-room.ts`, `wordle.js` |
 | **SHARE-001** | S | Share results - emoji grid to clipboard | `wordle.js` |

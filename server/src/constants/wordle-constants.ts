@@ -8,7 +8,7 @@
 // Game Rules
 export const WORD_LENGTH = 5;
 export const MAX_GUESSES = 6;
-export const MAX_PLAYERS_PER_ROOM = 6;
+export const MAX_PLAYERS_PER_ROOM = 10;
 export const MIN_PLAYERS_FOR_MULTIPLAYER = 2;
 
 // Countdown Configuration

@@ -355,7 +355,6 @@ const elements = {
   // Public Rooms
   publicRoomsSection: document.getElementById('publicRoomsSection'),
   publicRoomsList: document.getElementById('publicRoomsList'),
-  noPublicRooms: document.getElementById('noPublicRooms'),
 
   // Visibility Toggle (waiting room)
   visibilitySelector: document.getElementById('visibilitySelector'),
@@ -3261,16 +3260,18 @@ function handlePublicRoomsList(msg) {
  * Render the public rooms list in the lobby
  */
 function renderPublicRooms() {
-  if (!elements.publicRoomsList || !elements.noPublicRooms) return;
+  if (!elements.publicRoomsList) return;
 
   elements.publicRoomsList.innerHTML = '';
 
+  // Hide section when no rooms (no empty state message per user preference)
   if (state.publicRooms.length === 0) {
-    elements.noPublicRooms.classList.remove('hidden');
+    elements.publicRoomsSection?.classList.add('hidden');
     return;
   }
 
-  elements.noPublicRooms.classList.add('hidden');
+  // Show section when we have rooms
+  elements.publicRoomsSection?.classList.remove('hidden');
 
   for (const room of state.publicRooms) {
     const item = document.createElement('div');
@@ -3282,46 +3283,41 @@ function renderPublicRooms() {
     let wordLabel;
     if (room.wordMode === 'daily' && room.dailyNumber) {
       wordLabel = `Daily #${room.dailyNumber}`;
+    } else if (room.wordMode === 'sabotage') {
+      wordLabel = 'Sabotage';
     } else {
       wordLabel = room.wordMode === 'daily' ? 'Daily' : 'Random';
     }
 
-    // FEAT-002: Check if user already completed this daily
-    const isCompletedDaily =
-      room.dailyNumber && state.todayCompleted && room.dailyNumber === state.todaysDailyNumber;
-
-    // Add completed class if applicable
-    if (isCompletedDaily) {
-      item.classList.add('completed-daily');
+    // Add hard mode indicator
+    if (room.hardMode) {
+      wordLabel += ' 🔥';
     }
 
-    // Build the button based on completion status
-    const buttonText = isCompletedDaily ? '✓ Completed' : 'Join';
-    const buttonDisabled = isCompletedDaily ? 'disabled' : '';
-
+    // Use textContent for XSS safety
     item.innerHTML = `
       <div class="public-room-info">
-        <div class="public-room-creator">${room.creatorName}'s Room</div>
+        <div class="public-room-creator"></div>
         <div class="public-room-details">${modeLabel} • ${wordLabel}</div>
       </div>
       <span class="public-room-players">${room.playerCount}/${room.maxPlayers}</span>
-      <button class="public-room-join${isCompletedDaily ? ' completed' : ''}" ${buttonDisabled}>${buttonText}</button>
+      <button class="public-room-join">Join</button>
     `;
 
-    // Only add click handlers if not a completed daily
-    if (!isCompletedDaily) {
-      // Join button click
-      const joinBtn = item.querySelector('.public-room-join');
-      joinBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        joinPublicRoom(room.code, room.dailyNumber);
-      });
+    // Set creator name via textContent for XSS safety
+    item.querySelector('.public-room-creator').textContent = `${room.creatorName}'s Room`;
 
-      // Clicking the whole item also joins
-      item.addEventListener('click', () => {
-        joinPublicRoom(room.code, room.dailyNumber);
-      });
-    }
+    // Everyone can join - conflicts resolved in waiting room
+    const joinBtn = item.querySelector('.public-room-join');
+    joinBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      joinPublicRoom(room.code, room.dailyNumber);
+    });
+
+    // Clicking the whole item also joins
+    item.addEventListener('click', () => {
+      joinPublicRoom(room.code, room.dailyNumber);
+    });
 
     elements.publicRoomsList.appendChild(item);
   }
