@@ -37,6 +37,7 @@ import {
   DailyChallengePlayerData,
 } from '../services/wordle-database';
 import { isValidGuess } from '../utils/word-list';
+import { isSabotageEligible } from '../data/word-tiers';
 
 /**
  * Dependencies injected from the coordinator
@@ -226,13 +227,13 @@ export class WordleGameController {
     const player = room.players.get(playerId);
     if (!player) return;
 
-    // Validate word is in the answer word list (666 words, not full 12K)
+    // Validate word is in the sabotage-eligible list (~2,322 words)
     const normalizedWord = word.toUpperCase().trim();
-    if (!WORD_LIST.includes(normalizedWord)) {
+    if (!isSabotageEligible(normalizedWord)) {
       this.send(socket, {
         type: 'wordValidation',
         valid: false,
-        message: 'Word not in answer list. Try another!',
+        message: 'Word not recognized. Try a more common word!',
       });
       return;
     }
