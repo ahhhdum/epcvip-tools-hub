@@ -15,6 +15,7 @@ import { createProxyMiddleware } from 'http-proxy-middleware';
 import jwt from 'jsonwebtoken';
 import { createClient } from '@supabase/supabase-js';
 import { WordleRoomManager } from './rooms/wordle-room';
+import { initializeWordService } from './services/word-service';
 
 // SSO Configuration
 const SSO_SHARED_SECRET = process.env.SSO_SHARED_SECRET || '';
@@ -767,6 +768,11 @@ wordleWss.on('connection', (ws) => {
 
 // Initialize game
 spawnInitialFritelles();
+
+// Initialize word service (loads word cache from DB)
+initializeWordService().catch((err) => {
+  console.error('[WordService] Initialization error:', err);
+});
 
 // Start server
 server.listen(port, '0.0.0.0', () => {

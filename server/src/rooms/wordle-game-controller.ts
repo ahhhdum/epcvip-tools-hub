@@ -37,7 +37,7 @@ import {
   DailyChallengePlayerData,
 } from '../services/wordle-database';
 import { isValidGuess } from '../utils/word-list';
-import { isSabotageEligible } from '../data/word-tiers';
+import { getWordService } from '../services/word-service';
 
 /**
  * Dependencies injected from the coordinator
@@ -211,7 +211,7 @@ export class WordleGameController {
   /**
    * Handle word submission during sabotage selection phase
    */
-  handleSubmitWord(socket: WebSocket, word: string): void {
+  async handleSubmitWord(socket: WebSocket, word: string): Promise<void> {
     const playerId = this.socketToPlayer.get(socket);
     if (!playerId) return;
 
@@ -227,9 +227,11 @@ export class WordleGameController {
     const player = room.players.get(playerId);
     if (!player) return;
 
-    // Validate word is in the sabotage-eligible list (~2,322 words)
+    // Validate word is in the sabotage-eligible list (DB-backed, ~2,365 words)
     const normalizedWord = word.toUpperCase().trim();
-    if (!isSabotageEligible(normalizedWord)) {
+    const wordService = getWordService();
+    const isEligible = await wordService.isSabotageEligible(normalizedWord);
+    if (!isEligible) {
       this.send(socket, {
         type: 'wordValidation',
         valid: false,

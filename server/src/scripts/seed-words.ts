@@ -1,4 +1,3 @@
-#!/usr/bin/env npx ts-node
 /**
  * Seed Words Table
  *
@@ -7,18 +6,14 @@
  * - CHALLENGING_WORDS (1,667 words) → tier: 'challenging'
  *
  * Usage:
- *   cd server && npx ts-node ../scripts/seed-words.ts
- *
- * Requires:
- *   SUPABASE_URL and SUPABASE_SERVICE_KEY environment variables
+ *   cd server && npx ts-node src/scripts/seed-words.ts
  */
 
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
-import * as path from 'path';
 
-// Load environment variables from server/.env
-dotenv.config({ path: path.join(__dirname, '../server/.env') });
+// Load environment variables
+dotenv.config();
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -31,8 +26,8 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 // Import word lists
-import { WORD_LIST } from '../server/src/utils/word-list';
-import { CHALLENGING_WORDS } from '../server/src/data/challenging-words';
+import { WORD_LIST } from '../utils/word-list';
+import { CHALLENGING_WORDS } from '../data/challenging-words';
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -49,14 +44,10 @@ function analyzeWord(word: string) {
   const uncommonLetters = ['Q', 'X', 'Z', 'J'];
 
   // Generate consonant/vowel pattern (e.g., 'CVCCV')
-  const letterPattern = letters
-    .map((l) => (vowels.includes(l) ? 'V' : 'C'))
-    .join('');
+  const letterPattern = letters.map((l) => (vowels.includes(l) ? 'V' : 'C')).join('');
 
   // Check for double letters
-  const hasDoubleLetters = letters.some(
-    (l, i) => i > 0 && letters[i - 1] === l
-  );
+  const hasDoubleLetters = letters.some((l, i) => i > 0 && letters[i - 1] === l);
 
   // Check for uncommon letters
   const hasUncommonLetters = letters.some((l) => uncommonLetters.includes(l));
@@ -74,10 +65,7 @@ function analyzeWord(word: string) {
 /**
  * Create word record for insertion
  */
-function createWordRecord(
-  word: string,
-  tier: 'common' | 'challenging'
-): Record<string, unknown> {
+function createWordRecord(word: string, tier: 'common' | 'challenging'): Record<string, unknown> {
   const analysis = analyzeWord(word);
   return {
     ...analysis,
@@ -98,9 +86,7 @@ async function main() {
   // Deduplicate (in case any overlap)
   const commonSet = new Set(WORD_LIST.map((w) => w.toUpperCase()));
   const challengingSet = new Set(
-    CHALLENGING_WORDS.map((w) => w.toUpperCase()).filter(
-      (w) => !commonSet.has(w)
-    )
+    CHALLENGING_WORDS.map((w) => w.toUpperCase()).filter((w) => !commonSet.has(w))
   );
 
   console.log(`📚 Common words: ${commonSet.size}`);
@@ -108,9 +94,7 @@ async function main() {
   console.log(`📚 Total: ${commonSet.size + challengingSet.size}\n`);
 
   // Create records
-  const commonRecords = Array.from(commonSet).map((w) =>
-    createWordRecord(w, 'common')
-  );
+  const commonRecords = Array.from(commonSet).map((w) => createWordRecord(w, 'common'));
   const challengingRecords = Array.from(challengingSet).map((w) =>
     createWordRecord(w, 'challenging')
   );
@@ -135,43 +119,38 @@ async function main() {
       errors++;
     } else {
       inserted += data?.length || 0;
-      process.stdout.write(
-        `\r✅ Inserted: ${inserted}/${allRecords.length} words`
-      );
+      process.stdout.write(`\r✅ Inserted: ${inserted}/${allRecords.length} words`);
     }
   }
 
   console.log('\n');
 
-  // Verify
-  const { count } = await supabase
-    .from('words')
-    .select('*', { count: 'exact', head: true });
+  // Verify total count
+  const { count } = await supabase.from('words').select('*', { count: 'exact', head: true });
 
   console.log(`📊 Total words in database: ${count}`);
 
   // Show tier breakdown
-  const { data: tierCounts } = await supabase.rpc('get_word_tier_counts');
+  const { count: commonCount } = await supabase
+    .from('words')
+    .select('*', { count: 'exact', head: true })
+    .eq('tier', 'common');
+  const { count: challengingCount } = await supabase
+    .from('words')
+    .select('*', { count: 'exact', head: true })
+    .eq('tier', 'challenging');
 
-  if (tierCounts) {
-    console.log('\n📊 Tier breakdown:');
-    tierCounts.forEach((t: { tier: string; count: number }) => {
-      console.log(`   ${t.tier}: ${t.count}`);
-    });
-  } else {
-    // Fallback: manual count
-    const { count: commonCount } = await supabase
-      .from('words')
-      .select('*', { count: 'exact', head: true })
-      .eq('tier', 'common');
-    const { count: challengingCount } = await supabase
-      .from('words')
-      .select('*', { count: 'exact', head: true })
-      .eq('tier', 'challenging');
-    console.log('\n📊 Tier breakdown:');
-    console.log(`   common: ${commonCount}`);
-    console.log(`   challenging: ${challengingCount}`);
-  }
+  console.log('\n📊 Tier breakdown:');
+  console.log(`   common: ${commonCount}`);
+  console.log(`   challenging: ${challengingCount}`);
+
+  // Show sabotage eligible
+  const { count: sabotageCount } = await supabase
+    .from('words')
+    .select('*', { count: 'exact', head: true })
+    .eq('is_sabotage_eligible', true);
+
+  console.log(`   sabotage-eligible: ${sabotageCount}`);
 
   if (errors > 0) {
     console.log(`\n⚠️  Completed with ${errors} batch errors`);
