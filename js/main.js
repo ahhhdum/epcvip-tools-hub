@@ -2,6 +2,7 @@
  * EPCVIP Tools Hub - Main Entry Point
  *
  * Uses KaPlay (the maintained fork of Kaboom.js)
+ * Requires authentication before starting the game.
  */
 
 import kaplay from 'https://unpkg.com/kaplay@3001/dist/kaplay.mjs';
@@ -11,29 +12,48 @@ import { overworldScene } from './scenes/overworld.js';
 import { pauseScene } from './scenes/pause.js';
 import { spriteTestScene } from './scenes/sprite-test.js';
 import { initInput } from './systems/input.js';
+import { initAuth, getCurrentUser } from './auth.js';
 
-// Initialize KaPlay (global mode - functions available globally, instance reserved for future use)
-const _k = kaplay({
-  canvas: document.getElementById('gameCanvas'),
-  width: GAME_CONFIG.width,
-  height: GAME_CONFIG.height,
-  stretch: false, // 1:1 size - CSS matches internal resolution
-  letterbox: false,
-  crisp: true,
-  pixelDensity: 1,
-  background: COLORS.grass,
-  debug: true, // Press F1 to toggle hitbox visualization
-  global: true, // Makes kaplay functions global
+// Main initialization
+async function init() {
+  console.log('[Main] Starting EPCVIP Tools Hub...');
+
+  // Require authentication first
+  console.log('[Main] Checking authentication...');
+  const user = await initAuth();
+  console.log('[Main] Authenticated as:', user.email);
+
+  // Store user globally for other modules
+  window.EPCVIP_USER = user;
+
+  // Initialize KaPlay (global mode - functions available globally, instance reserved for future use)
+  const _k = kaplay({
+    canvas: document.getElementById('gameCanvas'),
+    width: GAME_CONFIG.width,
+    height: GAME_CONFIG.height,
+    stretch: false, // 1:1 size - CSS matches internal resolution
+    letterbox: false,
+    crisp: true,
+    pixelDensity: 1,
+    background: COLORS.grass,
+    debug: true, // Press F1 to toggle hitbox visualization
+    global: true, // Makes kaplay functions global
+  });
+
+  // Register scenes
+  scene('loading', loadingScene);
+  scene('overworld', overworldScene);
+  scene('pause', pauseScene);
+  scene('sprite-test', spriteTestScene);
+
+  // Initialize virtual button inputs (D-pad, A, B)
+  initInput();
+
+  // Start with loading scene
+  go('loading');
+}
+
+// Start the app
+init().catch((error) => {
+  console.error('[Main] Initialization failed:', error);
 });
-
-// Register scenes
-scene('loading', loadingScene);
-scene('overworld', overworldScene);
-scene('pause', pauseScene);
-scene('sprite-test', spriteTestScene);
-
-// Initialize virtual button inputs (D-pad, A, B)
-initInput();
-
-// Start with loading scene
-go('loading');

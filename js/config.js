@@ -82,7 +82,7 @@ export const TOOLS = [
     id: 'athena',
     name: 'Athena Monitor',
     description: 'Monitor AWS Athena query usage, costs, and performance.',
-    url: 'https://epcvip-athena-usage-monitor.up.railway.app', // Direct link (Streamlit auth breaks proxy)
+    url: 'https://athena.epcvip.vip',
     position: { x: 17, y: 3 },
     color: [88, 120, 168],
     sprite: 'building-house-2-stone-blue',
@@ -92,10 +92,10 @@ export const TOOLS = [
     live: true,
   },
   {
-    id: 'validator',
-    name: 'Datalake Validator',
-    description: 'Validate SQL queries against the datalake schema.',
-    url: 'https://streamlit-validator-production.up.railway.app', // Direct link (Streamlit auth breaks proxy)
+    id: 'reports',
+    name: 'Reports Dashboard',
+    description: 'Run report templates, validate queries, explore data.',
+    url: 'https://reports.epcvip.vip',
     position: { x: 31, y: 3 },
     color: [240, 192, 0],
     sprite: 'building-house-3-stone-black',

@@ -40,13 +40,9 @@ const usedSSOTokens = new Set<string>();
 const app = express();
 const port = Number(process.env.PORT) || 2567;
 
-// Proxy targets - use public URLs (move to same Railway project for internal networking)
+// Proxy targets - only ping-tree remains (athena/validator use direct custom domain links)
 const PING_TREE_TARGET =
   process.env.PING_TREE_URL || 'https://ping-tree-compare-production.up.railway.app';
-const ATHENA_TARGET =
-  process.env.ATHENA_URL || 'https://epcvip-athena-usage-monitor.up.railway.app';
-const VALIDATOR_TARGET =
-  process.env.VALIDATOR_URL || 'https://streamlit-validator-production.up.railway.app';
 
 // Proxy configuration for ping-tree (FastAPI)
 const pingTreeProxy = createProxyMiddleware({
@@ -63,42 +59,9 @@ const pingTreeProxy = createProxyMiddleware({
   },
 });
 
-// Proxy configuration for athena (Streamlit) - needs WebSocket support
-const athenaProxy = createProxyMiddleware({
-  target: ATHENA_TARGET,
-  changeOrigin: true,
-  pathRewrite: { '^/athena': '' }, // Strip /athena prefix, target serves at root
-  ws: true,
-  on: {
-    error: (err, req, res) => {
-      console.error('Athena proxy error:', (err as Error).message);
-      if (res && 'status' in res) {
-        (res as express.Response).status(502).json({ error: 'Athena service unavailable' });
-      }
-    },
-  },
-});
-
-// Proxy configuration for validator (Streamlit)
-const validatorProxy = createProxyMiddleware({
-  target: VALIDATOR_TARGET,
-  changeOrigin: true,
-  pathRewrite: { '^/validator': '' },
-  ws: true,
-  on: {
-    error: (err, req, res) => {
-      console.error('Validator proxy error:', (err as Error).message);
-      if (res && 'status' in res) {
-        (res as express.Response).status(502).json({ error: 'Validator service unavailable' });
-      }
-    },
-  },
-});
-
-// Mount proxies BEFORE static files (order matters!)
+// Mount proxy BEFORE static files (order matters!)
+// Note: athena and validator proxies removed - using direct custom domain links now
 app.use('/ping-tree', pingTreeProxy);
-app.use('/athena', athenaProxy);
-app.use('/validator', validatorProxy);
 
 // Parse JSON bodies for API routes
 app.use(express.json());
@@ -526,8 +489,6 @@ app.get('/health', (req, res) => {
     players: players.size,
     proxies: {
       pingTree: PING_TREE_TARGET,
-      athena: ATHENA_TARGET,
-      validator: VALIDATOR_TARGET,
     },
   });
 });
@@ -541,14 +502,11 @@ const wss = new WebSocketServer({ noServer: true });
 const wordleWss = new WebSocketServer({ noServer: true });
 const wordleManager = new WordleRoomManager();
 
-// Handle WebSocket upgrades manually to route between game, wordle, and proxied services
+// Handle WebSocket upgrades manually to route between game and wordle
 server.on('upgrade', (req, socket, head) => {
   const url = req.url || '';
 
-  if (url.startsWith('/athena')) {
-    // Streamlit WebSocket - proxy to athena service
-    athenaProxy.upgrade(req, socket as Socket, head);
-  } else if (url.startsWith('/wordle')) {
+  if (url.startsWith('/wordle')) {
     // Wordle Battle WebSocket - handle locally
     wordleWss.handleUpgrade(req, socket as Socket, head, (ws) => {
       wordleWss.emit('connection', ws, req);
