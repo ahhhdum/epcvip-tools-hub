@@ -12,7 +12,7 @@ import { overworldScene } from './scenes/overworld.js';
 import { pauseScene } from './scenes/pause.js';
 import { spriteTestScene } from './scenes/sprite-test.js';
 import { initInput } from './systems/input.js';
-import { initAuth, getCurrentUser } from './auth.js';
+import { initAuth } from './auth.js';
 
 // Main initialization
 async function init() {

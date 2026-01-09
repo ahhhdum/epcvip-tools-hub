@@ -44,9 +44,9 @@
 
 | ID | Effort | Description | Files |
 |----|--------|-------------|-------|
-| **TWL-002** | S | **Expand Sabotage word pool** - 2,000+ words including FUGUE, MAUVE, etc. | `word-list.ts` |
+| ~~**TWL-002**~~ | ~~S~~ | ~~**Expand Sabotage word pool** - 2,000+ words including FUGUE, MAUVE, etc.~~ | **DONE** |
 | **SUX-004** | S | **Sabotage validation feedback** - Clear error messages when word rejected | `wordle-game-controller.ts`, `wordle.js` |
-| **WDI-001** | L | **Word metadata table** - Frequency scores, tiers, categories | `migrations/`, `wordle-database.ts` |
+| ~~**WDI-001**~~ | ~~L~~ | ~~**Word metadata table** - Frequency scores, tiers, categories~~ | **DONE** |
 | **TWL-001** | L | **Seed word tiers** - Categorize words by Google n-gram frequency | `scripts/`, `migrations/` |
 
 ### P2 - Medium Priority
