@@ -41,8 +41,7 @@ const app = express();
 const port = Number(process.env.PORT) || 2567;
 
 // Proxy targets - only ping-tree remains (athena/validator use direct custom domain links)
-const PING_TREE_TARGET =
-  process.env.PING_TREE_URL || 'https://ping-tree-compare-production.up.railway.app';
+const PING_TREE_TARGET = process.env.PING_TREE_URL || 'https://compare.epcvip.vip';
 
 // Proxy configuration for ping-tree (FastAPI)
 const pingTreeProxy = createProxyMiddleware({

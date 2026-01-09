@@ -69,7 +69,7 @@ export const TOOLS = [
     id: 'ping-tree',
     name: 'Ping Tree Compare',
     description: 'Compare ping tree configurations to identify campaign differences.',
-    url: 'https://ping-tree-compare-production.up.railway.app', // Direct link (proxy has no auth issues)
+    url: 'https://compare.epcvip.vip',
     position: { x: 3, y: 3 },
     color: [72, 168, 104],
     sprite: 'building-house-1-stone-red',
