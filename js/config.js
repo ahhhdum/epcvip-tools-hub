@@ -108,7 +108,7 @@ export const TOOLS = [
     id: 'wordle',
     name: 'Wordle Battle',
     description: 'Race to solve the word! Competitive multiplayer Wordle.',
-    url: '/wordle/',
+    url: 'https://fwaptile.com',
     position: { x: 7, y: 17 },
     color: [83, 141, 78],
     sprite: 'building-house-1-stone-red',
