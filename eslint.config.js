@@ -72,7 +72,7 @@ export default [
 
   // Main config for JS files
   {
-    files: ['js/**/*.js', 'tools/js/**/*.js', 'wordle/**/*.js'],
+    files: ['js/**/*.js', 'tools/js/**/*.js'],
     ignores: ['**/*.test.js'],
     languageOptions: {
       ecmaVersion: 'latest',

@@ -7,15 +7,12 @@
 
 import 'dotenv/config';
 import { WebSocketServer, WebSocket } from 'ws';
-import { createServer, IncomingMessage } from 'http';
-import { Socket } from 'net';
+import { createServer } from 'http';
 import express from 'express';
 import path from 'path';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import jwt from 'jsonwebtoken';
 import { createClient } from '@supabase/supabase-js';
-import { WordleRoomManager } from './rooms/wordle-room';
-import { initializeWordService } from './services/word-service';
 
 // SSO Configuration
 const SSO_SHARED_SECRET = process.env.SSO_SHARED_SECRET || '';
@@ -117,366 +114,7 @@ app.post('/api/sso/sign-token', (req, res) => {
   }
 });
 
-/**
- * Validate an SSO token for Wordle
- * Called by Wordle when user arrives with sso_token in URL
- */
-app.post('/api/wordle/sso-validate', async (req, res) => {
-  if (!SSO_SHARED_SECRET) {
-    return res.status(500).json({ error: 'SSO not configured' });
-  }
-
-  const { token } = req.body;
-  if (!token) {
-    return res.status(400).json({ error: 'Missing token' });
-  }
-
-  try {
-    // Verify JWT signature and claims
-    const payload = jwt.verify(token, SSO_SHARED_SECRET, {
-      algorithms: ['HS256'],
-      issuer: 'epcvip-tools-hub',
-      audience: 'multiplayer-wordle',
-    }) as {
-      sub: string;
-      name: string;
-      jti: string;
-      exp: number;
-    };
-
-    // Check single-use (prevent replay attacks)
-    if (usedSSOTokens.has(payload.jti)) {
-      return res.status(401).json({ error: 'Token already used' });
-    }
-    usedSSOTokens.add(payload.jti);
-
-    // Cleanup old tokens after 10 minutes
-    setTimeout(() => usedSSOTokens.delete(payload.jti), 10 * 60 * 1000);
-
-    // Return user info from token (no separate user table needed)
-    const user = {
-      email: payload.sub,
-      name: payload.name,
-      authSource: 'sso',
-    };
-
-    // Generate session token for Wordle (used for stats persistence)
-    const sessionToken = jwt.sign({ email: user.email, name: user.name }, SSO_SHARED_SECRET, {
-      expiresIn: '7d',
-    });
-
-    res.json({
-      email: user.email,
-      name: user.name,
-      userId: payload.jti,
-      session: { token: sessionToken },
-    });
-  } catch (e: unknown) {
-    console.error('[SSO] Validation error:', e);
-
-    // Type-safe error handling
-    const error = e instanceof Error ? e : new Error(String(e));
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({ error: 'Invalid token' });
-    }
-    if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({ error: 'Token expired' });
-    }
-
-    return res.status(500).json({ error: 'SSO validation failed' });
-  }
-});
-
-/**
- * Get Wordle stats for a player
- */
-app.get('/api/wordle/stats/:email', async (req, res) => {
-  const supabase = getSupabaseAdmin();
-  if (!supabase) {
-    return res.status(500).json({ error: 'Database not configured' });
-  }
-
-  const email = decodeURIComponent(req.params.email);
-
-  try {
-    const { data, error } = await supabase
-      .from('wordle_stats')
-      .select('*')
-      .eq('player_email', email)
-      .single();
-
-    if (error && error.code !== 'PGRST116') {
-      // PGRST116 = not found, which is OK
-      console.error('[Wordle] Stats fetch error:', error);
-      return res.status(500).json({ error: 'Failed to fetch stats' });
-    }
-
-    res.json(
-      data || {
-        player_email: email,
-        games_played: 0,
-        games_won: 0,
-        total_guesses: 0,
-        current_streak: 0,
-        best_streak: 0,
-      }
-    );
-  } catch (e) {
-    console.error('[Wordle] Stats error:', e);
-    res.status(500).json({ error: 'Failed to fetch stats' });
-  }
-});
-
-/**
- * Get today's daily challenge number
- */
-app.get('/api/wordle/daily-number', (req, res) => {
-  const { getDailyNumber } = require('./utils/daily-word');
-  res.json({ dailyNumber: getDailyNumber() });
-});
-
-/**
- * Quick check for today's daily challenge status
- * Lightweight endpoint for UI indicators
- */
-app.get('/api/wordle/daily-status/:email', async (req, res) => {
-  const supabase = getSupabaseAdmin();
-  const { getDailyNumber } = require('./utils/daily-word');
-
-  const email = decodeURIComponent(req.params.email);
-  if (!email) {
-    return res.status(400).json({ error: 'Email required' });
-  }
-
-  const dailyNumber = getDailyNumber();
-
-  if (!supabase) {
-    // No database configured - assume not completed
-    return res.json({ completed: false, dailyNumber });
-  }
-
-  try {
-    const { data, error } = await supabase
-      .from('daily_challenge_completions')
-      .select('won, guess_count, solve_time_ms, word')
-      .eq('player_email', email)
-      .eq('daily_number', dailyNumber)
-      .single();
-
-    if (error && error.code !== 'PGRST116') {
-      console.error('[Wordle] Daily status check error:', error);
-      return res.status(500).json({ error: 'Failed to check status' });
-    }
-
-    if (data) {
-      const completion = data as {
-        won: boolean;
-        guess_count: number;
-        solve_time_ms: number | null;
-        word: string;
-      };
-      res.json({
-        completed: true,
-        dailyNumber,
-        won: completion.won,
-        guessCount: completion.guess_count,
-        solveTimeMs: completion.solve_time_ms,
-        word: completion.word,
-      });
-    } else {
-      res.json({ completed: false, dailyNumber });
-    }
-  } catch (e) {
-    console.error('[Wordle] Daily status error:', e);
-    res.status(500).json({ error: 'Failed to check status' });
-  }
-});
-
-/**
- * Check if user completed today's daily challenge
- */
-app.get('/api/wordle/daily-completion/:email/:dailyNumber', async (req, res) => {
-  const supabase = getSupabaseAdmin();
-  if (!supabase) {
-    return res.status(500).json({ error: 'Database not configured' });
-  }
-
-  const email = decodeURIComponent(req.params.email);
-  const dailyNumber = parseInt(req.params.dailyNumber);
-
-  if (isNaN(dailyNumber)) {
-    return res.status(400).json({ error: 'Invalid daily number' });
-  }
-
-  try {
-    const { data, error } = await supabase
-      .from('daily_challenge_completions')
-      .select('*')
-      .eq('player_email', email)
-      .eq('daily_number', dailyNumber)
-      .single();
-
-    if (error && error.code !== 'PGRST116') {
-      console.error('[Wordle] Daily completion check error:', error);
-      return res.status(500).json({ error: 'Failed to check completion' });
-    }
-
-    if (data) {
-      res.json({ completed: true, ...(data as object) });
-    } else {
-      res.json({ completed: false });
-    }
-  } catch (e) {
-    console.error('[Wordle] Daily completion error:', e);
-    res.status(500).json({ error: 'Failed to check completion' });
-  }
-});
-
-/**
- * Get historical dailies with completion status for a user
- * Returns recent 30 days by default, or all if ?all=true
- */
-app.get('/api/wordle/historical-dailies/:email', async (req, res) => {
-  const supabase = getSupabaseAdmin();
-  const { getDailyNumber, getDailyDate } = require('./utils/daily-word');
-
-  const email = decodeURIComponent(req.params.email);
-  const currentDailyNumber = getDailyNumber();
-  const limit = req.query.all === 'true' ? currentDailyNumber : 30;
-
-  // Build list of dailies with completion status
-  const dailies: Array<{
-    daily_number: number;
-    date: string;
-    completed: boolean;
-    won?: boolean;
-    guess_count?: number;
-    solve_time_ms?: number;
-  }> = [];
-
-  // Get user's completions
-  let completions: Record<number, { won: boolean; guess_count: number; solve_time_ms: number }> =
-    {};
-
-  if (supabase) {
-    try {
-      const { data } = await supabase
-        .from('daily_challenge_completions')
-        .select('daily_number, won, guess_count, solve_time_ms')
-        .eq('player_email', email);
-
-      if (data) {
-        completions = (
-          data as Array<{
-            daily_number: number;
-            won: boolean;
-            guess_count: number;
-            solve_time_ms: number;
-          }>
-        ).reduce(
-          (acc, row) => {
-            acc[row.daily_number] = {
-              won: row.won,
-              guess_count: row.guess_count,
-              solve_time_ms: row.solve_time_ms,
-            };
-            return acc;
-          },
-          {} as typeof completions
-        );
-      }
-    } catch (e) {
-      console.error('[Wordle] Failed to fetch completions:', e);
-    }
-  }
-
-  // Build dailies list (most recent first)
-  for (let i = currentDailyNumber; i >= Math.max(1, currentDailyNumber - limit + 1); i--) {
-    const completion = completions[i];
-    dailies.push({
-      daily_number: i,
-      date: getDailyDate(i),
-      completed: !!completion,
-      ...(completion || {}),
-    });
-  }
-
-  res.json({
-    current_daily: currentDailyNumber,
-    dailies,
-    total_completed: Object.keys(completions).length,
-    total_available: currentDailyNumber,
-  });
-});
-
-/**
- * Get a random unplayed daily for a user
- */
-app.get('/api/wordle/random-unplayed-daily/:email', async (req, res) => {
-  const supabase = getSupabaseAdmin();
-  const { getDailyNumber, getDailyDate } = require('./utils/daily-word');
-
-  const email = decodeURIComponent(req.params.email);
-  const currentDailyNumber = getDailyNumber();
-
-  // Get user's completed daily numbers
-  let completedDailies: Set<number> = new Set();
-
-  if (supabase) {
-    try {
-      const { data } = await supabase
-        .from('daily_challenge_completions')
-        .select('daily_number')
-        .eq('player_email', email);
-
-      if (data) {
-        completedDailies = new Set(
-          (data as Array<{ daily_number: number }>).map((row) => row.daily_number)
-        );
-      }
-    } catch (e) {
-      console.error('[Wordle] Failed to fetch completions:', e);
-    }
-  }
-
-  // Find unplayed dailies (excluding today's - that's the main daily challenge)
-  const unplayedDailies: number[] = [];
-  for (let i = 1; i < currentDailyNumber; i++) {
-    if (!completedDailies.has(i)) {
-      unplayedDailies.push(i);
-    }
-  }
-
-  if (unplayedDailies.length === 0) {
-    return res.json({
-      found: false,
-      message: 'All historical dailies completed!',
-      total_completed: completedDailies.size,
-      total_available: currentDailyNumber - 1,
-    });
-  }
-
-  // Pick a random one
-  const randomIndex = Math.floor(Math.random() * unplayedDailies.length);
-  const selectedDaily = unplayedDailies[randomIndex];
-
-  res.json({
-    found: true,
-    daily_number: selectedDaily,
-    date: getDailyDate(selectedDaily),
-    remaining_unplayed: unplayedDailies.length,
-    total_completed: completedDailies.size,
-    total_available: currentDailyNumber - 1,
-  });
-});
-
 // ============================================================
-
-// Wordle room URL routing - serve index.html for /wordle/room/:code
-// This enables shareable room links like /wordle/room/ABC123
-app.get('/wordle/room/:code', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/wordle/index.html'));
-});
 
 // Serve static files from public directory (copied during build)
 const staticPath = path.join(__dirname, '../public');
@@ -495,29 +133,8 @@ app.get('/health', (req, res) => {
 
 const server = createServer(app);
 
-// WebSocket server for game - noServer mode for manual upgrade handling
-const wss = new WebSocketServer({ noServer: true });
-
-// WebSocket server for Wordle Battle
-const wordleWss = new WebSocketServer({ noServer: true });
-const wordleManager = new WordleRoomManager();
-
-// Handle WebSocket upgrades manually to route between game and wordle
-server.on('upgrade', (req, socket, head) => {
-  const url = req.url || '';
-
-  if (url.startsWith('/wordle')) {
-    // Wordle Battle WebSocket - handle locally
-    wordleWss.handleUpgrade(req, socket as Socket, head, (ws) => {
-      wordleWss.emit('connection', ws, req);
-    });
-  } else {
-    // Game WebSocket - handle locally
-    wss.handleUpgrade(req, socket as Socket, head, (ws) => {
-      wss.emit('connection', ws, req);
-    });
-  }
-});
+// WebSocket server for game
+const wss = new WebSocketServer({ server });
 
 // Game constants
 const WORLD_WIDTH = 960;
@@ -749,30 +366,8 @@ wss.on('connection', (ws) => {
   });
 });
 
-// Wordle Battle WebSocket connections
-wordleWss.on('connection', (ws) => {
-  console.log('[Wordle] New connection');
-
-  ws.on('message', (data) => {
-    wordleManager.handleMessage(ws, data.toString());
-  });
-
-  ws.on('close', () => {
-    wordleManager.handleDisconnect(ws);
-  });
-
-  ws.on('error', (err) => {
-    console.error('[Wordle] Socket error:', err);
-  });
-});
-
 // Initialize game
 spawnInitialFritelles();
-
-// Initialize word service (loads word cache from DB)
-initializeWordService().catch((err) => {
-  console.error('[WordService] Initialization error:', err);
-});
 
 // Start server
 server.listen(port, '0.0.0.0', () => {
@@ -781,7 +376,6 @@ server.listen(port, '0.0.0.0', () => {
 ║  EPCVIP Tools Hub - Multiplayer Server                 ║
 ╠════════════════════════════════════════════════════════╣
 ║  Game WS:    ws://0.0.0.0:${port}/                        ║
-║  Wordle WS:  ws://0.0.0.0:${port}/wordle                  ║
 ║  Health:     http://0.0.0.0:${port}/health               ║
 ║  Protocol:   Native WebSocket + JSON                   ║
 ╚════════════════════════════════════════════════════════╝

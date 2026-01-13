@@ -1,19 +1,12 @@
 # EPCVIP Tools Hub
 
-A retro-style game hub for EPCVIP innovation tools, featuring multiplayer Wordle Battle and an overworld exploration game.
+A retro-style game hub for EPCVIP innovation tools, featuring an overworld exploration game.
 
-**Live:** https://epcvip-tools-hub-production.up.railway.app
+**Live:** https://epcvip.vip
+
+**Note:** Wordle Battle has been extracted to its own repo and is now at [fwaptile.com](https://fwaptile.com).
 
 ## Features
-
-### Wordle Battle
-Multiplayer word guessing game with competitive and casual modes.
-
-- **Daily Challenges** - One attempt per day, solo or with friends
-- **Historical Dailies** - Play past daily puzzles you missed
-- **Multiplayer Rooms** - 2-6 players, real-time opponent progress
-- **Granular Analytics** - Per-guess timing, letter results, guess distribution
-- **Stats Tracking** - Win streaks, solve times, games played
 
 ### Overworld Game
 Retro RPG-style hub world built with KaPlay (Kaboom.js fork).
@@ -26,9 +19,13 @@ Retro RPG-style hub world built with KaPlay (Kaboom.js fork).
 ### Embedded Tools
 Reverse-proxied tools accessible from a single domain:
 
-- `/ping-tree` - Ping Tree Compare
-- `/athena` - Athena Usage Monitor
-- `/validator` - Streamlit Validator
+- `/ping-tree` - Ping Tree Compare (proxied)
+
+Custom domain tools (shared Supabase auth):
+- athena.epcvip.vip - Athena Usage Monitor
+- compare.epcvip.vip - Ping Tree Compare
+- reports.epcvip.vip - Reports Dashboard
+- fwaptile.com - Wordle Battle
 
 ## Tech Stack
 
@@ -37,7 +34,6 @@ Reverse-proxied tools accessible from a single domain:
 | Backend | Node.js, TypeScript, Express, ws (WebSocket) |
 | Database | PostgreSQL via Supabase |
 | Frontend - Game | Vanilla JS, KaPlay 3001 |
-| Frontend - Wordle | Vanilla JS, CSS, ES Modules |
 | Auth | JWT-based SSO + Supabase Auth |
 | Deployment | Railway |
 
@@ -101,7 +97,6 @@ cd server && npm run serve
 Server runs on http://localhost:2567
 
 - Game: http://localhost:2567/
-- Wordle: http://localhost:2567/wordle/
 - Health: http://localhost:2567/health
 
 ## Database Schema
@@ -109,13 +104,6 @@ Server runs on http://localhost:2567
 | Table | Description |
 |-------|-------------|
 | `players` | User profiles (display name, character selection) |
-| `wordle_games` | Game sessions with metadata |
-| `wordle_results` | Per-player outcomes for each game |
-| `wordle_stats` | Aggregate stats (wins, streaks, guess distribution) |
-| `wordle_guesses` | Individual guesses with timing and results |
-| `daily_challenge_completions` | One record per user per daily |
-| `achievements` | Achievement definitions |
-| `player_achievements` | Earned achievements |
 
 Migrations are in `supabase/migrations/`.
 
@@ -125,14 +113,9 @@ Migrations are in `supabase/migrations/`.
 epcvip-tools-hub/
 ├── server/                 # Node.js backend
 │   ├── src/
-│   │   ├── index.ts       # Express + WebSocket server
-│   │   ├── rooms/         # Game room management
-│   │   ├── services/      # Business logic (database, validation)
-│   │   ├── constants/     # Configuration constants
-│   │   └── utils/         # Helpers (daily word, room codes)
+│   │   └── index.ts       # Express + WebSocket server
 │   └── public/            # Static files (built)
 ├── js/                    # KaPlay game frontend
-├── wordle/                # Wordle Battle frontend
 ├── tools/                 # Map editor, embedded tools
 ├── supabase/              # Database migrations
 ├── CLAUDE.md              # AI assistant context
@@ -148,26 +131,24 @@ epcvip-tools-hub/
 |----------|--------|-------------|
 | `/health` | GET | Server health check |
 | `/api/config` | GET | Client configuration (Supabase URL) |
-| `/api/wordle/stats/:email` | GET | Player statistics |
-| `/api/wordle/daily-completion/:email/:num` | GET | Check daily completion |
-| `/api/wordle/historical-dailies/:email` | GET | Recent dailies with status |
+| `/api/sso/sign-token` | POST | Sign SSO token for cross-app auth |
 
 ### WebSocket Messages
 
 **Client → Server:**
-- `createRoom` - Create new game room
-- `joinRoom` - Join existing room
-- `setReady` - Toggle ready status
-- `startGame` - Begin countdown
-- `guess` - Submit a word guess
+- `move` - Update player position
+- `collect` - Collect a fritelle
+- `throw` - Throw a fritelle
+- `setName` - Update display name
+- `setAppearance` - Update character
 
 **Server → Client:**
-- `roomCreated` - Room creation confirmed
-- `gameStarted` - Game begun, word length sent
-- `guessResult` - Validation result for guesser
-- `opponentGuess` - Progress update (colors only)
-- `timerSync` - Periodic time updates
-- `gameEnded` - Final results
+- `init` - Initial state (players, fritelles)
+- `playerJoined` - New player connected
+- `playerMoved` - Player position update
+- `playerLeft` - Player disconnected
+- `fritelleCollected` - Item collected
+- `fritelleSpawned` - New item spawned
 
 ## Development
 

@@ -1,6 +1,12 @@
 # EPCVIP Tools Hub
 
-A retro-style game interface for EPCVIP innovation tools, featuring multiplayer Wordle Battle.
+## Planning
+
+- **Backlog:** [backlog/_BACKLOG.md](backlog/_BACKLOG.md)
+
+A retro-style game interface for EPCVIP innovation tools.
+
+**Note:** Wordle Battle has been extracted to its own repo at [fwaptile-wordle](../fwaptile-wordle/) and deployed at fwaptile.com.
 
 ## Tech Stack
 
@@ -8,7 +14,6 @@ A retro-style game interface for EPCVIP innovation tools, featuring multiplayer 
 |-------|------------|
 | Backend | TypeScript, Express, ws (WebSocket), Supabase |
 | Frontend - Game | Vanilla JS, KaPlay 3001 (Kaboom.js fork) |
-| Frontend - Wordle | Vanilla JS, CSS, ES Modules |
 | Database | PostgreSQL via Supabase |
 | Deployment | Railway (reverse proxy routing) |
 | Auth | JWT-based SSO + Supabase Auth |
@@ -27,23 +32,11 @@ A retro-style game interface for EPCVIP innovation tools, featuring multiplayer 
 epcvip-tools-hub/
 ├── server/                    # Node.js backend
 │   ├── src/
-│   │   ├── index.ts          # Express + WebSocket server, API routes
-│   │   ├── rooms/
-│   │   │   └── wordle-room.ts # Wordle game logic, room management
-│   │   ├── services/         # Modular business logic
-│   │   │   ├── wordle-database.ts  # Supabase operations
-│   │   │   ├── wordle-validator.ts # Guess validation (pure functions)
-│   │   │   └── wordle-timer.ts     # Timer sync logic
-│   │   ├── constants/
-│   │   │   └── wordle-constants.ts # Game constants
-│   │   └── utils/
-│   │       ├── daily-word.ts  # Daily word system (epoch: 2024-01-01)
-│   │       ├── room-codes.ts  # 6-char room code generator
-│   │       └── word-list.ts   # 666 common 5-letter words
+│   │   └── index.ts          # Express + WebSocket server, API routes
 │   └── public/               # Static files (copied during build)
 │
 ├── supabase/                  # Database migrations
-│   └── migrations/           # SQL files (001-005)
+│   └── migrations/           # SQL files
 │
 ├── js/                        # KaPlay game frontend
 │   ├── main.js               # Entry point, scene registration
@@ -51,12 +44,6 @@ epcvip-tools-hub/
 │   ├── scenes/               # Loading, overworld, pause screens
 │   ├── entities/             # Player, buildings, collectibles
 │   └── systems/              # Input, camera, audio, multiplayer
-│
-├── wordle/                    # Wordle Battle frontend
-│   ├── index.html            # Game UI, auth modal, views
-│   ├── wordle.css            # Styles
-│   ├── wordle.js             # Game logic, WebSocket client
-│   └── valid-guesses.js      # 12K valid 5-letter words
 │
 ├── tools/                     # Embedded tool iframes
 ├── assets/                    # Sprites (Cute_Fantasy pack)
@@ -87,8 +74,6 @@ npx supabase migration list     # Check migration status
 cd server && npm test                           # Unit tests
 npx playwright test                             # E2E tests
 npx playwright test --ui                        # Interactive debugger
-npx playwright test visual.spec.ts              # Visual regression
-npx playwright test --update-snapshots          # Update baselines
 ```
 
 ## Testing Strategy
@@ -100,7 +85,6 @@ See `docs/TESTING_GUIDE.md` for comprehensive testing documentation.
 | Unit tests | Jest | Free | Every commit |
 | E2E tests | Playwright | Free | Every PR |
 | Visual regression | Playwright snapshots | Free | Every PR |
-| AI QA | Claude + Playwright MCP | ~$0.60 | UI changes |
 
 ## Database Schema
 
@@ -109,37 +93,14 @@ Migrations in `supabase/migrations/`. Push with `npx supabase db push`.
 | Table | Purpose |
 |-------|---------|
 | `players` | Player profiles (display_name, character) |
-| `wordle_games` | Game sessions (room, word, mode, timing) |
-| `wordle_results` | Per-player outcomes per game |
-| `wordle_stats` | Aggregate stats (wins, streaks, guess distribution 1-6) |
-| `wordle_guesses` | Per-guess tracking (timing, letter results) |
-| `daily_challenge_completions` | Daily challenge tracking (one per user per day) |
-| `achievements` | Achievement definitions (seeded) |
-| `player_achievements` | Earned achievements per player |
-| `player_achievement_progress` | Progress toward incremental achievements |
 
 ## Code Patterns
 
 ### WebSocket Message Format
 ```typescript
 // All messages have type + payload
-{ type: 'createRoom', playerName: 'Alice', playerEmail: 'alice@ex.com' }
-{ type: 'error', message: 'Room not found' }
-```
-
-### Room Management Pattern
-```typescript
-class WordleRoomManager {
-  private rooms: Map<string, WordleRoom> = new Map();
-  private playerToRoom: Map<string, string> = new Map();
-  private socketToPlayer: Map<WebSocket, string> = new Map();
-
-  // Always clean up ALL maps on disconnect
-  handleDisconnect(socket: WebSocket): void {
-    const playerId = this.socketToPlayer.get(socket);
-    // Delete from all maps...
-  }
-}
+{ type: 'move', x: 100, y: 200, direction: 'down' }
+{ type: 'error', message: 'Invalid message' }
 ```
 
 ### API Response Pattern
@@ -148,17 +109,8 @@ class WordleRoomManager {
 res.json({ data: result, meta: { count: 1 } });
 
 // Error
-res.status(400).json({ error: 'Invalid email', code: 'BAD_REQUEST' });
+res.status(400).json({ error: 'Invalid request', code: 'BAD_REQUEST' });
 ```
-
-## Wordle Battle Features
-
-- **Solo Daily Challenge** - One attempt per day per user
-- **Historical Dailies** - Play missed past dailies (random, recent 7, or browse)
-- **Multiplayer Rooms** - 2-6 players, casual or competitive
-- **Real-time Progress** - See opponent boards (colors only)
-- **Granular Tracking** - Per-guess timing, letter results, guess distribution
-- **Stats Dashboard** - Games, wins, streaks, fastest times (UI pending)
 
 ## Development Workflow
 
@@ -172,9 +124,13 @@ res.status(400).json({ error: 'Invalid email', code: 'BAD_REQUEST' });
 
 Reverse proxy routes in `server/src/index.ts`:
 - `/` → Tools Hub game
-- `/ping-tree` → Ping Tree Compare (external)
-- `/athena` → Athena Usage Monitor (external)
-- `/validator` → Streamlit Validator (external)
+- `/ping-tree` → Ping Tree Compare (proxied)
+
+Direct links (custom domains):
+- athena.epcvip.vip → Athena Usage Monitor
+- compare.epcvip.vip → Ping Tree Compare
+- reports.epcvip.vip → Reports Dashboard
+- fwaptile.com → Wordle Battle (separate repo)
 
 ## Documentation
 
@@ -183,18 +139,13 @@ Reverse proxy routes in `server/src/index.ts`:
 | `STANDARDS.md` | Comprehensive code standards |
 | `BACKLOG.md` | Feature backlog and priorities |
 | `docs/TESTING_GUIDE.md` | Testing strategy and commands |
-| `docs/WORDLE_BATTLE_PLAN.md` | Wordle feature design |
 | `docs/MULTIPLAYER_PLAN.md` | Multiplayer architecture |
 | `docs/AUTH_AND_PERSISTENCE_PLAN.md` | Auth design |
 | `ASSETS.md` | Sprite pack documentation |
 
-## Quick Reference
+## Related
 
-- **Daily word epoch**: January 1, 2024
-- **Room codes**: 6 uppercase letters (A-Z, excludes confusing chars)
-- **Max players per room**: 6
-- **Max guesses per game**: 6
-- **Word length**: 5 letters
+- [SERVICES.md](../../SERVICES.md) - Ecosystem architecture, shared auth
 
 ---
 

@@ -11,11 +11,13 @@
 
 | Effort | Time Estimate |
 |--------|---------------|
-| **XS** | < 1 hour |
-| **S** | 1-2 hours |
-| **M** | 3-4 hours |
-| **L** | 5-8 hours |
-| **XL** | > 1 day |
+| **1h** | < 1 hour |
+| **2h** | 1-2 hours |
+| **4h** | 3-4 hours |
+| **8h** | 5-8 hours |
+| **16h** | > 1 day |
+
+> **Note:** Effort standardized to hours (previously T-shirt sizes)
 
 ---
 

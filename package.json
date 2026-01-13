@@ -5,8 +5,8 @@
   "scripts": {
     "build": "cd server && npm install && npm run build",
     "start": "cd server && npm run serve",
-    "lint": "eslint js/ tools/js/ wordle/",
-    "lint:fix": "eslint js/ tools/js/ wordle/ --fix",
+    "lint": "eslint js/ tools/js/",
+    "lint:fix": "eslint js/ tools/js/ --fix",
     "format": "prettier --write \"js/**/*.js\" \"tools/js/**/*.js\"",
     "format:check": "prettier --check \"js/**/*.js\" \"tools/js/**/*.js\"",
     "prepare": "husky",
@@ -21,10 +21,6 @@
       "prettier --write"
     ],
     "tools/js/**/*.js": [
-      "eslint --fix",
-      "prettier --write"
-    ],
-    "wordle/**/*.js": [
       "eslint --fix",
       "prettier --write"
     ],

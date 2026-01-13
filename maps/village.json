@@ -14660,7 +14660,7 @@
       "y": 2,
       "properties": {
         "name": "Ping Tree Compare",
-        "url": "https://ping-tree-compare-production.up.railway.app/",
+        "url": "https://compare.epcvip.vip",
         "interactive": true
       }
     },
@@ -14672,7 +14672,7 @@
       "y": 2,
       "properties": {
         "name": "Athena Monitor",
-        "url": "https://epcvip-athena-usage-monitor.up.railway.app/",
+        "url": "https://athena.epcvip.vip/",
         "interactive": true
       }
     },
@@ -14684,7 +14684,7 @@
       "y": 2,
       "properties": {
         "name": "Datalake Validator",
-        "url": "https://streamlit-validator-production.up.railway.app/",
+        "url": "https://reports.epcvip.vip/",
         "interactive": true
       }
     },
