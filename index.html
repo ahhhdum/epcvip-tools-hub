@@ -7,11 +7,8 @@
     <link rel="stylesheet" href="style.css">
     <script>
         // Handle Supabase auth callbacks
-        // Password recovery redirects to Wordle (which has the update password form)
-        // Other auth callbacks stay on this page (the auth module will handle them)
-        if (window.location.hash.includes('type=recovery')) {
-            window.location.href = '/wordle/' + window.location.hash;
-        }
+        // Recovery tokens are handled by the auth module on this page
+        // No redirect needed - Supabase SDK will detect the hash and handle password update
     </script>
 </head>
 <body>
@@ -47,52 +44,6 @@
     </div>
     <div class="fallback-link">
         <a href="index-simple.html">Switch to simple view</a>
-    </div>
-
-    <!-- Login Modal (shown when not authenticated) -->
-    <div id="authModal" class="auth-modal hidden">
-        <div class="auth-modal-overlay"></div>
-        <div class="auth-modal-content">
-            <div class="auth-modal-header">
-                <h2 id="authModalTitle">Welcome to EPCVIP Tools</h2>
-                <p class="auth-subtitle">Sign in to access the Innovation Lab</p>
-            </div>
-            <form id="authForm">
-                <div class="auth-form-group">
-                    <input type="email" id="authEmail" placeholder="Email (@epcvip.com)" required autocomplete="email">
-                </div>
-                <div class="auth-form-group">
-                    <input type="password" id="authPassword" placeholder="Password" required autocomplete="current-password">
-                </div>
-                <div class="auth-form-group hidden" id="displayNameGroup">
-                    <input type="text" id="authDisplayName" placeholder="Display Name" autocomplete="name">
-                </div>
-                <p id="authError" class="auth-error hidden"></p>
-                <div class="auth-buttons">
-                    <button type="submit" id="authSubmit" class="auth-btn auth-btn-primary">Sign In</button>
-                </div>
-            </form>
-            <p id="authToggle" class="auth-toggle">
-                Don't have an account? <a href="#" id="switchToSignup">Sign up</a>
-            </p>
-            <p class="auth-toggle">
-                <a href="#" id="forgotPasswordLink">Forgot Password?</a>
-            </p>
-
-            <!-- Reset Password Form -->
-            <form id="resetPasswordForm" class="hidden">
-                <p class="auth-subtitle">Enter your email and we'll send you a reset link.</p>
-                <div class="auth-form-group">
-                    <input type="email" id="resetEmail" placeholder="Email" required autocomplete="email">
-                </div>
-                <p id="resetError" class="auth-error hidden"></p>
-                <p id="resetSuccess" class="auth-success hidden"></p>
-                <div class="auth-buttons">
-                    <button type="submit" class="auth-btn auth-btn-primary">Send Reset Link</button>
-                    <button type="button" id="backToLogin" class="auth-btn auth-btn-secondary">Back</button>
-                </div>
-            </form>
-        </div>
     </div>
 
     <!-- Supabase SDK -->

@@ -10,8 +10,10 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { createServer } from 'http';
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import jwt from 'jsonwebtoken';
+import cookieParser from 'cookie-parser';
 import { createClient } from '@supabase/supabase-js';
 
 // SSO Configuration
@@ -62,6 +64,46 @@ app.use('/ping-tree', pingTreeProxy);
 
 // Parse JSON bodies for API routes
 app.use(express.json());
+
+// Parse cookies for auth
+app.use(cookieParser());
+
+// ============================================================
+// Login Page (served with injected Supabase config)
+// ============================================================
+
+// Read login template once at startup
+const loginTemplatePath = path.join(__dirname, '../public/login.html');
+let loginTemplate = '';
+try {
+  loginTemplate = fs.readFileSync(loginTemplatePath, 'utf-8');
+} catch (e) {
+  console.warn('[Auth] login.html not found, will check again on request');
+}
+
+app.get('/login', (req, res) => {
+  // Re-read template if not loaded (for development)
+  if (!loginTemplate) {
+    try {
+      loginTemplate = fs.readFileSync(loginTemplatePath, 'utf-8');
+    } catch (e) {
+      return res.status(500).send('Login page not found');
+    }
+  }
+
+  // Inject Supabase config
+  const html = loginTemplate
+    .replace('{{SUPABASE_URL}}', SUPABASE_URL)
+    .replace('{{SUPABASE_ANON_KEY}}', SUPABASE_ANON_KEY);
+
+  res.type('html').send(html);
+});
+
+// Logout endpoint - clears cookie and redirects to login
+app.get('/logout', (req, res) => {
+  res.clearCookie('sb-access-token');
+  res.redirect('/login?logout=1');
+});
 
 // ============================================================
 // Public Config Endpoint (for client-side Supabase initialization)
@@ -116,11 +158,7 @@ app.post('/api/sso/sign-token', (req, res) => {
 
 // ============================================================
 
-// Serve static files from public directory (copied during build)
-const staticPath = path.join(__dirname, '../public');
-app.use(express.static(staticPath));
-
-// Health check - enhanced with proxy status
+// Health check - public (before auth middleware)
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
@@ -129,6 +167,61 @@ app.get('/health', (req, res) => {
       pingTree: PING_TREE_TARGET,
     },
   });
+});
+
+// ============================================================
+// Auth Middleware - Protect app routes
+// ============================================================
+
+// Routes that don't require authentication
+const PUBLIC_PATHS = ['/login', '/logout', '/health', '/api/config', '/api/sso'];
+
+app.use((req, res, next) => {
+  // Skip auth for public paths
+  if (PUBLIC_PATHS.some((p) => req.path.startsWith(p))) {
+    return next();
+  }
+
+  // Skip auth for static assets (js, css, images, fonts)
+  if (/\.(js|mjs|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|map)$/i.test(req.path)) {
+    return next();
+  }
+
+  // Check for auth cookie
+  const token = req.cookies['sb-access-token'];
+  if (!token) {
+    // No token - redirect to login
+    return res.redirect('/login');
+  }
+
+  // Verify JWT signature and expiry
+  const JWT_SECRET = process.env.SUPABASE_JWT_SECRET;
+  if (!JWT_SECRET) {
+    console.error('[Auth] SUPABASE_JWT_SECRET not configured');
+    return res.redirect('/login');
+  }
+
+  try {
+    jwt.verify(token, JWT_SECRET);
+    next();
+  } catch (err) {
+    // Invalid or expired token
+    res.clearCookie('sb-access-token');
+    return res.redirect('/login');
+  }
+});
+
+// Serve static files from public directory (copied during build)
+const staticPath = path.join(__dirname, '../public');
+app.use(express.static(staticPath));
+
+// Catch-all for SPA - serve index.html for unmatched routes (after auth check)
+app.get('*', (req, res, next) => {
+  // Don't catch API routes or static files
+  if (req.path.startsWith('/api') || req.path.startsWith('/ping-tree')) {
+    return next();
+  }
+  res.sendFile(path.join(staticPath, 'index.html'));
 });
 
 const server = createServer(app);
