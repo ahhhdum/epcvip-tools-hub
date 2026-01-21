@@ -145,7 +145,7 @@ Direct links (custom domains):
 
 ## Related
 
-- [SERVICES.md](../../SERVICES.md) - Ecosystem architecture, shared auth
+- [EPCVIP_SERVICES.md](../../EPCVIP_SERVICES.md) - Ecosystem architecture, shared auth
 
 ---
 
