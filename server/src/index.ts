@@ -106,6 +106,158 @@ app.get('/logout', (req, res) => {
 });
 
 // ============================================================
+// OAuth Callback Handler
+// ============================================================
+
+const APP_ID = 'tools-hub'; // Must match epcvip_apps table
+const ALLOWED_DOMAIN = process.env.ALLOWED_DOMAIN || 'epcvip.com';
+
+app.get('/auth/callback', async (req, res) => {
+  const { code, error } = req.query;
+
+  if (error) {
+    console.log('[Auth] OAuth error:', error);
+    return res.redirect('/login?error=oauth_failed');
+  }
+
+  if (!code) {
+    console.log('[Auth] OAuth callback missing code');
+    return res.redirect('/login?error=oauth_failed');
+  }
+
+  try {
+    // Exchange code for session via Supabase API
+    const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=authorization_code`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ code }),
+    });
+
+    if (!response.ok) {
+      console.error('[Auth] Token exchange failed:', response.status);
+      return res.redirect('/login?error=oauth_failed');
+    }
+
+    const tokenData = (await response.json()) as {
+      access_token?: string;
+      user?: { email?: string };
+    };
+    const accessToken = tokenData.access_token;
+    const user = tokenData.user || {};
+    const email = user.email || '';
+
+    if (!accessToken) {
+      console.error('[Auth] No access token in response');
+      return res.redirect('/login?error=oauth_failed');
+    }
+
+    // Validate email domain
+    if (!email.toLowerCase().endsWith(`@${ALLOWED_DOMAIN.toLowerCase()}`)) {
+      console.log(`[Auth] Domain not allowed: ${email}`);
+      // Sign out the user
+      await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      return res.redirect('/login?error=domain_not_allowed');
+    }
+
+    // Check RBAC access
+    const rbacResponse = await fetch(
+      `${SUPABASE_URL}/rest/v1/epcvip_app_roles?app_id=eq.${APP_ID}&user_email=eq.${email.toLowerCase()}&select=role`,
+      {
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+
+    if (rbacResponse.ok) {
+      const roles = (await rbacResponse.json()) as Array<{ role: string }>;
+      if (!roles || roles.length === 0) {
+        console.log(`[Auth] No RBAC role for: ${email}`);
+        // Sign out the user
+        await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
+          method: 'POST',
+          headers: {
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+        return res.redirect('/access-denied');
+      }
+      console.log(`[Auth] RBAC access granted for ${email}: ${roles[0].role}`);
+    }
+
+    // Set cookie and redirect
+    res.cookie('sb-access-token', accessToken, {
+      path: '/',
+      httpOnly: false,
+      sameSite: 'lax',
+      secure: true,
+      maxAge: 8 * 60 * 60 * 1000, // 8 hours
+    });
+
+    console.log(`[Auth] OAuth login successful: ${email}`);
+    return res.redirect('/');
+  } catch (err) {
+    console.error('[Auth] OAuth callback error:', err);
+    return res.redirect('/login?error=oauth_failed');
+  }
+});
+
+// Access Denied Page
+const accessDeniedTemplatePath = path.join(__dirname, '../public/access-denied.html');
+let accessDeniedTemplate = '';
+try {
+  accessDeniedTemplate = fs.readFileSync(accessDeniedTemplatePath, 'utf-8');
+} catch (e) {
+  // Will fall back to inline HTML
+}
+
+app.get('/access-denied', (req, res) => {
+  if (accessDeniedTemplate) {
+    const html = accessDeniedTemplate
+      .replace('{{SUPABASE_URL}}', SUPABASE_URL)
+      .replace('{{SUPABASE_ANON_KEY}}', SUPABASE_ANON_KEY);
+    return res.type('html').send(html);
+  }
+
+  // Fallback inline HTML
+  res.type('html').send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>Access Denied - EPCVIP Tools Hub</title>
+      <style>
+        body { background: #1a1a1a; color: #fff; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .container { text-align: center; }
+        h1 { margin-bottom: 16px; }
+        p { color: #a0a0a0; margin-bottom: 24px; }
+        a { color: #ffd700; text-decoration: none; padding: 12px 24px; border: 1px solid #404040; border-radius: 8px; display: inline-block; }
+        a:hover { background: #333; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1>Access Denied</h1>
+        <p>You don't have permission to access this application.<br>Contact an administrator to request access.</p>
+        <a href="/login">Return to login</a>
+      </div>
+    </body>
+    </html>
+  `);
+});
+
+// ============================================================
 // Public Config Endpoint (for client-side Supabase initialization)
 // ============================================================
 
@@ -174,7 +326,15 @@ app.get('/health', (req, res) => {
 // ============================================================
 
 // Routes that don't require authentication
-const PUBLIC_PATHS = ['/login', '/logout', '/health', '/api/config', '/api/sso'];
+const PUBLIC_PATHS = [
+  '/login',
+  '/logout',
+  '/health',
+  '/api/config',
+  '/api/sso',
+  '/auth/callback',
+  '/access-denied',
+];
 
 app.use((req, res, next) => {
   // Skip auth for public paths
