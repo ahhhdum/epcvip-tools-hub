@@ -1,0 +1,57 @@
+<!--
+  EPCVIP Cross-Tool Navigation Sidebar
+
+  Usage:
+  1. Include epc-sidebar.css in <head>
+  2. Insert this HTML at the start of <body>
+  3. Include epc-sidebar.js before </body>
+  4. Set data-current to match your tool's data-tool value
+  5. Add class="epc-content-offset" to your main content container
+-->
+
+<!-- EPC Navigation Sidebar -->
+<nav class="epc-sidebar" id="epc-sidebar" data-current="CHANGE_ME">
+  <div class="epc-sidebar-header">
+    <div class="epc-hamburger" id="epc-toggle">
+      <span></span>
+      <span></span>
+      <span></span>
+    </div>
+    <span class="epc-logo-text">EPCVIP</span>
+  </div>
+
+  <div class="epc-nav-items">
+    <a href="https://epcvip.vip" class="epc-nav-item" data-tool="tools-hub">
+      <span class="epc-nav-icon">&#x1F3E0;</span>
+      <span class="epc-nav-label">Tools Hub</span>
+    </a>
+    <a href="https://compare.epcvip.vip" class="epc-nav-item" data-tool="ping-tree">
+      <span class="epc-nav-icon">&#x1F333;</span>
+      <span class="epc-nav-label">Ping Tree Compare</span>
+    </a>
+    <a href="https://xp.epcvip.vip" class="epc-nav-item" data-tool="experiments">
+      <span class="epc-nav-icon">&#x1F9EA;</span>
+      <span class="epc-nav-label">Experiments</span>
+    </a>
+    <a href="https://athena.epcvip.vip" class="epc-nav-item" data-tool="athena">
+      <span class="epc-nav-icon">&#x26A1;</span>
+      <span class="epc-nav-label">Athena Monitor</span>
+    </a>
+    <a href="https://reports.epcvip.vip" class="epc-nav-item" data-tool="reports">
+      <span class="epc-nav-icon">&#x1F4CA;</span>
+      <span class="epc-nav-label">Reports Dashboard</span>
+    </a>
+  </div>
+
+  <div class="epc-sidebar-footer">
+    EPCVIP Innovation Tools
+  </div>
+</nav>
+
+<!-- Overlay for closing -->
+<div class="epc-overlay" id="epc-overlay"></div>
+
+<!-- Mobile toggle (visible on small screens only) -->
+<div class="epc-mobile-toggle" id="epc-mobile-toggle">
+  <span></span>
+</div>

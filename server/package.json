@@ -7,7 +7,7 @@
     "start": "ts-node src/index.ts",
     "build": "tsc && npm run copy-static && npm run copy-shared",
     "copy-static": "mkdir -p public && cp -r ../index.html ../index-simple.html ../login.html ../style.css ../js ../assets ../maps ../tools ./public/",
-    "copy-shared": "mkdir -p public/shared && cp ../../../templates/shared-navigation/epc-sidebar.css ../../../templates/shared-navigation/epc-sidebar.js ../../../templates/shared-navigation/epc-sidebar.html public/shared/ && echo '{\"version\":\"1.0.0\",\"updated\":\"'$(date +%Y-%m-%d)'\",\"files\":{\"css\":\"epc-sidebar.css\",\"js\":\"epc-sidebar.js\",\"html\":\"epc-sidebar.html\"}}' > public/shared/version.json",
+    "copy-shared": "mkdir -p public/shared && cp ../shared/* public/shared/",
     "serve": "node dist/index.js",
     "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
     "test:watch": "jest --watch",
