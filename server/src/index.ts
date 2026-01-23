@@ -15,10 +15,26 @@ import { createProxyMiddleware } from 'http-proxy-middleware';
 import jwt from 'jsonwebtoken';
 import cookieParser from 'cookie-parser';
 import { createClient } from '@supabase/supabase-js';
+import cors from 'cors';
 
 // SSO Configuration
 const SSO_SHARED_SECRET = process.env.SSO_SHARED_SECRET || '';
 const SSO_TOKEN_EXPIRY = 300; // 5 minutes
+
+// Cookie domain for SSO (shared across subdomains)
+const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || '.epcvip.vip';
+const ENVIRONMENT = process.env.ENVIRONMENT || 'production';
+
+/**
+ * Get cookie domain for SSO. Returns undefined for localhost/development.
+ */
+function getCookieDomain(): string | undefined {
+  const env = ENVIRONMENT.toLowerCase();
+  if (env === 'development' || env === 'dev' || env === 'local') {
+    return undefined; // Don't set domain for localhost
+  }
+  return COOKIE_DOMAIN;
+}
 
 // Supabase Configuration (epcvip-auth - shared for Tools Hub and Wordle)
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://yuithqxycicgokkgmpzg.supabase.co';
@@ -69,6 +85,41 @@ app.use(express.json());
 app.use(cookieParser());
 
 // ============================================================
+// Shared Assets CDN (CORS-enabled for all EPCVIP apps)
+// ============================================================
+
+const sharedPath = path.join(__dirname, '../public/shared');
+
+// CORS for shared assets - allow all epcvip.vip subdomains + localhost for dev
+app.use(
+  '/shared',
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (server-side, curl, etc.)
+      if (!origin) return callback(null, true);
+      // Allow epcvip.vip and all subdomains
+      if (/^https?:\/\/([^.]+\.)?epcvip\.vip$/.test(origin)) return callback(null, true);
+      // Allow localhost for development
+      if (/^https?:\/\/localhost(:\d+)?$/.test(origin)) return callback(null, true);
+      callback(null, true); // Allow all origins for public assets
+    },
+    methods: ['GET'],
+  })
+);
+
+// Serve shared assets with long cache + immutable headers
+app.use(
+  '/shared',
+  express.static(sharedPath, {
+    maxAge: '1y',
+    immutable: true,
+    setHeaders: (res) => {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    },
+  })
+);
+
+// ============================================================
 // Login Page (served with injected Supabase config)
 // ============================================================
 
@@ -99,9 +150,14 @@ app.get('/login', (req, res) => {
   res.type('html').send(html);
 });
 
-// Logout endpoint - clears cookie and redirects to login
+// Logout endpoint - clears cookie and redirects to login (SSO-aware)
 app.get('/logout', (req, res) => {
-  res.clearCookie('sb-access-token');
+  const cookieDomain = getCookieDomain();
+  if (cookieDomain) {
+    res.clearCookie('sb-access-token', { path: '/', domain: cookieDomain });
+  } else {
+    res.clearCookie('sb-access-token', { path: '/' });
+  }
   res.redirect('/login?logout=1');
 });
 
@@ -196,17 +252,32 @@ app.get('/auth/callback', async (req, res) => {
       console.log(`[Auth] RBAC access granted for ${email}: ${roles[0].role}`);
     }
 
-    // Set cookie and redirect
-    res.cookie('sb-access-token', accessToken, {
+    // Set cookie and redirect (SSO-aware)
+    const cookieOptions: {
+      path: string;
+      httpOnly: boolean;
+      sameSite: 'lax' | 'strict' | 'none';
+      secure: boolean;
+      maxAge: number;
+      domain?: string;
+    } = {
       path: '/',
       httpOnly: false,
       sameSite: 'lax',
       secure: true,
       maxAge: 8 * 60 * 60 * 1000, // 8 hours
-    });
+    };
+    const cookieDomain = getCookieDomain();
+    if (cookieDomain) {
+      cookieOptions.domain = cookieDomain;
+    }
+    res.cookie('sb-access-token', accessToken, cookieOptions);
 
     console.log(`[Auth] OAuth login successful: ${email}`);
-    return res.redirect('/');
+
+    // SSO: Redirect to returnUrl if available
+    const returnUrl = req.query.returnUrl as string | undefined;
+    return res.redirect(returnUrl || '/');
   } catch (err) {
     console.error('[Auth] OAuth callback error:', err);
     return res.redirect('/login?error=oauth_failed');
@@ -334,6 +405,7 @@ const PUBLIC_PATHS = [
   '/api/sso',
   '/auth/callback',
   '/access-denied',
+  '/shared',
 ];
 
 app.use((req, res, next) => {
@@ -350,7 +422,12 @@ app.use((req, res, next) => {
   // Check for auth cookie
   const token = req.cookies['sb-access-token'];
   if (!token) {
-    // No token - redirect to login
+    // SSO: Capture current URL for return after login
+    const returnUrl =
+      req.path + (req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '');
+    if (returnUrl && returnUrl !== '/' && returnUrl !== '/login') {
+      return res.redirect(`/login?returnUrl=${encodeURIComponent(returnUrl)}`);
+    }
     return res.redirect('/login');
   }
 
