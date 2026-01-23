@@ -186,25 +186,8 @@ body {
 }
 
 /* ============================================
-   MOBILE RESPONSIVE
+   MOBILE TOGGLE BUTTON (base styles)
    ============================================ */
-
-@media (max-width: 768px) {
-  .epc-sidebar {
-    width: 0;
-    border-right: none;
-  }
-
-  .epc-sidebar.open {
-    width: 100%;
-    max-width: 300px;
-  }
-
-  /* Mobile toggle button - shown when sidebar is collapsed on mobile */
-  .epc-mobile-toggle {
-    display: flex;
-  }
-}
 
 .epc-mobile-toggle {
   display: none;
@@ -253,7 +236,25 @@ body {
   transition: margin-left 0.3s ease;
 }
 
+/* ============================================
+   MOBILE RESPONSIVE
+   ============================================ */
+
 @media (max-width: 768px) {
+  .epc-sidebar {
+    width: 0;
+    border-right: none;
+  }
+
+  .epc-sidebar.open {
+    width: 100%;
+    max-width: 300px;
+  }
+
+  .epc-mobile-toggle {
+    display: flex;
+  }
+
   .epc-content-offset {
     margin-left: 0;
   }
