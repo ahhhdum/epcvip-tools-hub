@@ -208,6 +208,12 @@
         const urlParams = new URLSearchParams(window.location.search);
         const isLoggingOut = urlParams.get('logout') === '1';
         const errorCode = urlParams.get('error');
+        const returnUrl = urlParams.get('returnUrl');
+
+        // Store returnUrl in sessionStorage for post-auth redirect
+        if (returnUrl) {
+            sessionStorage.setItem('sso_returnUrl', returnUrl);
+        }
 
         if (errorCode && errorMessages[errorCode]) {
             showMessage(errorMessages[errorCode], 'error');
@@ -217,7 +223,12 @@
         if (isLoggingOut) {
             const projectRef = SUPABASE_URL.replace('https://', '').split('.')[0];
             localStorage.removeItem(`sb-${projectRef}-auth-token`);
-            document.cookie = 'sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+            // SSO: Clear cookie with shared domain
+            const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            const cookieDomain = isLocalhost ? '' : '; domain=.epcvip.vip';
+            document.cookie = `sb-access-token=; path=/${cookieDomain}; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+            // Also clear returnUrl from sessionStorage
+            sessionStorage.removeItem('sso_returnUrl');
             window.history.replaceState({}, document.title, '/login');
         }
 
@@ -227,8 +238,15 @@
             (async () => {
                 const { data: { session } } = await sb.auth.getSession();
                 if (session) {
-                    document.cookie = `sb-access-token=${session.access_token}; path=/; SameSite=Lax; Secure`;
-                    window.location.href = '/';
+                    // SSO: Set cookie with shared domain for production
+                    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                    const cookieDomain = isLocalhost ? '' : '; domain=.epcvip.vip';
+                    document.cookie = `sb-access-token=${session.access_token}; path=/${cookieDomain}; SameSite=Lax; Secure`;
+
+                    // Redirect to returnUrl if available
+                    const savedReturnUrl = sessionStorage.getItem('sso_returnUrl');
+                    sessionStorage.removeItem('sso_returnUrl');
+                    window.location.href = savedReturnUrl || '/';
                 }
             })();
         }
