@@ -275,9 +275,10 @@ app.get('/auth/callback', async (req, res) => {
 
     console.log(`[Auth] OAuth login successful: ${email}`);
 
-    // SSO: Redirect to returnUrl if available
+    // SSO: Redirect to returnUrl if available (validated to prevent open redirect)
     const returnUrl = req.query.returnUrl as string | undefined;
-    return res.redirect(returnUrl || '/');
+    const isValidReturnUrl = returnUrl && returnUrl.startsWith('/') && !returnUrl.startsWith('//');
+    return res.redirect(isValidReturnUrl ? returnUrl : '/');
   } catch (err) {
     console.error('[Auth] OAuth callback error:', err);
     return res.redirect('/login?error=oauth_failed');

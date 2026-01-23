@@ -205,13 +205,18 @@
             'no_access': 'You do not have access to this application. Contact an administrator.'
         };
 
+        // Validate returnUrl to prevent open redirect attacks
+        function isValidReturnUrl(url) {
+            return url && url.startsWith('/') && !url.startsWith('//');
+        }
+
         const urlParams = new URLSearchParams(window.location.search);
         const isLoggingOut = urlParams.get('logout') === '1';
         const errorCode = urlParams.get('error');
         const returnUrl = urlParams.get('returnUrl');
 
-        // Store returnUrl in sessionStorage for post-auth redirect
-        if (returnUrl) {
+        // Store returnUrl in sessionStorage for post-auth redirect (validated)
+        if (isValidReturnUrl(returnUrl)) {
             sessionStorage.setItem('sso_returnUrl', returnUrl);
         }
 
@@ -243,10 +248,10 @@
                     const cookieDomain = isLocalhost ? '' : '; domain=.epcvip.vip';
                     document.cookie = `sb-access-token=${session.access_token}; path=/${cookieDomain}; SameSite=Lax; Secure`;
 
-                    // Redirect to returnUrl if available
+                    // Redirect to returnUrl if available (validated)
                     const savedReturnUrl = sessionStorage.getItem('sso_returnUrl');
                     sessionStorage.removeItem('sso_returnUrl');
-                    window.location.href = savedReturnUrl || '/';
+                    window.location.href = isValidReturnUrl(savedReturnUrl) ? savedReturnUrl : '/';
                 }
             })();
         }
