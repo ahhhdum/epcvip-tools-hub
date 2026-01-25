@@ -234,6 +234,35 @@ body {
     color: #f0c000;
 }
 
+/* Quick Links Navigation */
+.quick-links {
+    margin-top: 15px;
+    text-align: center;
+    color: #888;
+    font-size: 12px;
+}
+
+.quick-links-label {
+    color: #666;
+    margin-right: 8px;
+}
+
+.quick-links a {
+    color: #888;
+    text-decoration: none;
+    padding: 4px 8px;
+    transition: color 0.2s;
+}
+
+.quick-links a:hover {
+    color: #f0c000;
+}
+
+.quick-links .separator {
+    color: #444;
+    margin: 0 4px;
+}
+
 /* Responsive - adjusted breakpoint for larger canvas */
 @media (max-width: 1080px) {
     .gameboy-frame {
