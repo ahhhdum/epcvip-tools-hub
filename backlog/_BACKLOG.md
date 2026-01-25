@@ -70,6 +70,8 @@
 | **SHARE-001** | S | Share results - emoji grid to clipboard | `wordle.js` |
 | **TEAM-001** | L | **Team modes** - 2v2, 3v3 cooperative play | `wordle-room.ts`, `wordle.js` |
 | **ACH-001** | L | Achievement trigger logic + notifications | `wordle-room.ts`, `wordle.js` |
+| **AUTH-001** | 4h | **User Groups** - Group users (e.g., "Innovation Team", "BI Team") and assign groups to apps instead of individual users. Schema: `epcvip_user_groups`, `epcvip_user_group_members`, `epcvip_app_group_roles` | |
+| **AUTH-002** | 8h | **RBAC Admin UI** - Simple web interface for managing user roles per app, user groups, and group assignments. Accessible to app admins. Replace manual SQL with self-service management. | |
 
 ### P3 - Low Priority / Icebox
 
@@ -793,6 +795,21 @@ The codebase has grown significantly. Before adding major features, conduct a co
 - [ ] All public functions have JSDoc
 - [ ] Architecture documented in `/docs`
 - [ ] Single source of truth for `js/` files
+
+---
+
+## Tech Debt - Sidebar Sync
+
+### Sidebar Sync Automation
+
+**Problem:** Sidebar HTML is embedded in each app's index.html, requiring manual updates.
+
+**Options:**
+1. **Dynamic injection** - JS fetches HTML template and injects at runtime
+2. **Build-time templating** - Script extracts nav items and patches index.html files
+3. **Web Component** - Create `<epc-sidebar>` custom element
+
+**Current workaround:** Manual sync + reminder script (`scripts/sync-sidebar.sh`)
 
 ---
 
