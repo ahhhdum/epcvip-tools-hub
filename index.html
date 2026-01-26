@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="command-center">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EPCVIP Tools | Command Center</title>
     <link rel="stylesheet" href="css/shared/epc-sidebar.css">
+    <link rel="stylesheet" href="css/themes/retro-90s.css">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -168,6 +169,37 @@
         .logout-btn:hover {
             border-color: var(--orange);
             color: var(--orange);
+        }
+
+        .theme-toggle-btn {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 6px 14px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .theme-toggle-btn:hover {
+            border-color: var(--yellow);
+            color: var(--yellow);
+        }
+
+        .theme-toggle-btn .theme-icon {
+            font-size: 0.9rem;
+        }
+
+        .theme-toggle-btn.is-retro {
+            border-color: var(--yellow);
+            color: var(--yellow);
+            background: var(--yellow-dim);
         }
 
         .container {
@@ -468,6 +500,10 @@
             </div>
             <div class="status-right">
                 <span id="userEmail"></span>
+                <button class="theme-toggle-btn" id="themeToggle" onclick="toggleTheme()">
+                    <span class="theme-icon">🕹️</span>
+                    <span class="theme-label">Retro</span>
+                </button>
                 <button class="logout-btn" onclick="logout()">Sign Out</button>
             </div>
         </div>
@@ -657,6 +693,19 @@
 
             <footer>
                 <p>Authenticated via <span>Supabase</span> | @epcvip.com accounts only</p>
+
+                <!-- Retro Elements (hidden by default, shown in retro-90s theme) -->
+                <div class="retro-construction">🚧 Under Construction! 🚧</div>
+                <div class="retro-counter">012,847</div>
+                <div class="retro-guestbook">📝 Sign My Guestbook!</div>
+                <div class="retro-webring">
+                    <a href="#">&lt;&lt; Prev</a>
+                    <span>🌐 Innovation Tools WebRing 🌐</span>
+                    <a href="#">Next &gt;&gt;</a>
+                </div>
+                <div class="retro-badge">
+                    <span class="retro-badge-text">Best viewed in Netscape Navigator 4.0 at 800x600</span>
+                </div>
             </footer>
         </div>
     </div>
@@ -665,8 +714,47 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/shared/epc-sidebar.js"></script>
     <script>
+        // Theme Toggle
+        function toggleTheme() {
+            const html = document.documentElement;
+            const current = html.dataset.theme || 'command-center';
+            const next = current === 'command-center' ? 'retro-90s' : 'command-center';
+            html.dataset.theme = next;
+            localStorage.setItem('epcvip-theme', next);
+            updateToggleButton(next);
+        }
+
+        function updateToggleButton(theme) {
+            const btn = document.getElementById('themeToggle');
+            if (!btn) return;
+            const icon = btn.querySelector('.theme-icon');
+            const label = btn.querySelector('.theme-label');
+
+            if (theme === 'retro-90s') {
+                icon.textContent = '🖥️';
+                label.textContent = 'Modern';
+                btn.classList.add('is-retro');
+            } else {
+                icon.textContent = '🕹️';
+                label.textContent = 'Retro';
+                btn.classList.remove('is-retro');
+            }
+        }
+
+        // Initialize theme on load
+        (function initTheme() {
+            const saved = localStorage.getItem('epcvip-theme') || 'command-center';
+            document.documentElement.dataset.theme = saved;
+            // Wait for DOM to be ready before updating button
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', () => updateToggleButton(saved));
+            } else {
+                updateToggleButton(saved);
+            }
+        })();
+
         // Initialize Supabase and show user info
-        let supabase = null;
+        let supabaseClient = null;
 
         async function initAuth() {
             try {
@@ -675,7 +763,7 @@
                 const config = await configResponse.json();
 
                 if (config.supabase && config.supabase.url && config.supabase.anonKey) {
-                    supabase = window.supabase.createClient(config.supabase.url, config.supabase.anonKey);
+                    supabaseClient = window.supabase.createClient(config.supabase.url, config.supabase.anonKey);
 
                     // Get current session from cookie
                     const token = document.cookie

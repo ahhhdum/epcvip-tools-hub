@@ -1,0 +1,560 @@
+/* ============================================
+   RETRO 90s THEME - GeoCities/Space Jam Era
+   ============================================
+   Activate with data-theme="retro-90s" on <html>
+   ============================================ */
+
+/* === Color Palette === */
+[data-theme="retro-90s"] {
+  --bg-deep: #000033;              /* Dark blue starfield */
+  --bg-card: #c0c0c0;              /* Windows 95 gray */
+  --bg-card-hover: #d4d4d4;
+  --yellow: #ffff00;               /* Bright yellow */
+  --yellow-dim: rgba(255, 255, 0, 0.2);
+  --yellow-glow: rgba(255, 255, 0, 0.4);
+  --orange: #ff6600;               /* 90s orange */
+  --text-primary: #000000;
+  --text-muted: #444444;
+  --border: #808080;
+  --green: #00ff00;                /* Neon green */
+  --link-color: #0000ff;           /* Classic blue links */
+  --magenta: #ff00ff;              /* Hot pink/magenta */
+  --cyan: #00ffff;                 /* Cyan accent */
+}
+
+/* === Starfield Background === */
+[data-theme="retro-90s"] body {
+  font-family: 'Trebuchet MS', 'Comic Sans MS', cursive, sans-serif;
+  background: #000033 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Ccircle fill='%23ffffff' cx='10' cy='15' r='1'/%3E%3Ccircle fill='%23ffffff' cx='45' cy='80' r='0.8'/%3E%3Ccircle fill='%23ffffff' cx='90' cy='25' r='1.2'/%3E%3Ccircle fill='%23ffffff' cx='130' cy='60' r='0.6'/%3E%3Ccircle fill='%23ffffff' cx='170' cy='10' r='1'/%3E%3Ccircle fill='%23ffffff' cx='25' cy='140' r='0.8'/%3E%3Ccircle fill='%23ffffff' cx='65' cy='180' r='1'/%3E%3Ccircle fill='%23ffffff' cx='110' cy='120' r='0.7'/%3E%3Ccircle fill='%23ffffff' cx='155' cy='145' r='1.1'/%3E%3Ccircle fill='%23ffffff' cx='185' cy='90' r='0.9'/%3E%3Ccircle fill='%23ffffff' cx='50' cy='50' r='0.5'/%3E%3Ccircle fill='%23ffffff' cx='140' cy='180' r='0.8'/%3E%3Ccircle fill='%23ffff00' cx='75' cy='100' r='1.5'/%3E%3Ccircle fill='%2300ffff' cx='175' cy='160' r='1.2'/%3E%3C/svg%3E") repeat fixed;
+  color: #00ff00;
+}
+
+/* === Remove Command Center Effects === */
+[data-theme="retro-90s"] body::before,
+[data-theme="retro-90s"] body::after {
+  background: none !important;
+}
+
+[data-theme="retro-90s"] .tool-card::before {
+  display: none;
+}
+
+/* === Status Bar === */
+[data-theme="retro-90s"] .status-bar {
+  background: linear-gradient(180deg, #000080 0%, #000066 50%, #000080 100%);
+  border-bottom: 3px outset #4040ff;
+}
+
+[data-theme="retro-90s"] .status-text {
+  color: #00ff00;
+  font-family: 'Courier New', monospace;
+  text-shadow: 0 0 10px #00ff00;
+  animation: retro-glow 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes retro-glow {
+  from { text-shadow: 0 0 5px #00ff00; }
+  to { text-shadow: 0 0 15px #00ff00, 0 0 25px #00ff00; }
+}
+
+[data-theme="retro-90s"] .status-dot {
+  background: #00ff00;
+  animation: retro-blink 0.6s infinite;
+}
+
+[data-theme="retro-90s"] .status-dot::after {
+  border-color: #00ff00;
+}
+
+@keyframes retro-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0.3; }
+}
+
+[data-theme="retro-90s"] #userEmail {
+  color: #ffff00;
+  font-family: 'Courier New', monospace;
+}
+
+[data-theme="retro-90s"] .logout-btn {
+  background: #c0c0c0;
+  border: 2px outset #ffffff;
+  border-right-color: #808080;
+  border-bottom-color: #808080;
+  color: #000000;
+  font-family: 'MS Sans Serif', 'Trebuchet MS', sans-serif;
+  font-weight: bold;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+[data-theme="retro-90s"] .logout-btn:hover {
+  background: #d4d4d4;
+  border-color: #ffffff;
+  border-right-color: #606060;
+  border-bottom-color: #606060;
+  color: #000080;
+}
+
+[data-theme="retro-90s"] .logout-btn:active {
+  border-style: inset;
+}
+
+/* === Theme Toggle Button === */
+[data-theme="retro-90s"] .theme-toggle-btn {
+  background: linear-gradient(180deg, #ff00ff 0%, #cc00cc 100%);
+  border: 2px outset #ff66ff;
+  border-right-color: #990099;
+  border-bottom-color: #990099;
+  color: #ffff00;
+  text-shadow: 1px 1px 0 #000000;
+  animation: rainbow-border 2s linear infinite;
+}
+
+@keyframes rainbow-border {
+  0% { border-top-color: #ff0000; border-left-color: #ff0000; }
+  25% { border-top-color: #ffff00; border-left-color: #ffff00; }
+  50% { border-top-color: #00ff00; border-left-color: #00ff00; }
+  75% { border-top-color: #00ffff; border-left-color: #00ffff; }
+  100% { border-top-color: #ff0000; border-left-color: #ff0000; }
+}
+
+/* === Headers - Comic Sans === */
+[data-theme="retro-90s"] h1,
+[data-theme="retro-90s"] .tool-name {
+  font-family: 'Comic Sans MS', cursive, sans-serif;
+  color: #ffff00;
+  text-shadow:
+    2px 2px 0 #ff00ff,
+    -1px -1px 0 #00ffff;
+}
+
+[data-theme="retro-90s"] h1 {
+  background: linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #8b00ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: rainbow-text 3s linear infinite;
+  background-size: 200% auto;
+}
+
+@keyframes rainbow-text {
+  0% { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
+
+[data-theme="retro-90s"] h1::before {
+  content: '**';
+  -webkit-text-fill-color: #ffff00;
+  margin-right: 8px;
+}
+
+/* === Subtitle as Marquee === */
+[data-theme="retro-90s"] .subtitle {
+  background: #ffff00;
+  color: #000080;
+  font-family: 'Comic Sans MS', cursive;
+  font-weight: bold;
+  padding: 8px 20px;
+  display: inline-block;
+  border: 2px solid #ff0000;
+  animation: marquee-scroll 12s linear infinite;
+  white-space: nowrap;
+}
+
+@keyframes marquee-scroll {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+
+/* === Tool Cards - Beveled 3D Windows 95 Style === */
+[data-theme="retro-90s"] .tool-card {
+  background: #c0c0c0;
+  border: 3px outset #ffffff;
+  border-right-color: #808080;
+  border-bottom-color: #808080;
+  box-shadow:
+    inset 1px 1px 0 #ffffff,
+    inset -1px -1px 0 #808080,
+    4px 4px 0 #000000;
+  opacity: 1;
+  transform: none;
+  animation: none;
+}
+
+[data-theme="retro-90s"] .tool-card:hover {
+  background: #d4d4d4;
+  border-color: #ffffff;
+  border-right-color: #606060;
+  border-bottom-color: #606060;
+  box-shadow:
+    inset 1px 1px 0 #ffffff,
+    inset -1px -1px 0 #808080,
+    6px 6px 0 #000000;
+  transform: translate(-2px, -2px);
+}
+
+[data-theme="retro-90s"] .tool-card:active {
+  border-style: inset;
+  transform: translate(2px, 2px);
+  box-shadow:
+    inset 2px 2px 4px #808080,
+    2px 2px 0 #000000;
+}
+
+/* Card title bar effect */
+[data-theme="retro-90s"] .tool-header {
+  background: linear-gradient(90deg, #000080 0%, #1084d0 100%);
+  margin: -32px -32px 16px -32px;
+  padding: 8px 16px;
+  border-bottom: 2px solid #808080;
+}
+
+[data-theme="retro-90s"] .tool-card:hover .tool-header {
+  background: linear-gradient(90deg, #000080 0%, #1084d0 100%);
+}
+
+[data-theme="retro-90s"] .tool-name {
+  color: #ffffff;
+  text-shadow: 1px 1px 0 #000000;
+  font-size: 1rem;
+}
+
+[data-theme="retro-90s"] .tool-icon svg {
+  stroke: #ffffff;
+  filter: drop-shadow(1px 1px 0 #000000);
+}
+
+[data-theme="retro-90s"] .tool-card:hover .tool-icon svg {
+  stroke: #ffff00;
+  filter: drop-shadow(0 0 5px #ffff00);
+}
+
+[data-theme="retro-90s"] .tool-description {
+  color: #000000;
+  font-family: 'Trebuchet MS', 'Arial', sans-serif;
+  font-size: 0.9rem;
+}
+
+[data-theme="retro-90s"] .tool-link {
+  color: #0000ff;
+  text-decoration: underline;
+  font-family: 'Times New Roman', serif;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+[data-theme="retro-90s"] .tool-link:hover {
+  color: #ff00ff;
+}
+
+/* === Badges - Blinking NEW! Style === */
+[data-theme="retro-90s"] .badge-active {
+  background: #ff0000;
+  color: #ffff00;
+  border: 1px solid #ffff00;
+  font-family: 'Comic Sans MS', cursive;
+  font-weight: bold;
+  animation: retro-badge-blink 0.5s infinite;
+  text-transform: uppercase;
+}
+
+[data-theme="retro-90s"] .badge-active::before {
+  content: 'NEW! ';
+}
+
+@keyframes retro-badge-blink {
+  0%, 49% { opacity: 1; background: #ff0000; }
+  50%, 100% { opacity: 1; background: #ff6600; }
+}
+
+/* === Footer === */
+[data-theme="retro-90s"] footer {
+  color: #00ff00;
+  font-family: 'Courier New', monospace;
+  text-transform: none;
+  letter-spacing: normal;
+  border-top: 2px dashed #00ff00;
+  text-align: center;
+}
+
+[data-theme="retro-90s"] footer span {
+  color: #ffff00;
+}
+
+/* === Container === */
+[data-theme="retro-90s"] .container {
+  background: rgba(0, 0, 128, 0.3);
+  border: 2px inset #4040ff;
+  margin: 20px;
+  padding: 30px;
+}
+
+/* === Sidebar Adjustments === */
+[data-theme="retro-90s"] .epc-sidebar {
+  background: #000080;
+  border-right: 3px outset #4040ff;
+}
+
+[data-theme="retro-90s"] .epc-sidebar-header {
+  background: linear-gradient(90deg, #000080 0%, #1084d0 100%);
+  border-bottom: 2px solid #000066;
+}
+
+[data-theme="retro-90s"] .epc-logo-text {
+  color: #ffffff;
+  font-family: 'Comic Sans MS', cursive;
+  text-shadow: 1px 1px 0 #000000;
+}
+
+[data-theme="retro-90s"] .epc-nav-item {
+  color: #ffffff;
+  border-bottom: 1px solid #000066;
+}
+
+[data-theme="retro-90s"] .epc-nav-item:hover,
+[data-theme="retro-90s"] .epc-nav-item.is-active {
+  background: #1084d0;
+  color: #ffff00;
+}
+
+[data-theme="retro-90s"] .epc-sidebar-footer {
+  color: #00ff00;
+  font-family: 'Courier New', monospace;
+  font-size: 0.7rem;
+}
+
+/* === Retro Elements (Hidden by Default) === */
+.retro-counter,
+.retro-badge,
+.retro-construction,
+.retro-guestbook,
+.retro-webring {
+  display: none;
+}
+
+/* Show retro elements only in retro mode */
+[data-theme="retro-90s"] .retro-counter {
+  display: inline-block;
+  background: #000080;
+  color: #00ff00;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  border: 2px inset #808080;
+  padding: 4px 12px;
+  margin: 10px 0;
+}
+
+[data-theme="retro-90s"] .retro-counter::before {
+  content: 'You are visitor #';
+}
+
+[data-theme="retro-90s"] .retro-badge {
+  display: block;
+  text-align: center;
+  margin-top: 20px;
+  padding: 10px;
+}
+
+[data-theme="retro-90s"] .retro-badge img,
+[data-theme="retro-90s"] .retro-badge-text {
+  display: inline-block;
+  background: #c0c0c0;
+  border: 2px outset #ffffff;
+  border-right-color: #808080;
+  border-bottom-color: #808080;
+  padding: 4px 8px;
+  font-family: 'MS Sans Serif', 'Trebuchet MS', sans-serif;
+  font-size: 10px;
+  color: #000000;
+}
+
+[data-theme="retro-90s"] .retro-construction {
+  display: block;
+  text-align: center;
+  background: #ffff00;
+  color: #000000;
+  font-family: 'Comic Sans MS', cursive;
+  font-weight: bold;
+  padding: 10px;
+  margin: 20px 0;
+  border: 3px dashed #ff0000;
+  animation: construction-blink 1s infinite;
+}
+
+@keyframes construction-blink {
+  0%, 49% { background: #ffff00; }
+  50%, 100% { background: #ff6600; }
+}
+
+[data-theme="retro-90s"] .retro-guestbook {
+  display: inline-block;
+  background: linear-gradient(180deg, #4040ff, #000080);
+  color: #ffffff;
+  font-family: 'Comic Sans MS', cursive;
+  padding: 8px 16px;
+  border: 2px outset #6060ff;
+  border-right-color: #000040;
+  border-bottom-color: #000040;
+  text-decoration: none;
+  margin: 10px;
+}
+
+[data-theme="retro-90s"] .retro-guestbook:hover {
+  background: linear-gradient(180deg, #6060ff, #0000a0);
+}
+
+[data-theme="retro-90s"] .retro-webring {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin: 20px 0;
+  padding: 10px;
+  background: #000080;
+  border: 2px inset #4040ff;
+  font-family: 'Comic Sans MS', cursive;
+  color: #ffffff;
+}
+
+[data-theme="retro-90s"] .retro-webring a {
+  color: #00ffff;
+  text-decoration: underline;
+}
+
+/* === Animated GIF Placeholder Borders === */
+[data-theme="retro-90s"] header {
+  border-bottom: 5px solid;
+  border-image: repeating-linear-gradient(
+    90deg,
+    #ff0000 0px,
+    #ff7f00 14px,
+    #ffff00 28px,
+    #00ff00 42px,
+    #0000ff 56px,
+    #8b00ff 70px,
+    #ff0000 84px
+  ) 1;
+  padding-bottom: 20px;
+  margin-bottom: 30px;
+}
+
+/* === Link Styling === */
+[data-theme="retro-90s"] a {
+  color: #0000ff;
+}
+
+[data-theme="retro-90s"] a:visited {
+  color: #800080;
+}
+
+[data-theme="retro-90s"] a:hover {
+  color: #ff00ff;
+}
+
+/* === Cursor Fun === */
+[data-theme="retro-90s"] .tool-card {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath fill='%23000' d='M6 2l20 12-8 2 4 10-4 2-4-10-8 4z'/%3E%3Cpath fill='%23fff' d='M7 4l16 10-7 2 3 8-2 1-3-8-7 3z'/%3E%3C/svg%3E"), pointer;
+}
+
+/* === Horizontal Rules === */
+[data-theme="retro-90s"] hr {
+  border: none;
+  height: 5px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    #ff0000 10%,
+    #ffff00 25%,
+    #00ff00 50%,
+    #00ffff 75%,
+    #ff00ff 90%,
+    transparent
+  );
+  animation: rainbow-hr 2s linear infinite;
+  background-size: 200% auto;
+}
+
+@keyframes rainbow-hr {
+  0% { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
+
+/* === Scrollbar Styling (WebKit) === */
+[data-theme="retro-90s"] ::-webkit-scrollbar {
+  width: 16px;
+  height: 16px;
+}
+
+[data-theme="retro-90s"] ::-webkit-scrollbar-track {
+  background: #c0c0c0;
+  border: 1px solid #808080;
+}
+
+[data-theme="retro-90s"] ::-webkit-scrollbar-thumb {
+  background: #c0c0c0;
+  border: 2px outset #ffffff;
+  border-right-color: #808080;
+  border-bottom-color: #808080;
+}
+
+[data-theme="retro-90s"] ::-webkit-scrollbar-thumb:hover {
+  background: #d4d4d4;
+}
+
+[data-theme="retro-90s"] ::-webkit-scrollbar-button {
+  background: #c0c0c0;
+  border: 2px outset #ffffff;
+  border-right-color: #808080;
+  border-bottom-color: #808080;
+  display: block;
+  height: 16px;
+}
+
+/* === Main Content Area === */
+[data-theme="retro-90s"] .main-content {
+  background: transparent;
+}
+
+/* === Featured Card Special Treatment === */
+[data-theme="retro-90s"] .tool-card.featured {
+  border: 4px double #ffff00;
+  position: relative;
+}
+
+[data-theme="retro-90s"] .tool-card.featured::after {
+  content: 'HOT!';
+  position: absolute;
+  top: -10px;
+  right: 20px;
+  background: #ff0000;
+  color: #ffff00;
+  font-family: 'Comic Sans MS', cursive;
+  font-weight: bold;
+  font-size: 12px;
+  padding: 2px 8px;
+  transform: rotate(15deg);
+  animation: retro-badge-blink 0.5s infinite;
+  border: 1px solid #ffff00;
+}
+
+/* === Responsive Adjustments === */
+@media (max-width: 768px) {
+  [data-theme="retro-90s"] .container {
+    margin: 10px;
+    padding: 15px;
+  }
+
+  [data-theme="retro-90s"] .tool-header {
+    margin: -15px -15px 10px -15px;
+    padding: 6px 10px;
+  }
+
+  [data-theme="retro-90s"] .tool-card {
+    padding: 15px;
+  }
+
+  [data-theme="retro-90s"] h1 {
+    font-size: 1.5rem;
+  }
+}
