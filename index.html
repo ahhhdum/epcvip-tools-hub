@@ -362,6 +362,31 @@
             flex: 1;
         }
 
+        /* Tool card status indicator */
+        .tool-status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #666;
+            margin-left: auto;
+            flex-shrink: 0;
+        }
+
+        .tool-card[data-status="up"] .tool-status {
+            background: #00ff88;
+            box-shadow: 0 0 8px #00ff88;
+            animation: pulse 2s infinite;
+        }
+
+        .tool-card[data-status="down"] .tool-status {
+            background: #ff4444;
+            box-shadow: 0 0 8px #ff4444;
+        }
+
+        .tool-card[data-status="unknown"] .tool-status {
+            background: #ffaa00;
+        }
+
         .tool-name {
             font-size: 1.1rem;
             font-weight: 700;
@@ -543,7 +568,7 @@
 
             <div class="tools-grid">
                 <!-- Ping Tree Compare (Featured) -->
-                <a href="https://compare.epcvip.vip" class="tool-card featured" target="_blank">
+                <a href="https://compare.epcvip.vip" class="tool-card featured" data-tool-key="compare" target="_blank">
                     <div class="tool-header">
                         <div class="tool-icon">
                             <!-- Tree/Branch diagram SVG -->
@@ -571,6 +596,7 @@
                                 <span class="badge badge-active">Active</span>
                             </h2>
                         </div>
+                        <div class="tool-status" aria-label="Service status"></div>
                     </div>
                     <p class="tool-description">
                         Compare ping tree configurations to identify campaign differences, priority changes, and tier demotions across trees. Essential for tracking production changes.
@@ -584,7 +610,7 @@
                 </a>
 
                 <!-- Experiments Dashboard -->
-                <a href="https://xp.epcvip.vip" class="tool-card" target="_blank">
+                <a href="https://xp.epcvip.vip" class="tool-card" data-tool-key="xp" target="_blank">
                     <div class="tool-header">
                         <div class="tool-icon">
                             <!-- Flask/Beaker SVG -->
@@ -603,6 +629,7 @@
                                 <span class="badge badge-active">Active</span>
                             </h2>
                         </div>
+                        <div class="tool-status" aria-label="Service status"></div>
                     </div>
                     <p class="tool-description">
                         Track A/B test progress, view statistical results, and manage experiment documentation.
@@ -616,7 +643,7 @@
                 </a>
 
                 <!-- Athena Usage Monitor -->
-                <a href="https://athena.epcvip.vip" class="tool-card" target="_blank">
+                <a href="https://athena.epcvip.vip" class="tool-card" data-tool-key="athena" target="_blank">
                     <div class="tool-header">
                         <div class="tool-icon">
                             <!-- Bar Chart Lines SVG -->
@@ -639,6 +666,7 @@
                                 <span class="badge badge-active">Active</span>
                             </h2>
                         </div>
+                        <div class="tool-status" aria-label="Service status"></div>
                     </div>
                     <p class="tool-description">
                         Monitor AWS Athena query usage, costs, and performance metrics across the data platform.
@@ -652,7 +680,7 @@
                 </a>
 
                 <!-- Reports Dashboard -->
-                <a href="https://reports.epcvip.vip" class="tool-card" target="_blank">
+                <a href="https://reports.epcvip.vip" class="tool-card" data-tool-key="reports" target="_blank">
                     <div class="tool-header">
                         <div class="tool-icon">
                             <!-- Document/List SVG -->
@@ -670,6 +698,7 @@
                                 <span class="badge badge-active">Active</span>
                             </h2>
                         </div>
+                        <div class="tool-status" aria-label="Service status"></div>
                     </div>
                     <p class="tool-description">
                         Run report templates, validate SQL queries, and explore datalake schemas.
@@ -683,7 +712,7 @@
                 </a>
 
                 <!-- Competitor Analyzer -->
-                <a href="https://tools.epcvip.vip" class="tool-card" target="_blank">
+                <a href="https://tools.epcvip.vip" class="tool-card" data-tool-key="tools" target="_blank">
                     <div class="tool-header">
                         <div class="tool-icon">
                             <!-- Magnifying Glass Circuit SVG -->
@@ -704,6 +733,7 @@
                                 <span class="badge badge-active">Active</span>
                             </h2>
                         </div>
+                        <div class="tool-status" aria-label="Service status"></div>
                     </div>
                     <p class="tool-description">
                         Analyze competitor funnels, compare conversion flows, and track market positioning.
@@ -839,11 +869,16 @@
 
             Object.entries(dotMap).forEach(([key, title]) => {
                 const dot = document.querySelector(`.status-dot[title="${title}"]`);
+                const serviceStatus = status[key] || 'unknown';
                 if (dot) {
-                    const serviceStatus = status[key] || 'unknown';
                     dot.dataset.status = serviceStatus;
                     if (serviceStatus === 'up') upCount++;
                     if (serviceStatus !== 'unknown') totalCount++;
+                }
+                // Update tool card status indicators
+                const card = document.querySelector(`.tool-card[data-tool-key="${key}"]`);
+                if (card) {
+                    card.dataset.status = serviceStatus;
                 }
             });
 

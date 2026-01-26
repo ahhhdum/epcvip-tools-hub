@@ -71,6 +71,30 @@
   50%, 100% { opacity: 0.3; }
 }
 
+/* Retro status indicator on tool cards */
+[data-theme="retro-90s"] .tool-status {
+  width: 12px;
+  height: 12px;
+  border: 2px outset #c0c0c0;
+  border-radius: 0;
+}
+
+[data-theme="retro-90s"] .tool-card[data-status="up"] .tool-status {
+  background: #00ff00;
+  animation: retro-blink 0.6s infinite;
+  box-shadow: none;
+}
+
+[data-theme="retro-90s"] .tool-card[data-status="down"] .tool-status {
+  background: #ff0000;
+  box-shadow: none;
+}
+
+[data-theme="retro-90s"] .tool-card[data-status="unknown"] .tool-status {
+  background: #ffaa00;
+  box-shadow: none;
+}
+
 [data-theme="retro-90s"] #userEmail {
   color: #ffff00;
   font-family: 'Courier New', monospace;
