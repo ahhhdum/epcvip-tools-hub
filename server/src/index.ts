@@ -181,6 +181,15 @@ try {
   console.warn('[Auth] login.html not found, will check again on request');
 }
 
+// Read auth-callback template once at startup
+const authCallbackTemplatePath = path.join(__dirname, '../public/auth-callback.html');
+let authCallbackTemplate = '';
+try {
+  authCallbackTemplate = fs.readFileSync(authCallbackTemplatePath, 'utf-8');
+} catch (e) {
+  console.warn('[Auth] auth-callback.html not found, will check again on request');
+}
+
 app.get('/login', (req, res) => {
   // Re-read template if not loaded (for development)
   if (!loginTemplate) {
@@ -211,127 +220,28 @@ app.get('/logout', (req, res) => {
 });
 
 // ============================================================
-// OAuth Callback Handler
+// OAuth Callback Handler (Client-side PKCE)
 // ============================================================
 
-const APP_ID = 'tools-hub'; // Must match epcvip_apps table
 const ALLOWED_DOMAIN = process.env.ALLOWED_DOMAIN || 'epcvip.com';
 
-app.get('/auth/callback', async (req, res) => {
-  const { code, error } = req.query;
-
-  if (error) {
-    console.log('[Auth] OAuth error:', error);
-    return res.redirect('/login?error=oauth_failed');
+app.get('/auth/callback', (req, res) => {
+  // Re-read template if not loaded (for development)
+  if (!authCallbackTemplate) {
+    try {
+      authCallbackTemplate = fs.readFileSync(authCallbackTemplatePath, 'utf-8');
+    } catch (e) {
+      return res.status(500).send('Auth callback page not found');
+    }
   }
 
-  if (!code) {
-    console.log('[Auth] OAuth callback missing code');
-    return res.redirect('/login?error=oauth_failed');
-  }
+  // Inject config - client-side handles the PKCE code exchange
+  const html = authCallbackTemplate
+    .replace(/\{\{SUPABASE_URL\}\}/g, SUPABASE_URL)
+    .replace(/\{\{SUPABASE_ANON_KEY\}\}/g, SUPABASE_ANON_KEY)
+    .replace(/\{\{ALLOWED_DOMAIN\}\}/g, ALLOWED_DOMAIN);
 
-  try {
-    // Exchange code for session via Supabase API
-    const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=authorization_code`, {
-      method: 'POST',
-      headers: {
-        apikey: SUPABASE_ANON_KEY,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ code }),
-    });
-
-    if (!response.ok) {
-      console.error('[Auth] Token exchange failed:', response.status);
-      return res.redirect('/login?error=oauth_failed');
-    }
-
-    const tokenData = (await response.json()) as {
-      access_token?: string;
-      user?: { email?: string };
-    };
-    const accessToken = tokenData.access_token;
-    const user = tokenData.user || {};
-    const email = user.email || '';
-
-    if (!accessToken) {
-      console.error('[Auth] No access token in response');
-      return res.redirect('/login?error=oauth_failed');
-    }
-
-    // Validate email domain
-    if (!email.toLowerCase().endsWith(`@${ALLOWED_DOMAIN.toLowerCase()}`)) {
-      console.log(`[Auth] Domain not allowed: ${email}`);
-      // Sign out the user
-      await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
-        method: 'POST',
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-      return res.redirect('/login?error=domain_not_allowed');
-    }
-
-    // Check RBAC access
-    const rbacResponse = await fetch(
-      `${SUPABASE_URL}/rest/v1/epcvip_app_roles?app_id=eq.${APP_ID}&user_email=eq.${email.toLowerCase()}&select=role`,
-      {
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${accessToken}`,
-        },
-      }
-    );
-
-    if (rbacResponse.ok) {
-      const roles = (await rbacResponse.json()) as Array<{ role: string }>;
-      if (!roles || roles.length === 0) {
-        console.log(`[Auth] No RBAC role for: ${email}`);
-        // Sign out the user
-        await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
-          method: 'POST',
-          headers: {
-            apikey: SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${accessToken}`,
-          },
-        });
-        return res.redirect('/access-denied');
-      }
-      console.log(`[Auth] RBAC access granted for ${email}: ${roles[0].role}`);
-    }
-
-    // Set cookie and redirect (SSO-aware)
-    const cookieOptions: {
-      path: string;
-      httpOnly: boolean;
-      sameSite: 'lax' | 'strict' | 'none';
-      secure: boolean;
-      maxAge: number;
-      domain?: string;
-    } = {
-      path: '/',
-      httpOnly: false,
-      sameSite: 'lax',
-      secure: true,
-      maxAge: 8 * 60 * 60 * 1000, // 8 hours
-    };
-    const cookieDomain = getCookieDomain();
-    if (cookieDomain) {
-      cookieOptions.domain = cookieDomain;
-    }
-    res.cookie('sb-access-token', accessToken, cookieOptions);
-
-    console.log(`[Auth] OAuth login successful: ${email}`);
-
-    // SSO: Redirect to returnUrl if available (validated to prevent open redirect)
-    const returnUrl = req.query.returnUrl as string | undefined;
-    const isValidReturnUrl = returnUrl && returnUrl.startsWith('/') && !returnUrl.startsWith('//');
-    return res.redirect(isValidReturnUrl ? returnUrl : '/');
-  } catch (err) {
-    console.error('[Auth] OAuth callback error:', err);
-    return res.redirect('/login?error=oauth_failed');
-  }
+  res.type('html').send(html);
 });
 
 // Access Denied Page
