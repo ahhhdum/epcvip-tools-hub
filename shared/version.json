@@ -1,6 +1,6 @@
 {
-  "version": "1.0.1",
-  "updated": "2026-01-22",
+  "version": "1.0.2",
+  "updated": "2026-01-26",
   "files": {
     "css": "epc-sidebar.css",
     "js": "epc-sidebar.js",
