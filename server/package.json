@@ -6,7 +6,7 @@
   "scripts": {
     "start": "ts-node src/index.ts",
     "build": "tsc && npm run copy-static && npm run copy-shared",
-    "copy-static": "mkdir -p public && cp -r ../index.html ../index-simple.html ../login.html ../style.css ../js ../assets ../maps ../tools ./public/",
+    "copy-static": "mkdir -p public && cp -r ../index.html ../overworld.html ../login.html ../style.css ../js ../css ../assets ../maps ../tools ./public/",
     "copy-shared": "mkdir -p public/shared && cp ../shared/* public/shared/",
     "serve": "node dist/index.js",
     "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
