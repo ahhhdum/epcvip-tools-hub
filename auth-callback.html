@@ -66,6 +66,20 @@
 
                 if (error) {
                     console.error('[Auth] Exchange error:', error);
+
+                    // Detect PKCE-related errors (happens when user switches Google accounts)
+                    const isPkceError = error.message?.includes('code verifier') ||
+                                        error.message?.includes('bad_code_verifier') ||
+                                        error.code === 'bad_code_verifier';
+
+                    if (isPkceError) {
+                        // Clear stale PKCE state and redirect with retry flag
+                        const projectRef = SUPABASE_URL.replace('https://', '').split('.')[0];
+                        localStorage.removeItem(`sb-${projectRef}-auth-token-code-verifier`);
+                        window.location.href = '/login?retry=1';
+                        return;
+                    }
+
                     window.location.href = '/login?error=oauth_failed';
                     return;
                 }

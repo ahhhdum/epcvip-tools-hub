@@ -214,6 +214,7 @@
         const isLoggingOut = urlParams.get('logout') === '1';
         const errorCode = urlParams.get('error');
         const returnUrl = urlParams.get('returnUrl');
+        const shouldRetry = urlParams.get('retry') === '1';
 
         // Store returnUrl in sessionStorage for post-auth redirect (validated)
         if (isValidReturnUrl(returnUrl)) {
@@ -223,6 +224,19 @@
         if (errorCode && errorMessages[errorCode]) {
             showMessage(errorMessages[errorCode], 'error');
             window.history.replaceState({}, document.title, '/login');
+        }
+
+        // Handle PKCE retry (user switched Google accounts during OAuth)
+        if (shouldRetry) {
+            // Clear URL param to prevent infinite loops
+            window.history.replaceState({}, document.title, '/login');
+
+            // Clear any stale PKCE state
+            const projectRef = SUPABASE_URL.replace('https://', '').split('.')[0];
+            localStorage.removeItem(`sb-${projectRef}-auth-token-code-verifier`);
+
+            // Auto-initiate OAuth after brief delay (let page render)
+            setTimeout(() => signInWithGoogle(), 100);
         }
 
         if (isLoggingOut) {
