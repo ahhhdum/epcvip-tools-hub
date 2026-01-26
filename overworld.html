@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EPCVIP Tools - Innovation Lab</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/shared/epc-sidebar.css">
+    <script>
+        // Handle Supabase auth callbacks
+        // Recovery tokens are handled by the auth module on this page
+        // No redirect needed - Supabase SDK will detect the hash and handle password update
+    </script>
+</head>
+<body>
+    <!-- EPC Navigation Sidebar -->
+    <nav class="epc-sidebar" id="epc-sidebar" data-current="tools-hub">
+      <div class="epc-sidebar-header">
+        <div class="epc-hamburger" id="epc-toggle">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <span class="epc-logo-text">EPCVIP</span>
+      </div>
+      <div class="epc-nav-items">
+        <a href="https://epcvip.vip" class="epc-nav-item" data-tool="tools-hub">
+          <span class="epc-nav-icon">&#x1F3E0;</span>
+          <span class="epc-nav-label">Tools Hub</span>
+        </a>
+        <a href="https://compare.epcvip.vip" class="epc-nav-item" data-tool="ping-tree">
+          <span class="epc-nav-icon">&#x1F333;</span>
+          <span class="epc-nav-label">Ping Tree Compare</span>
+        </a>
+        <a href="https://xp.epcvip.vip" class="epc-nav-item" data-tool="experiments">
+          <span class="epc-nav-icon">&#x1F9EA;</span>
+          <span class="epc-nav-label">Experiments</span>
+        </a>
+        <a href="https://athena.epcvip.vip" class="epc-nav-item" data-tool="athena">
+          <span class="epc-nav-icon">&#x26A1;</span>
+          <span class="epc-nav-label">Athena Monitor</span>
+        </a>
+        <a href="https://reports.epcvip.vip" class="epc-nav-item" data-tool="reports">
+          <span class="epc-nav-icon">&#x1F4CA;</span>
+          <span class="epc-nav-label">Reports Dashboard</span>
+        </a>
+      </div>
+      <div class="epc-sidebar-footer">
+        EPCVIP Innovation Tools
+      </div>
+    </nav>
+    <div class="epc-overlay" id="epc-overlay"></div>
+    <div class="epc-mobile-toggle" id="epc-mobile-toggle"><span></span></div>
+    <div class="gameboy-frame">
+        <div class="screen-frame">
+            <div class="title-bar">EPCVIP TOOLS</div>
+            <div class="screen-inner">
+                <canvas id="gameCanvas"></canvas>
+                <div class="dialog-box" id="dialogBox">
+                    Welcome to the Innovation Lab! Use arrows to navigate, A/Enter to select.
+                </div>
+            </div>
+        </div>
+        <div class="controls">
+            <div class="dpad">
+                <button class="dpad-btn dpad-up" data-dir="up">&#9650;</button>
+                <button class="dpad-btn dpad-down" data-dir="down">&#9660;</button>
+                <button class="dpad-btn dpad-left" data-dir="left">&#9664;</button>
+                <button class="dpad-btn dpad-right" data-dir="right">&#9654;</button>
+                <div class="dpad-btn dpad-center"></div>
+            </div>
+            <div class="action-buttons">
+                <button class="action-btn btn-b" id="btnB">B</button>
+                <button class="action-btn btn-a" id="btnA">A</button>
+            </div>
+        </div>
+        <div class="brand">EPCVIP</div>
+    </div>
+    <div class="instructions">
+        <kbd>&#8593;</kbd> <kbd>&#8595;</kbd> <kbd>&#8592;</kbd> <kbd>&#8594;</kbd> Navigate |
+        <kbd>Enter</kbd> / <kbd>A</kbd> Select |
+        <kbd>Esc</kbd> Pause
+    </div>
+    <div class="fallback-link">
+        <a href="/">Back to Dashboard</a>
+    </div>
+    <div class="quick-links">
+        <span class="quick-links-label">Quick Access:</span>
+        <a href="https://compare.epcvip.vip">&#127795; Compare</a>
+        <span class="separator">|</span>
+        <a href="https://xp.epcvip.vip">&#129514; Experiments</a>
+        <span class="separator">|</span>
+        <a href="https://athena.epcvip.vip">&#9889; Athena</a>
+        <span class="separator">|</span>
+        <a href="https://reports.epcvip.vip">&#128202; Reports</a>
+    </div>
+
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- Configure multiplayer server -->
+    <script>
+        // Auto-detect: use same origin (works for both local and production)
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        window.MULTIPLAYER_SERVER = `${protocol}//${window.location.host}`;
+
+        // Supabase configuration (epcvip-auth project)
+        // Get your anon key from: https://supabase.com/dashboard/project/yuithqxycicgokkgmpzg/settings/api
+        window.SUPABASE_CONFIG = {
+            url: 'https://yuithqxycicgokkgmpzg.supabase.co',
+            anonKey: '' // Set via SUPABASE_ANON_KEY environment variable or configure here
+        };
+        // Allow override from environment (for Railway deployment)
+        if (typeof SUPABASE_ANON_KEY !== 'undefined') {
+            window.SUPABASE_CONFIG.anonKey = SUPABASE_ANON_KEY;
+        }
+    </script>
+
+    <script type="module" src="js/main.js"></script>
+    <script src="js/shared/epc-sidebar.js"></script>
+</body>
+</html>
