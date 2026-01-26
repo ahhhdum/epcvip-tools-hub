@@ -133,6 +133,33 @@
             50% { opacity: 0.6; box-shadow: 0 0 8px var(--green); }
         }
 
+        /* Status dot states */
+        .status-dot[data-status="up"] {
+            background: var(--green);
+        }
+
+        .status-dot[data-status="up"]::after {
+            border-color: var(--green);
+        }
+
+        .status-dot[data-status="down"] {
+            background: #ff4444;
+            animation: none;
+        }
+
+        .status-dot[data-status="down"]::after {
+            border-color: #ff4444;
+        }
+
+        .status-dot[data-status="unknown"] {
+            background: #ffaa00;
+            animation: none;
+        }
+
+        .status-dot[data-status="unknown"]::after {
+            border-color: #ffaa00;
+        }
+
         .status-text {
             color: var(--green);
             font-size: 0.7rem;
@@ -787,8 +814,55 @@
             window.location.href = '/logout';
         }
 
+        // Service status checking
+        async function checkServiceStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const status = await response.json();
+                updateStatusDots(status);
+            } catch (err) {
+                console.error('Failed to check service status:', err);
+            }
+        }
+
+        function updateStatusDots(status) {
+            const dotMap = {
+                compare: 'Ping Tree Compare',
+                xp: 'Experiments',
+                athena: 'Athena Monitor',
+                reports: 'Reports',
+                tools: 'Competitor Analyzer',
+            };
+
+            let upCount = 0;
+            let totalCount = 0;
+
+            Object.entries(dotMap).forEach(([key, title]) => {
+                const dot = document.querySelector(`.status-dot[title="${title}"]`);
+                if (dot) {
+                    const serviceStatus = status[key] || 'unknown';
+                    dot.dataset.status = serviceStatus;
+                    if (serviceStatus === 'up') upCount++;
+                    if (serviceStatus !== 'unknown') totalCount++;
+                }
+            });
+
+            const statusText = document.querySelector('.status-text');
+            if (statusText) {
+                if (upCount === totalCount && totalCount > 0) {
+                    statusText.textContent = 'All Systems Operational';
+                } else if (upCount === 0) {
+                    statusText.textContent = 'Systems Unavailable';
+                } else {
+                    statusText.textContent = `${upCount}/${totalCount} Systems Operational`;
+                }
+            }
+        }
+
         // Initialize on load
         initAuth();
+        checkServiceStatus();
+        setInterval(checkServiceStatus, 60000);
     </script>
 </body>
 </html>

@@ -131,6 +131,7 @@ epcvip-tools-hub/
 |----------|--------|-------------|
 | `/health` | GET | Server health check |
 | `/api/config` | GET | Client configuration (Supabase URL) |
+| `/api/status` | GET | Service status for all EPCVIP tools (cached 30s) |
 | `/api/sso/sign-token` | POST | Sign SSO token for cross-app auth |
 
 ### WebSocket Messages

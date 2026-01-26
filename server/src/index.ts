@@ -24,6 +24,55 @@ const SSO_TOKEN_EXPIRY = 300; // 5 minutes
 // Cookie domain for SSO (shared across subdomains)
 const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || '.epcvip.vip';
 const ENVIRONMENT = process.env.ENVIRONMENT || 'production';
+const DEVELOPER_HOME_IP = process.env.DEVELOPER_HOME_IP || '';
+
+/**
+ * Check if we're in development environment
+ */
+function isDevelopmentEnvironment(): boolean {
+  const env = ENVIRONMENT.toLowerCase();
+  return env === 'development' || env === 'dev' || env === 'local';
+}
+
+/**
+ * Get real client IP, handling proxies (Railway, Cloudflare, etc.)
+ */
+function getClientIp(req: express.Request): string {
+  const forwardedFor = req.headers['x-forwarded-for'];
+  if (forwardedFor) {
+    const ips = Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor;
+    return ips.split(',')[0].trim();
+  }
+  const realIp = req.headers['x-real-ip'];
+  if (realIp) {
+    return Array.isArray(realIp) ? realIp[0] : realIp;
+  }
+  return req.socket.remoteAddress || '';
+}
+
+/**
+ * Check if authentication should be bypassed for development
+ */
+function shouldBypassAuth(req: express.Request): boolean {
+  if (!isDevelopmentEnvironment()) {
+    return false;
+  }
+
+  const clientIp = getClientIp(req);
+  const isLocalhost =
+    clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '::ffff:127.0.0.1';
+  const isAuthorizedIp = DEVELOPER_HOME_IP ? clientIp === DEVELOPER_HOME_IP : true;
+
+  const bypassAllowed = isLocalhost || isAuthorizedIp;
+
+  if (bypassAllowed) {
+    console.log(
+      `[Auth] 🔓 Dev bypass: localhost=${isLocalhost}, authorizedIp=${isAuthorizedIp}, clientIp=${clientIp}`
+    );
+  }
+
+  return bypassAllowed;
+}
 
 /**
  * Get cookie domain for SSO. Returns undefined for localhost/development.
@@ -394,6 +443,58 @@ app.get('/health', (req, res) => {
 });
 
 // ============================================================
+// Service Status Endpoint
+// ============================================================
+
+// Hardcoded service URLs - prevents SSRF
+const SERVICES: Record<string, string> = {
+  compare: 'https://compare.epcvip.vip/health',
+  xp: 'https://xp.epcvip.vip/health',
+  athena: 'https://athena.epcvip.vip/health',
+  reports: 'https://reports.epcvip.vip/health',
+  tools: 'https://tools.epcvip.vip/api/health',
+};
+
+// Cache to prevent amplification
+let statusCache: { data: Record<string, string> | null; timestamp: number } = {
+  data: null,
+  timestamp: 0,
+};
+const CACHE_TTL = 30000; // 30 seconds
+
+app.get('/api/status', async (req, res) => {
+  // Return cached if fresh
+  if (statusCache.data && Date.now() - statusCache.timestamp < CACHE_TTL) {
+    return res.json(statusCache.data);
+  }
+
+  const results: Record<string, string> = {};
+
+  await Promise.allSettled(
+    Object.entries(SERVICES).map(async ([name, url]) => {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+        const response = await fetch(url, {
+          signal: controller.signal,
+          method: 'GET',
+          redirect: 'manual', // Don't follow redirects - a redirect means no real health endpoint
+        });
+
+        clearTimeout(timeoutId);
+        results[name] = response.ok ? 'up' : 'down';
+      } catch {
+        results[name] = 'down';
+      }
+    })
+  );
+
+  statusCache = { data: results, timestamp: Date.now() };
+  res.json(results);
+});
+
+// ============================================================
 // Auth Middleware - Protect app routes
 // ============================================================
 
@@ -404,6 +505,7 @@ const PUBLIC_PATHS = [
   '/health',
   '/api/config',
   '/api/sso',
+  '/api/status',
   '/auth/callback',
   '/access-denied',
   '/shared',
@@ -417,6 +519,11 @@ app.use((req, res, next) => {
 
   // Skip auth for static assets (js, css, images, fonts)
   if (/\.(js|mjs|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|map)$/i.test(req.path)) {
+    return next();
+  }
+
+  // Development bypass - skip auth entirely in dev mode from localhost/authorized IP
+  if (shouldBypassAuth(req)) {
     return next();
   }
 
@@ -452,6 +559,11 @@ app.use((req, res, next) => {
 // Serve static files from public directory (copied during build)
 const staticPath = path.join(__dirname, '../public');
 app.use(express.static(staticPath));
+
+// Serve overworld game at /overworld
+app.get('/overworld', (req, res) => {
+  res.sendFile(path.join(staticPath, 'overworld.html'));
+});
 
 // Catch-all for SPA - serve index.html for unmatched routes (after auth check)
 app.get('*', (req, res, next) => {
