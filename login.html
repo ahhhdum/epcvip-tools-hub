@@ -222,7 +222,6 @@
         const isLoggingOut = urlParams.get('logout') === '1';
         const errorCode = urlParams.get('error');
         const returnUrl = urlParams.get('returnUrl');
-        const shouldRetry = urlParams.get('retry') === '1';
 
         // Store returnUrl in sessionStorage for post-auth redirect (validated)
         if (isValidReturnUrl(returnUrl)) {
@@ -232,22 +231,6 @@
         if (errorCode && errorMessages[errorCode]) {
             showMessage(errorMessages[errorCode], 'error');
             window.history.replaceState({}, document.title, '/login');
-        }
-
-        // Handle PKCE retry (user switched Google accounts during OAuth)
-        if (shouldRetry) {
-            // Show retry message
-            showMessage('Retrying authentication...', 'info');
-
-            // Clear URL param to prevent infinite loops
-            window.history.replaceState({}, document.title, '/login');
-
-            // Clear any stale PKCE state
-            const projectRef = SUPABASE_URL.replace('https://', '').split('.')[0];
-            localStorage.removeItem(`sb-${projectRef}-auth-token-code-verifier`);
-
-            // Auto-initiate OAuth after brief delay (let page render)
-            setTimeout(() => signInWithGoogle(), 100);
         }
 
         if (isLoggingOut) {
@@ -268,9 +251,6 @@
             (async () => {
                 const { data: { session } } = await sb.auth.getSession();
                 if (session) {
-                    // Clear retry counter on successful auth
-                    sessionStorage.removeItem('pkce_retry_count');
-
                     // SSO: Set cookie with shared domain for production
                     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
                     const cookieDomain = isLocalhost ? '' : '; domain=.epcvip.vip';
