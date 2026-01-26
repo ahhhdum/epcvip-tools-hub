@@ -73,6 +73,19 @@
                                         error.code === 'bad_code_verifier';
 
                     if (isPkceError) {
+                        // Check retry count (max 2 attempts)
+                        const retryCount = parseInt(sessionStorage.getItem('pkce_retry_count') || '0', 10);
+
+                        if (retryCount >= 2) {
+                            // Max retries exceeded - show error
+                            sessionStorage.removeItem('pkce_retry_count');
+                            window.location.href = '/login?error=auth_retry_failed';
+                            return;
+                        }
+
+                        // Increment retry count
+                        sessionStorage.setItem('pkce_retry_count', String(retryCount + 1));
+
                         // Clear stale PKCE state and redirect with retry flag
                         const projectRef = SUPABASE_URL.replace('https://', '').split('.')[0];
                         localStorage.removeItem(`sb-${projectRef}-auth-token-code-verifier`);

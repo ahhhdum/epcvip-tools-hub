@@ -130,6 +130,13 @@
             color: var(--success);
         }
 
+        .message.info {
+            display: block;
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid var(--info);
+            color: var(--info);
+        }
+
         .loading {
             display: inline-block;
             width: 20px;
@@ -202,7 +209,8 @@
         const errorMessages = {
             'oauth_failed': 'Google sign-in failed. Please try again.',
             'domain_not_allowed': 'Only @epcvip.com accounts are allowed.',
-            'no_access': 'You do not have access to this application. Contact an administrator.'
+            'no_access': 'You do not have access to this application. Contact an administrator.',
+            'auth_retry_failed': 'Authentication failed after multiple attempts. Please try again.'
         };
 
         // Validate returnUrl to prevent open redirect attacks
@@ -228,6 +236,9 @@
 
         // Handle PKCE retry (user switched Google accounts during OAuth)
         if (shouldRetry) {
+            // Show retry message
+            showMessage('Retrying authentication...', 'info');
+
             // Clear URL param to prevent infinite loops
             window.history.replaceState({}, document.title, '/login');
 
@@ -257,6 +268,9 @@
             (async () => {
                 const { data: { session } } = await sb.auth.getSession();
                 if (session) {
+                    // Clear retry counter on successful auth
+                    sessionStorage.removeItem('pkce_retry_count');
+
                     // SSO: Set cookie with shared domain for production
                     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
                     const cookieDomain = isLocalhost ? '' : '; domain=.epcvip.vip';
