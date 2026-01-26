@@ -413,6 +413,18 @@
             border: 1px solid var(--yellow);
         }
 
+        .badge-down {
+            background: rgba(255, 68, 68, 0.1);
+            color: #ff4444;
+            border: 1px solid #ff4444;
+        }
+
+        .badge-unknown {
+            background: rgba(255, 170, 0, 0.1);
+            color: #ffaa00;
+            border: 1px solid #ffaa00;
+        }
+
         .tool-description {
             color: var(--text-muted);
             font-size: 0.85rem;
@@ -879,6 +891,24 @@
                 const card = document.querySelector(`.tool-card[data-tool-key="${key}"]`);
                 if (card) {
                     card.dataset.status = serviceStatus;
+
+                    // Update badge to match status
+                    const badge = card.querySelector('.badge');
+                    if (badge) {
+                        if (serviceStatus === 'up') {
+                            badge.textContent = 'Active';
+                            badge.classList.remove('badge-down', 'badge-unknown');
+                            badge.classList.add('badge-active');
+                        } else if (serviceStatus === 'down') {
+                            badge.textContent = 'Down';
+                            badge.classList.remove('badge-active', 'badge-unknown');
+                            badge.classList.add('badge-down');
+                        } else {
+                            badge.textContent = 'Checking...';
+                            badge.classList.remove('badge-active', 'badge-down');
+                            badge.classList.add('badge-unknown');
+                        }
+                    }
                 }
             });
 
