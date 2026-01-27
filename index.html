@@ -168,6 +168,16 @@
             text-transform: uppercase;
         }
 
+        .status-link {
+            text-decoration: none;
+            transition: opacity 0.2s ease;
+        }
+
+        .status-link:hover {
+            text-decoration: underline;
+            opacity: 0.8;
+        }
+
         .status-right {
             display: flex;
             align-items: center;
@@ -468,6 +478,19 @@
             color: var(--yellow);
         }
 
+        .footer-separator {
+            margin: 0 8px;
+        }
+
+        .footer-link {
+            color: var(--yellow);
+            text-decoration: none;
+        }
+
+        .footer-link:hover {
+            text-decoration: underline;
+        }
+
         @media (max-width: 1024px) {
             .tools-grid {
                 grid-template-columns: repeat(2, 1fr);
@@ -564,7 +587,10 @@
                     <div class="status-dot" title="Reports"></div>
                     <div class="status-dot" title="Competitor Analyzer"></div>
                 </div>
-                <span class="status-text">All Systems Operational</span>
+                <a href="https://uptime.epcvip.vip/status/epcvip"
+                   class="status-text status-link"
+                   target="_blank"
+                   title="View uptime history">All Systems Operational</a>
             </div>
             <div class="status-right">
                 <span id="userEmail"></span>
@@ -765,7 +791,11 @@
             </div>
 
             <footer>
-                <p>Authenticated via <span>Supabase</span> | @epcvip.com accounts only</p>
+                <p>
+                    Authenticated via <span>Supabase</span> | @epcvip.com accounts only
+                    <span class="footer-separator">|</span>
+                    <a href="https://uptime.epcvip.vip/status/epcvip" target="_blank" class="footer-link">Uptime History</a>
+                </p>
 
                 <!-- Retro Elements (hidden by default, shown in retro-90s theme) -->
                 <div class="retro-construction">🚧 Under Construction! 🚧</div>

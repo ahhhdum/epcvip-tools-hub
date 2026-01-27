@@ -52,6 +52,17 @@
   animation: retro-glow 1.5s ease-in-out infinite alternate;
 }
 
+/* Status link in retro mode */
+[data-theme="retro-90s"] .status-link {
+  color: #00ff00;
+  text-decoration: none;
+}
+
+[data-theme="retro-90s"] .status-link:hover {
+  color: #ffff00;
+  text-decoration: underline;
+}
+
 @keyframes retro-glow {
   from { text-shadow: 0 0 5px #00ff00; }
   to { text-shadow: 0 0 15px #00ff00, 0 0 25px #00ff00; }
@@ -326,6 +337,15 @@
 
 [data-theme="retro-90s"] footer span {
   color: #ffff00;
+}
+
+/* Footer link in retro mode */
+[data-theme="retro-90s"] .footer-link {
+  color: #00ffff;
+}
+
+[data-theme="retro-90s"] .footer-link:hover {
+  color: #ff00ff;
 }
 
 /* === Container === */
