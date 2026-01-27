@@ -16,19 +16,26 @@ Cross-tool navigation sidebar providing consistent UX across all EPCVIP apps.
 
 ### Apps Using This Sidebar
 
-| App | URL | Status |
-|-----|-----|--------|
-| Ping Tree Compare | `compare.epcvip.vip` | Deployed |
-| Experiments Dashboard | `xp.epcvip.vip` | Deployed |
-| Athena Monitor | `athena.epcvip.vip` | Deployed |
-| Reports Dashboard | `reports.epcvip.vip` | Deployed |
-| Funnel Analyzer | `tools.epcvip.vip` | Planned |
+| App | URL | HTML Location |
+|-----|-----|---------------|
+| **Tools Hub** | `epcvip.vip` | `index.html` (embedded, special case) |
+| Ping Tree Compare | `compare.epcvip.vip` | `static/index.html` |
+| Experiments Dashboard | `xp.epcvip.vip` | `static/index.html` |
+| Athena Monitor | `athena.epcvip.vip` | `static/index.html` |
+| Reports Dashboard | `reports.epcvip.vip` | `validator-api/static/reports.html` |
+| Funnel Analyzer | `tools.epcvip.vip` | (separate repo) |
+
+> **Tools Hub Special Case:** Since Tools Hub IS the CDN host, it can't load from itself.
+> Its sidebar HTML is embedded directly in `index.html` and must be manually synced.
 
 ### Adding a New Nav Item
 
-1. Update `epc-sidebar.html` (the source template)
-2. Copy the nav item HTML to each app's `index.html`
-3. Push each repo to deploy
+1. Update `shared/epc-sidebar.html` (the source template)
+2. Update `index.html` (Tools Hub's embedded sidebar)
+3. Bump version in `shared/version.json`
+4. Push Tools Hub to deploy CDN
+5. Update each consumer app's embedded HTML + CDN version query param
+6. Push each consumer repo to deploy
 
 **Nav item template:**
 ```html
@@ -59,7 +66,7 @@ See backlog item "Sidebar Sync Automation" in `_BACKLOG.md` for long-term soluti
 
 1. Add CSS link with fallback:
    ```html
-   <link rel="stylesheet" href="https://epcvip.vip/shared/epc-sidebar.css?v=1.0.1"
+   <link rel="stylesheet" href="https://epcvip.vip/shared/epc-sidebar.css?v=1.0.2"
          onerror="this.onerror=null; this.href='/static/css/shared/epc-sidebar.css';">
    ```
 
@@ -67,7 +74,7 @@ See backlog item "Sidebar Sync Automation" in `_BACKLOG.md` for long-term soluti
 
 3. Add JS with fallback before `</body>`:
    ```html
-   <script src="https://epcvip.vip/shared/epc-sidebar.js?v=1.0.1"
+   <script src="https://epcvip.vip/shared/epc-sidebar.js?v=1.0.2"
            onerror="this.onerror=null; var s=document.createElement('script'); s.src='/static/js/shared/epc-sidebar.js'; document.head.appendChild(s);"></script>
    ```
 
