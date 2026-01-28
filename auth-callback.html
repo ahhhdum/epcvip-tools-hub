@@ -79,7 +79,16 @@
                 // Validate email domain
                 if (!email.toLowerCase().endsWith(`@${ALLOWED_DOMAIN.toLowerCase()}`)) {
                     console.log('[Auth] Domain not allowed:', email);
-                    await sb.auth.signOut();
+                    try {
+                        await sb.auth.signOut({ scope: 'local' });
+                    } catch (signOutErr) {
+                        console.warn('Sign out failed:', signOutErr);
+                        const projectRef = SUPABASE_URL.replace('https://', '').split('.')[0];
+                        localStorage.removeItem(`sb-${projectRef}-auth-token`);
+                    }
+                    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                    const cookieDomain = isLocalhost ? '' : '; domain=.epcvip.vip';
+                    document.cookie = `sb-access-token=; path=/${cookieDomain}; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
                     window.location.href = '/login?error=domain_not_allowed';
                     return;
                 }
@@ -99,7 +108,7 @@
 
                 if (!roleData) {
                     console.log('[Auth] No RBAC access for:', email);
-                    await sb.auth.signOut();
+                    // Don't sign out globally - user may have access to other apps
                     window.location.href = '/login?error=no_access';
                     return;
                 }
@@ -120,6 +129,20 @@
 
             } catch (err) {
                 console.error('[Auth] Callback error:', err);
+
+                // Clear local session to prevent redirect loop
+                try {
+                    await sb.auth.signOut({ scope: 'local' });
+                } catch (signOutErr) {
+                    console.warn('Sign out failed:', signOutErr);
+                    const projectRef = SUPABASE_URL.replace('https://', '').split('.')[0];
+                    localStorage.removeItem(`sb-${projectRef}-auth-token`);
+                }
+
+                const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                const cookieDomain = isLocalhost ? '' : '; domain=.epcvip.vip';
+                document.cookie = `sb-access-token=; path=/${cookieDomain}; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+
                 window.location.href = '/login?error=oauth_failed';
             }
         })();

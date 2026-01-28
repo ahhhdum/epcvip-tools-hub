@@ -247,7 +247,34 @@
 
         const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        if (!isLoggingOut) {
+        // Loop detection - prevent infinite auth redirects
+        const loopKey = 'auth_redirect_count';
+        const loopTimeKey = 'auth_redirect_time';
+        const now = Date.now();
+        const lastTime = parseInt(sessionStorage.getItem(loopTimeKey) || '0');
+        let loopCount = parseInt(sessionStorage.getItem(loopKey) || '0');
+
+        if (now - lastTime > 30000) {
+            loopCount = 0;
+        }
+        loopCount++;
+        sessionStorage.setItem(loopKey, loopCount.toString());
+        sessionStorage.setItem(loopTimeKey, now.toString());
+
+        const loopDetected = loopCount > 3;
+        if (loopDetected) {
+            console.error('Auth loop detected! Clearing all auth state.');
+            const projectRef = SUPABASE_URL.replace('https://', '').split('.')[0];
+            localStorage.removeItem(`sb-${projectRef}-auth-token`);
+            const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            const cookieDomain = isLocalhost ? '' : '; domain=.epcvip.vip';
+            document.cookie = `sb-access-token=; path=/${cookieDomain}; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+            sessionStorage.removeItem(loopKey);
+            sessionStorage.removeItem(loopTimeKey);
+            showMessage('Authentication error. Please try again or contact support.', 'error');
+        }
+
+        if (!isLoggingOut && !loopDetected) {
             (async () => {
                 const { data: { session } } = await sb.auth.getSession();
                 if (session) {
