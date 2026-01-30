@@ -16,6 +16,10 @@ import jwt from 'jsonwebtoken';
 import cookieParser from 'cookie-parser';
 import { createClient } from '@supabase/supabase-js';
 import cors from 'cors';
+import { AuditLogger } from './audit-logger';
+
+// Initialize audit logger for this app
+const audit = new AuditLogger('tools-hub');
 
 // SSO Configuration
 const SSO_SHARED_SECRET = process.env.SSO_SHARED_SECRET || '';
@@ -353,55 +357,77 @@ app.get('/health', (req, res) => {
 });
 
 // ============================================================
-// Service Status Endpoint
+// Service Status Endpoint (via Uptime Kuma)
 // ============================================================
 
-// Hardcoded service URLs - prevents SSRF
-const SERVICES: Record<string, string> = {
-  compare: 'https://compare.epcvip.vip/health',
-  xp: 'https://xp.epcvip.vip/health',
-  athena: 'https://athena.epcvip.vip/health',
-  reports: 'https://reports.epcvip.vip/health',
-  tools: 'https://tools.epcvip.vip/api/health',
+const UPTIME_KUMA_API = 'https://uptime.epcvip.vip/api/status-page/heartbeat/epcvip';
+
+// Uptime Kuma heartbeat response type
+interface UptimeKumaHeartbeat {
+  status: number; // 1 = up, 0 = down
+  time: string;
+  msg: string;
+  ping: number;
+}
+
+interface UptimeKumaResponse {
+  heartbeatList?: Record<string, UptimeKumaHeartbeat[]>;
+}
+
+// Monitor ID → service key mapping (verified from Uptime Kuma dashboard)
+// Note: Monitor 3 (Tools Hub itself) is skipped to avoid self-monitoring loop
+const MONITOR_MAP: Record<string, string> = {
+  '1': 'athena', // Athena Monitor
+  '2': 'compare', // Ping Tree Compare
+  '4': 'xp', // Experiments Dashboard
+  '5': 'tools', // Competitor Analyzer
+  '6': 'reports', // Reports Dashboard
 };
 
 // Cache to prevent amplification
-let statusCache: { data: Record<string, string> | null; timestamp: number } = {
-  data: null,
-  timestamp: 0,
-};
-const CACHE_TTL = 30000; // 30 seconds
+let statusCache: { data: Record<string, string>; timestamp: number } | null = null;
+const STATUS_CACHE_TTL = 30000; // 30 seconds
 
 app.get('/api/status', async (req, res) => {
   // Return cached if fresh
-  if (statusCache.data && Date.now() - statusCache.timestamp < CACHE_TTL) {
+  if (statusCache && Date.now() - statusCache.timestamp < STATUS_CACHE_TTL) {
     return res.json(statusCache.data);
   }
 
-  const results: Record<string, string> = {};
+  try {
+    const response = await fetch(UPTIME_KUMA_API, {
+      signal: AbortSignal.timeout(5000),
+    });
+    const data = (await response.json()) as UptimeKumaResponse;
 
-  await Promise.allSettled(
-    Object.entries(SERVICES).map(async ([name, url]) => {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000);
-
-        const response = await fetch(url, {
-          signal: controller.signal,
-          method: 'GET',
-          redirect: 'manual', // Don't follow redirects - a redirect means no real health endpoint
-        });
-
-        clearTimeout(timeoutId);
-        results[name] = response.ok ? 'up' : 'down';
-      } catch {
-        results[name] = 'down';
+    // Parse latest heartbeat for each monitor
+    const status: Record<string, string> = {};
+    for (const [monitorId, key] of Object.entries(MONITOR_MAP)) {
+      const heartbeats = data.heartbeatList?.[monitorId];
+      if (heartbeats && heartbeats.length > 0) {
+        status[key] = heartbeats[0].status === 1 ? 'up' : 'down';
+      } else {
+        status[key] = 'unknown';
       }
-    })
-  );
+    }
 
-  statusCache = { data: results, timestamp: Date.now() };
-  res.json(results);
+    // Cache and return
+    statusCache = { data: status, timestamp: Date.now() };
+    return res.json(status);
+  } catch (error) {
+    console.error('Uptime Kuma API error:', error);
+    // Return cached data if available, otherwise all unknown
+    if (statusCache) {
+      return res.json(statusCache.data);
+    }
+    return res.json({
+      athena: 'unknown',
+      compare: 'unknown',
+      xp: 'unknown',
+      tools: 'unknown',
+      reports: 'unknown',
+    });
+  }
 });
 
 // ============================================================
@@ -421,7 +447,7 @@ const PUBLIC_PATHS = [
   '/shared',
 ];
 
-app.use((req, res, next) => {
+app.use(async (req, res, next) => {
   // Skip auth for public paths
   if (PUBLIC_PATHS.some((p) => req.path.startsWith(p))) {
     return next();
@@ -432,14 +458,21 @@ app.use((req, res, next) => {
     return next();
   }
 
+  const clientIp = getClientIp(req);
+  const userAgent = req.headers['user-agent'];
+
   // Development bypass - skip auth entirely in dev mode from localhost/authorized IP
   if (shouldBypassAuth(req)) {
+    // Log bypass event asynchronously (don't await to keep middleware fast)
+    audit.logAuthBypassed(clientIp, 'development_mode');
     return next();
   }
 
   // Check for auth cookie
   const token = req.cookies['sb-access-token'];
   if (!token) {
+    // Log missing token failure
+    audit.logLoginFailure(undefined, clientIp, 'no_token_provided');
     // SSO: Capture current URL for return after login
     const returnUrl =
       req.path + (req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '');
@@ -453,14 +486,25 @@ app.use((req, res, next) => {
   const JWT_SECRET = process.env.SUPABASE_JWT_SECRET;
   if (!JWT_SECRET) {
     console.error('[Auth] SUPABASE_JWT_SECRET not configured');
+    audit.logTokenInvalid(clientIp, 'jwt_secret_not_configured');
     return res.redirect('/login');
   }
 
   try {
-    jwt.verify(token, JWT_SECRET);
+    const payload = jwt.verify(token, JWT_SECRET) as { email?: string };
+    // Log successful token validation
+    if (payload.email) {
+      audit.logTokenValidated(payload.email, clientIp);
+    }
     next();
   } catch (err) {
     // Invalid or expired token
+    const error = err as Error;
+    if (error.name === 'TokenExpiredError') {
+      audit.logTokenExpired(undefined, clientIp);
+    } else {
+      audit.logTokenInvalid(clientIp, error.message);
+    }
     res.clearCookie('sb-access-token');
     return res.redirect('/login');
   }
