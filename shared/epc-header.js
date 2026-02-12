@@ -27,7 +27,7 @@
     { id: 'funnel-analyzer', appId: 'funnel-analyzer',      icon: '\u{1F50D}', label: 'Funnel Analyzer',    url: 'https://tools.epcvip.vip' },
     { id: 'docs',            appId: 'docs-site',            icon: '\u{1F4D6}', label: 'Documentation',      url: 'https://docs.epcvip.vip' },
     { id: 'admin',           appId: 'epcvip-admin',         icon: '\u{1F527}', label: 'Admin',              url: 'https://admin.epcvip.vip' },
-    { id: 'funnel-lab',      appId: 'funnel-step-lab',      icon: '\u{1F9E9}', label: 'Funnel Lab',         url: 'https://funnel-lab.epcvip.vip' },
+    { id: 'funnel-lab',      appId: 'funnel-step-lab',      icon: '\u{1F9E9}', label: 'Funnel Lab',         url: 'https://lab.epcvip.vip' },
   ];
 
   /* ── Visibility filtering ───────────────────────── */
