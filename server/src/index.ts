@@ -440,7 +440,7 @@ async function getUserVisibleApps(email: string, accessToken: string): Promise<s
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return [];
   try {
     const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/epcvip_app_roles?user_email=eq.${email.toLowerCase()}&select=app_id`,
+      `${SUPABASE_URL}/rest/v1/epcvip_app_roles?user_email=eq.${encodeURIComponent(email.toLowerCase())}&select=app_id`,
       {
         headers: {
           apikey: SUPABASE_ANON_KEY,
@@ -528,24 +528,23 @@ app.use(async (req, res, next) => {
 
       // Set epc_visible_apps cookie for shared header app-switcher
       if (!req.cookies['epc_visible_apps']) {
-        getUserVisibleApps(payload.email, token)
-          .then((visibleApps) => {
-            if (visibleApps.length > 0) {
-              const cookieDomain = getCookieDomain();
-              const cookieOpts: express.CookieOptions = {
-                path: '/',
-                httpOnly: false,
-                sameSite: 'lax',
-                secure: !!cookieDomain,
-                maxAge: 86400 * 1000,
-              };
-              if (cookieDomain) cookieOpts.domain = cookieDomain;
-              res.cookie('epc_visible_apps', visibleApps.join(','), cookieOpts);
-            }
-          })
-          .catch((err) => {
-            console.error('[Auth] Failed to set visible apps cookie:', err);
-          });
+        try {
+          const visibleApps = await getUserVisibleApps(payload.email, token);
+          if (visibleApps.length > 0) {
+            const cookieDomain = getCookieDomain();
+            const cookieOpts: express.CookieOptions = {
+              path: '/',
+              httpOnly: false,
+              sameSite: 'lax',
+              secure: !!cookieDomain,
+              maxAge: 86400 * 1000,
+            };
+            if (cookieDomain) cookieOpts.domain = cookieDomain;
+            res.cookie('epc_visible_apps', visibleApps.join(','), cookieOpts);
+          }
+        } catch (err) {
+          console.error('[Auth] Failed to set visible apps cookie:', err);
+        }
       }
     }
     next();
