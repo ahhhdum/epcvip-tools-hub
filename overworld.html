@@ -5,52 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EPCVIP Tools - Innovation Lab</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="css/shared/epc-sidebar.css">
+    <link rel="stylesheet" href="shared/epc-header.css">
     <script>
         // Handle Supabase auth callbacks
         // Recovery tokens are handled by the auth module on this page
         // No redirect needed - Supabase SDK will detect the hash and handle password update
     </script>
 </head>
-<body>
-    <!-- EPC Navigation Sidebar -->
-    <nav class="epc-sidebar" id="epc-sidebar" data-current="tools-hub">
-      <div class="epc-sidebar-header">
-        <div class="epc-hamburger" id="epc-toggle">
-          <span></span>
-          <span></span>
-          <span></span>
+<body data-current="tools-hub" data-epc-app="Tools Hub">
+    <!-- EPCVIP Shared Header -->
+    <header class="epc-header">
+        <button class="epc-header-app-switcher" aria-label="Switch app" aria-expanded="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="4" cy="4" r="1.5"/><circle cx="12" cy="4" r="1.5"/><circle cx="20" cy="4" r="1.5"/><circle cx="4" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="20" cy="12" r="1.5"/><circle cx="4" cy="20" r="1.5"/><circle cx="12" cy="20" r="1.5"/><circle cx="20" cy="20" r="1.5"/></svg>
+        </button>
+        <div class="epc-header-brand">
+            <a class="epc-header-logo" href="https://epcvip.vip">EPCVIP</a>
+            <span class="epc-header-separator">/</span>
+            <span class="epc-header-app-name">Tools Hub</span>
         </div>
-        <span class="epc-logo-text">EPCVIP</span>
-      </div>
-      <div class="epc-nav-items">
-        <a href="https://epcvip.vip" class="epc-nav-item" data-tool="tools-hub">
-          <span class="epc-nav-icon">&#x1F3E0;</span>
-          <span class="epc-nav-label">Tools Hub</span>
-        </a>
-        <a href="https://compare.epcvip.vip" class="epc-nav-item" data-tool="ping-tree">
-          <span class="epc-nav-icon">&#x1F333;</span>
-          <span class="epc-nav-label">Ping Tree Compare</span>
-        </a>
-        <a href="https://xp.epcvip.vip" class="epc-nav-item" data-tool="experiments">
-          <span class="epc-nav-icon">&#x1F9EA;</span>
-          <span class="epc-nav-label">Experiments</span>
-        </a>
-        <a href="https://athena.epcvip.vip" class="epc-nav-item" data-tool="athena">
-          <span class="epc-nav-icon">&#x26A1;</span>
-          <span class="epc-nav-label">Athena Monitor</span>
-        </a>
-        <a href="https://reports.epcvip.vip" class="epc-nav-item" data-tool="reports">
-          <span class="epc-nav-icon">&#x1F4CA;</span>
-          <span class="epc-nav-label">Reports Dashboard</span>
-        </a>
-      </div>
-      <div class="epc-sidebar-footer">
-        EPCVIP Innovation Tools
-      </div>
-    </nav>
-    <div class="epc-overlay" id="epc-overlay"></div>
-    <div class="epc-mobile-toggle" id="epc-mobile-toggle"><span></span></div>
+        <div class="epc-header-spacer"></div>
+        <div class="epc-header-user">
+            <span id="userEmail"></span>
+            <a class="epc-header-signout" href="/logout">Sign out</a>
+        </div>
+    </header>
+    <div id="epc-app-switcher-dropdown" class="epc-app-switcher-dropdown" hidden></div>
     <div class="gameboy-frame">
         <div class="screen-frame">
             <div class="title-bar">EPCVIP TOOLS</div>
@@ -117,6 +96,7 @@
     </script>
 
     <script type="module" src="js/main.js"></script>
-    <script src="js/shared/epc-sidebar.js"></script>
+    <!-- EPCVIP Shared Header Script -->
+    <script src="shared/epc-header.js"></script>
 </body>
 </html>

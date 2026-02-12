@@ -217,8 +217,10 @@ app.get('/logout', (req, res) => {
   const cookieDomain = getCookieDomain();
   if (cookieDomain) {
     res.clearCookie('sb-access-token', { path: '/', domain: cookieDomain });
+    res.clearCookie('epc_visible_apps', { path: '/', domain: cookieDomain });
   } else {
     res.clearCookie('sb-access-token', { path: '/' });
+    res.clearCookie('epc_visible_apps', { path: '/' });
   }
   res.redirect('/login?logout=1');
 });
@@ -431,6 +433,34 @@ app.get('/api/status', async (req, res) => {
 });
 
 // ============================================================
+// Per-user app visibility (for shared header app-switcher)
+// ============================================================
+
+async function getUserVisibleApps(email: string, accessToken: string): Promise<string[]> {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return [];
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/epcvip_app_roles?user_email=eq.${email.toLowerCase()}&select=app_id`,
+      {
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${accessToken}`,
+        },
+        signal: AbortSignal.timeout(5000),
+      }
+    );
+    if (response.ok) {
+      const rows = (await response.json()) as Array<{ app_id: string }>;
+      return rows.map((r) => r.app_id);
+    }
+    return [];
+  } catch (e) {
+    console.error('[Auth] Visible apps check error:', e);
+    return [];
+  }
+}
+
+// ============================================================
 // Auth Middleware - Protect app routes
 // ============================================================
 
@@ -495,6 +525,24 @@ app.use(async (req, res, next) => {
     // Log successful token validation
     if (payload.email) {
       audit.logTokenValidated(payload.email, clientIp);
+
+      // Set epc_visible_apps cookie for shared header app-switcher
+      if (!req.cookies['epc_visible_apps']) {
+        getUserVisibleApps(payload.email, token).then((visibleApps) => {
+          if (visibleApps.length > 0) {
+            const cookieDomain = getCookieDomain();
+            const cookieOpts: express.CookieOptions = {
+              path: '/',
+              httpOnly: false,
+              sameSite: 'lax',
+              secure: !!cookieDomain,
+              maxAge: 86400 * 1000,
+            };
+            if (cookieDomain) cookieOpts.domain = cookieDomain;
+            res.cookie('epc_visible_apps', visibleApps.join(','), cookieOpts);
+          }
+        });
+      }
     }
     next();
   } catch (err) {
