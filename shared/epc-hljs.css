@@ -1,0 +1,157 @@
+/**
+ * EPCVIP Dark Theme for highlight.js
+ * Shared syntax highlighting theme with gold accents.
+ *
+ * Merged superset from docs-site and experiments-dashboard
+ * (includes PHP-specific rules from docs-site).
+ *
+ * CDN: https://epcvip.vip/shared/epc-hljs.css?v=X.Y.Z
+ */
+
+.hljs {
+    background: #2a2a2a;
+    color: #e5e5e5;
+}
+
+/* Comments - muted */
+.hljs-comment,
+.hljs-quote {
+    color: #6a9955;
+    font-style: italic;
+}
+
+/* Keywords - gold accent */
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-addition {
+    color: #ffd700;
+    font-weight: 600;
+}
+
+/* Strings - soft tan */
+.hljs-string,
+.hljs-doctag,
+.hljs-regexp,
+.hljs-meta .hljs-string {
+    color: #ce9178;
+}
+
+/* Numbers - light green */
+.hljs-number,
+.hljs-literal,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag .hljs-attr {
+    color: #b5cea8;
+}
+
+/* Functions - bright gold */
+.hljs-title,
+.hljs-title.function_,
+.hljs-section,
+.hljs-selector-id {
+    color: #dcdcaa;
+    font-weight: 600;
+}
+
+/* Types/Classes - teal */
+.hljs-type,
+.hljs-class .hljs-title,
+.hljs-built_in,
+.hljs-title.class_ {
+    color: #4ec9b0;
+}
+
+/* Attributes - light blue */
+.hljs-attr,
+.hljs-attribute {
+    color: #9cdcfe;
+}
+
+/* Operators and punctuation */
+.hljs-symbol,
+.hljs-bullet,
+.hljs-subst,
+.hljs-meta,
+.hljs-link {
+    color: #d4d4d4;
+}
+
+/* Built-in names - purple */
+.hljs-built_in,
+.hljs-builtin-name {
+    color: #c586c0;
+}
+
+/* Deletion - red */
+.hljs-deletion {
+    color: #f44747;
+}
+
+/* ── Language-specific overrides ──────────────────────── */
+
+/* SQL keywords get blue; built-ins get gold */
+.hljs-keyword {
+    color: #569cd6;
+}
+
+.language-sql .hljs-built_in {
+    color: #ffd700;
+}
+
+/* Python */
+.language-python .hljs-keyword {
+    color: #c586c0;
+}
+
+.language-python .hljs-built_in {
+    color: #4ec9b0;
+}
+
+/* YAML keys */
+.language-yaml .hljs-attr {
+    color: #9cdcfe;
+}
+
+/* JSON keys */
+.language-json .hljs-attr {
+    color: #9cdcfe;
+}
+
+/* Bash/Shell */
+.language-bash .hljs-variable {
+    color: #9cdcfe;
+}
+
+.language-bash .hljs-built_in {
+    color: #ffd700;
+}
+
+/* PHP */
+.language-php .hljs-keyword {
+    color: #c586c0;
+}
+
+.language-php .hljs-variable {
+    color: #9cdcfe;
+}
+
+/* ── Emphasis ─────────────────────────────────────────── */
+
+.hljs-emphasis {
+    font-style: italic;
+}
+
+.hljs-strong {
+    font-weight: bold;
+}
+
+/* ── Line numbers (optional) ──────────────────────────── */
+
+.hljs-ln-numbers {
+    color: #606060;
+    border-right: 1px solid #404040;
+    padding-right: 0.5rem;
+    margin-right: 0.5rem;
+    user-select: none;
+}
