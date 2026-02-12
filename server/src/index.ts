@@ -528,20 +528,24 @@ app.use(async (req, res, next) => {
 
       // Set epc_visible_apps cookie for shared header app-switcher
       if (!req.cookies['epc_visible_apps']) {
-        getUserVisibleApps(payload.email, token).then((visibleApps) => {
-          if (visibleApps.length > 0) {
-            const cookieDomain = getCookieDomain();
-            const cookieOpts: express.CookieOptions = {
-              path: '/',
-              httpOnly: false,
-              sameSite: 'lax',
-              secure: !!cookieDomain,
-              maxAge: 86400 * 1000,
-            };
-            if (cookieDomain) cookieOpts.domain = cookieDomain;
-            res.cookie('epc_visible_apps', visibleApps.join(','), cookieOpts);
-          }
-        });
+        getUserVisibleApps(payload.email, token)
+          .then((visibleApps) => {
+            if (visibleApps.length > 0) {
+              const cookieDomain = getCookieDomain();
+              const cookieOpts: express.CookieOptions = {
+                path: '/',
+                httpOnly: false,
+                sameSite: 'lax',
+                secure: !!cookieDomain,
+                maxAge: 86400 * 1000,
+              };
+              if (cookieDomain) cookieOpts.domain = cookieDomain;
+              res.cookie('epc_visible_apps', visibleApps.join(','), cookieOpts);
+            }
+          })
+          .catch((err) => {
+            console.error('[Auth] Failed to set visible apps cookie:', err);
+          });
       }
     }
     next();
