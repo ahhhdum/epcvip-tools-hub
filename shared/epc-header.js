@@ -39,7 +39,11 @@
   function getVisibleAppIds() {
     var match = document.cookie.match(/(?:^|;\s*)epc_visible_apps=([^;]*)/);
     if (!match) return null;
-    return decodeURIComponent(match[1]).split(',');
+    try {
+      return decodeURIComponent(match[1]).split(',');
+    } catch (e) {
+      return null;
+    }
   }
 
   function getFilteredNavItems() {
