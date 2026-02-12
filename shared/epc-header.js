@@ -19,16 +19,44 @@
 
   /* ── Nav items (single source of truth) ───────── */
   var NAV_ITEMS = [
-    { id: 'tools-hub',       icon: '\u{1F3E0}', label: 'Tools Hub',          url: 'https://epcvip.vip' },
-    { id: 'ping-tree',       icon: '\u{1F333}', label: 'Ping Tree Compare',  url: 'https://compare.epcvip.vip' },
-    { id: 'experiments',     icon: '\u{1F9EA}', label: 'Experiments',         url: 'https://xp.epcvip.vip' },
-    { id: 'athena',          icon: '\u26A1',     label: 'Athena Monitor',     url: 'https://athena.epcvip.vip' },
-    { id: 'reports',         icon: '\u{1F4CA}', label: 'Reports Dashboard',   url: 'https://reports.epcvip.vip' },
-    { id: 'funnel-analyzer', icon: '\u{1F50D}', label: 'Funnel Analyzer',    url: 'https://tools.epcvip.vip' },
-    { id: 'docs',            icon: '\u{1F4D6}', label: 'Documentation',      url: 'https://docs.epcvip.vip' },
-    { id: 'admin',           icon: '\u{1F527}', label: 'Admin',              url: 'https://admin.epcvip.vip' },
-    { id: 'funnel-lab',      icon: '\u{1F9E9}', label: 'Funnel Lab',         url: 'https://funnel-lab.epcvip.vip' },
+    { id: 'tools-hub',       appId: 'tools-hub',            icon: '\u{1F3E0}', label: 'Tools Hub',          url: 'https://epcvip.vip' },
+    { id: 'ping-tree',       appId: 'ping-tree-compare',    icon: '\u{1F333}', label: 'Ping Tree Compare',  url: 'https://compare.epcvip.vip' },
+    { id: 'experiments',     appId: 'experiments-dashboard', icon: '\u{1F9EA}', label: 'Experiments',         url: 'https://xp.epcvip.vip' },
+    { id: 'athena',          appId: 'athena-monitor',       icon: '\u26A1',     label: 'Athena Monitor',     url: 'https://athena.epcvip.vip' },
+    { id: 'reports',         appId: 'reports-dashboard',    icon: '\u{1F4CA}', label: 'Reports Dashboard',   url: 'https://reports.epcvip.vip' },
+    { id: 'funnel-analyzer', appId: 'funnel-analyzer',      icon: '\u{1F50D}', label: 'Funnel Analyzer',    url: 'https://tools.epcvip.vip' },
+    { id: 'docs',            appId: 'docs-site',            icon: '\u{1F4D6}', label: 'Documentation',      url: 'https://docs.epcvip.vip' },
+    { id: 'admin',           appId: 'epcvip-admin',         icon: '\u{1F527}', label: 'Admin',              url: 'https://admin.epcvip.vip' },
+    { id: 'funnel-lab',      appId: 'funnel-step-lab',      icon: '\u{1F9E9}', label: 'Funnel Lab',         url: 'https://funnel-lab.epcvip.vip' },
   ];
+
+  /* ── Visibility filtering ───────────────────────── */
+  var DEFAULT_APP_IDS = [
+    'tools-hub', 'ping-tree-compare', 'experiments-dashboard',
+    'athena-monitor', 'reports-dashboard', 'funnel-analyzer'
+  ];
+
+  function getVisibleAppIds() {
+    var match = document.cookie.match(/(?:^|;\s*)epc_visible_apps=([^;]*)/);
+    if (!match) return null;
+    try {
+      return decodeURIComponent(match[1]).split(',');
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function getFilteredNavItems() {
+    var visible = getVisibleAppIds();
+    if (!visible) {
+      return NAV_ITEMS.filter(function(item) {
+        return DEFAULT_APP_IDS.indexOf(item.appId) !== -1;
+      });
+    }
+    return NAV_ITEMS.filter(function(item) {
+      return visible.indexOf(item.appId) !== -1;
+    });
+  }
 
   var currentTool = document.body.dataset.current || '';
 
@@ -38,9 +66,10 @@
 
   function populateDropdown() {
     if (!dropdown) return;
+    var items = getFilteredNavItems();
     var html = '';
-    for (var i = 0; i < NAV_ITEMS.length; i++) {
-      var item = NAV_ITEMS[i];
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i];
       var isCurrent = item.id === currentTool;
       html +=
         '<a class="epc-switcher-item' + (isCurrent ? ' is-current' : '') + '"' +
