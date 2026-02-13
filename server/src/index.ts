@@ -160,14 +160,16 @@ app.use(
   })
 );
 
-// Serve shared assets with long cache + immutable headers
+// Serve shared assets with short cache + stale-while-revalidate for fast propagation
 app.use(
   '/shared',
   express.static(sharedPath, {
-    maxAge: '1y',
-    immutable: true,
+    maxAge: 300,
     setHeaders: (res) => {
-      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      res.setHeader(
+        'Cache-Control',
+        'public, max-age=300, stale-while-revalidate=86400, stale-if-error=86400'
+      );
     },
   })
 );

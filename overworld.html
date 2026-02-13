@@ -12,24 +12,9 @@
         // No redirect needed - Supabase SDK will detect the hash and handle password update
     </script>
 </head>
-<body data-current="tools-hub" data-epc-app="Tools Hub">
-    <!-- EPCVIP Shared Header -->
-    <header class="epc-header">
-        <button class="epc-header-app-switcher" id="epc-app-switcher" type="button" aria-label="Switch app" aria-expanded="false">
-            <svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
-        </button>
-        <div class="epc-header-brand">
-            <a class="epc-header-logo" href="https://epcvip.vip">EPCVIP</a>
-            <span class="epc-header-separator">/</span>
-            <span class="epc-header-app-name">Tools Hub</span>
-        </div>
-        <div class="epc-header-spacer"></div>
-        <div class="epc-header-user">
-            <span id="userEmail"></span>
-            <a class="epc-header-signout" href="/logout">Sign out</a>
-        </div>
-    </header>
-    <div id="epc-app-switcher-dropdown" class="epc-app-switcher-dropdown" hidden></div>
+<body>
+    <script>function logout() { window.location.href = '/logout'; }</script>
+    <epc-header current="tools-hub" app-name="Tools Hub"></epc-header>
     <div class="gameboy-frame">
         <div class="screen-frame">
             <div class="title-bar">EPCVIP TOOLS</div>

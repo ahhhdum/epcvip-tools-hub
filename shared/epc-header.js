@@ -1,15 +1,21 @@
 /**
- * EPCVIP Shared Header
- * App switcher dropdown, sidebar toggle event dispatch, current app detection.
+ * EPCVIP Shared Header — Web Component + Legacy Enhancement
  *
- * Configuration:
- *   body[data-epc-app]   — display name for the current app (e.g. "Documentation")
- *   body[data-current]   — tool id for highlighting in the switcher (e.g. "docs")
+ * Usage (new — web component):
+ *   <epc-header current="tool-id" app-name="App Name"></epc-header>
+ *   The element generates header markup in light DOM on connect.
+ *
+ * Usage (legacy — existing markup):
+ *   <header class="epc-header" id="epc-header">...</header>
+ *   <div class="epc-app-switcher-dropdown" id="epc-app-switcher-dropdown" hidden></div>
+ *   body[data-current]  — tool id for highlighting
+ *   body[data-epc-app]  — display name
  *
  * Custom events dispatched:
  *   "epc-header:sidebar-toggle"  — fired on document when sidebar toggle is clicked
  *
  * Public API:
+ *   window.epcHeader.setUser(email, logoutFn)
  *   window.epcHeader.toggleSidebar()
  *   window.epcHeader.openSwitcher()
  *   window.epcHeader.closeSwitcher()
@@ -58,14 +64,20 @@
     });
   }
 
-  var currentTool = document.body.dataset.current || '';
+  /* ── HTML escape ───────────────────────────────── */
+  var _escEl = document.createElement('div');
+  function esc(str) {
+    _escEl.textContent = str;
+    return _escEl.innerHTML;
+  }
 
-  /* ── App switcher dropdown ────────────────────── */
-  var switcherBtn = document.getElementById('epc-app-switcher');
-  var dropdown = document.getElementById('epc-app-switcher-dropdown');
+  /* ── Shared state ──────────────────────────────── */
+  var _switcherBtn = null;
+  var _dropdown = null;
 
-  function populateDropdown() {
-    if (!dropdown) return;
+  /* ── Dropdown ───────────────────────────────────── */
+  function populateDropdown(currentTool) {
+    if (!_dropdown) return;
     var items = getFilteredNavItems();
     var html = '';
     for (var i = 0; i < items.length; i++) {
@@ -80,70 +92,127 @@
         (isCurrent ? '<span class="epc-switcher-current" aria-label="Current app"></span>' : '') +
         '</a>';
     }
-    dropdown.innerHTML = html;
+    _dropdown.innerHTML = html;
   }
 
   function openSwitcher() {
-    if (!dropdown || !switcherBtn) return;
-    dropdown.hidden = false;
-    switcherBtn.setAttribute('aria-expanded', 'true');
+    if (!_dropdown || !_switcherBtn) return;
+    _dropdown.hidden = false;
+    _switcherBtn.setAttribute('aria-expanded', 'true');
   }
 
   function closeSwitcher() {
-    if (!dropdown || !switcherBtn) return;
-    dropdown.hidden = true;
-    switcherBtn.setAttribute('aria-expanded', 'false');
+    if (!_dropdown || !_switcherBtn) return;
+    _dropdown.hidden = true;
+    _switcherBtn.setAttribute('aria-expanded', 'false');
   }
 
   function toggleSwitcher() {
-    if (!dropdown) return;
-    if (dropdown.hidden) {
-      openSwitcher();
-    } else {
-      closeSwitcher();
-    }
+    if (!_dropdown) return;
+    if (_dropdown.hidden) { openSwitcher(); } else { closeSwitcher(); }
   }
 
-  if (switcherBtn) {
-    switcherBtn.addEventListener('click', function (e) {
-      e.stopPropagation();
-      toggleSwitcher();
-    });
-  }
-
-  // Close on outside click
-  document.addEventListener('click', function (e) {
-    if (!dropdown || dropdown.hidden) return;
-    if (switcherBtn && switcherBtn.contains(e.target)) return;
-    if (dropdown.contains(e.target)) return;
-    closeSwitcher();
-  });
-
-  // Close on Escape
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && dropdown && !dropdown.hidden) {
-      closeSwitcher();
-      if (switcherBtn) switcherBtn.focus();
-    }
-  });
-
-  populateDropdown();
-
-  /* ── Sidebar toggle ───────────────────────────── */
-  var sidebarToggleBtn = document.getElementById('epc-sidebar-toggle');
-
+  /* ── Sidebar toggle ────────────────────────────── */
   function toggleSidebar() {
     document.dispatchEvent(new CustomEvent('epc-header:sidebar-toggle'));
   }
 
-  if (sidebarToggleBtn) {
-    sidebarToggleBtn.addEventListener('click', toggleSidebar);
+  /* ── setUser convenience API ───────────────────── */
+  function setUser(email, logoutFn) {
+    var el = document.getElementById('userEmail');
+    if (el) el.textContent = email || '';
+    if (typeof logoutFn === 'function') {
+      window.logout = logoutFn;
+    }
   }
 
-  /* ── Public API ───────────────────────────────── */
+  /* ── Wire up behavior on existing DOM ──────────── */
+  function initBehavior(currentTool) {
+    _switcherBtn = document.getElementById('epc-app-switcher');
+    _dropdown = document.getElementById('epc-app-switcher-dropdown');
+
+    if (_switcherBtn) {
+      _switcherBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        toggleSwitcher();
+      });
+    }
+
+    populateDropdown(currentTool);
+
+    var sidebarToggleBtn = document.getElementById('epc-sidebar-toggle');
+    if (sidebarToggleBtn) {
+      sidebarToggleBtn.addEventListener('click', toggleSidebar);
+    }
+  }
+
+  /* ── Web Component: <epc-header> ───────────────── */
+  class EpcHeader extends HTMLElement {
+    connectedCallback() {
+      if (this.querySelector('.epc-header')) return;
+
+      var current = this.getAttribute('current') || '';
+      var appName = this.getAttribute('app-name') || '';
+
+      this.innerHTML =
+        '<header class="epc-header" id="epc-header">' +
+          '<button class="epc-header-app-switcher" id="epc-app-switcher" type="button"' +
+          ' aria-label="App switcher" aria-expanded="false">' +
+            '<svg viewBox="0 0 24 24" fill="currentColor">' +
+              '<rect x="3" y="3" width="7" height="7" rx="1.5"/>' +
+              '<rect x="14" y="3" width="7" height="7" rx="1.5"/>' +
+              '<rect x="3" y="14" width="7" height="7" rx="1.5"/>' +
+              '<rect x="14" y="14" width="7" height="7" rx="1.5"/>' +
+            '</svg>' +
+          '</button>' +
+          '<div class="epc-header-brand">' +
+            '<a href="https://epcvip.vip" class="epc-header-logo">EPCVIP</a>' +
+            '<span class="epc-header-separator">/</span>' +
+            '<span class="epc-header-app-name">' + esc(appName) + '</span>' +
+          '</div>' +
+          '<div class="epc-header-spacer"></div>' +
+          '<div class="epc-header-user">' +
+            '<span id="userEmail"></span>' +
+            '<a href="#" class="epc-header-signout" onclick="logout(); return false;">Sign out</a>' +
+          '</div>' +
+        '</header>' +
+        '<div class="epc-app-switcher-dropdown" id="epc-app-switcher-dropdown" hidden></div>';
+
+      initBehavior(current);
+    }
+  }
+
+  /* ── Global event listeners ────────────────────── */
+  document.addEventListener('click', function (e) {
+    if (!_dropdown || _dropdown.hidden) return;
+    if (_switcherBtn && _switcherBtn.contains(e.target)) return;
+    if (_dropdown.contains(e.target)) return;
+    closeSwitcher();
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && _dropdown && !_dropdown.hidden) {
+      closeSwitcher();
+      if (_switcherBtn) _switcherBtn.focus();
+    }
+  });
+
+  /* ── Legacy path: enhance existing <header class="epc-header"> ── */
+  if (!document.querySelector('epc-header')) {
+    var currentTool = document.body.dataset.current || '';
+    initBehavior(currentTool);
+  }
+
+  /* ── Public API ────────────────────────────────── */
   window.epcHeader = {
+    setUser: setUser,
     toggleSidebar: toggleSidebar,
     openSwitcher: openSwitcher,
     closeSwitcher: closeSwitcher,
   };
+
+  /* ── Register custom element ───────────────────── */
+  if (!customElements.get('epc-header')) {
+    customElements.define('epc-header', EpcHeader);
+  }
 })();

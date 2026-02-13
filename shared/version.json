@@ -1,12 +1,11 @@
 {
-  "version": "1.2.0",
-  "updated": "2026-02-11",
+  "version": "2.0.0",
+  "updated": "2026-02-12",
   "files": {
     "css": "epc-sidebar.css",
     "js": "epc-sidebar.js",
     "html": "epc-sidebar.html",
     "header-css": "epc-header.css",
-    "header-js": "epc-header.js",
-    "header-html": "epc-header.html"
+    "header-js": "epc-header.js"
   }
 }
