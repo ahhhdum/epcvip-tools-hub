@@ -21,6 +21,10 @@
   --epc-z-switcher: 250;
 }
 
+epc-header {
+  display: block;
+}
+
 /* ── Header bar ─────────────────────────────────── */
 
 .epc-header {

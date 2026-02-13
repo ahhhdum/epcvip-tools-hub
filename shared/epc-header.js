@@ -197,6 +197,11 @@
     }
   });
 
+  /* ── Register custom element ───────────────────── */
+  if (!customElements.get('epc-header')) {
+    customElements.define('epc-header', EpcHeader);
+  }
+
   /* ── Legacy path: enhance existing <header class="epc-header"> ── */
   if (!document.querySelector('epc-header')) {
     var currentTool = document.body.dataset.current || '';
@@ -210,9 +215,4 @@
     openSwitcher: openSwitcher,
     closeSwitcher: closeSwitcher,
   };
-
-  /* ── Register custom element ───────────────────── */
-  if (!customElements.get('epc-header')) {
-    customElements.define('epc-header', EpcHeader);
-  }
 })();
