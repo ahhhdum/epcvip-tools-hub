@@ -118,7 +118,7 @@ res.status(400).json({ error: 'Invalid request', code: 'BAD_REQUEST' });
 2. **Implementation**: Follow STANDARDS.md, write tests for new code
 3. **Review**: Run `/review-recent` before committing
 4. **Commit**: Pre-commit hook runs lint + format
-5. **Deploy**: Push to main triggers Railway deploy
+5. **Deploy**: Use `bash scripts/deploy-prod.sh` (validates Railway linkage before deploy)
 
 ## Deployment (Railway)
 
@@ -131,6 +131,30 @@ Direct links (custom domains):
 - compare.epcvip.vip → Ping Tree Compare
 - reports.epcvip.vip → Reports Dashboard
 - fwaptile.com → Wordle Battle (separate repo)
+
+## Railway Deploy Safety
+
+⚠️ **This service shares a Railway project with docs-site.** Deploying from the wrong directory will overwrite the wrong service.
+
+Production mapping (do not deviate):
+
+| Repo | Railway Project | Service | Domain |
+|------|------------------|---------|--------|
+| `utilities/epcvip-tools-hub` | `epcvip.vip \| Hub` | `epcvip-tools-hub` | `epcvip.vip` |
+| `utilities/docs-site` | `epcvip.vip \| Hub` | `docs-site` | `docs.epcvip.vip` |
+
+Always deploy tools-hub with:
+
+```bash
+bash scripts/deploy-prod.sh
+```
+
+`deploy-prod.sh` blocks deploys unless all checks pass:
+- linked project ID is `8776c23c-21f9-49e6-ac92-51368ba38d50`
+- linked service is `epcvip-tools-hub`
+- linked environment is `production`
+- linked public domain is `epcvip.vip`
+- repo signature matches Node tools-hub (not Python docs-site)
 
 ## Documentation
 
