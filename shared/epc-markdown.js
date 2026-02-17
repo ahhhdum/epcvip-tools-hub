@@ -182,4 +182,9 @@
     _highlightCode: highlightCode,
     _wrapTables: wrapTables,
   };
+
+  // Drain any plugins that queued before this module loaded
+  var pending = (window.epcMarkdown && window.epcMarkdown._pending) || [];
+  for (var k = 0; k < pending.length; k++) { use(pending[k]); }
+  delete window.epcMarkdown._pending;
 })();
