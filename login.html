@@ -281,7 +281,8 @@
                     // SSO: Set cookie with shared domain for production
                     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
                     const cookieDomain = isLocalhost ? '' : '; domain=.epcvip.vip';
-                    document.cookie = `sb-access-token=${session.access_token}; path=/${cookieDomain}; SameSite=Lax; Secure`;
+                    const secureAttr = isLocalhost ? '' : '; Secure';
+                    document.cookie = `sb-access-token=${session.access_token}; path=/${cookieDomain}; SameSite=Lax${secureAttr}`;
 
                     // Redirect to returnUrl if available (validated)
                     const savedReturnUrl = sessionStorage.getItem('sso_returnUrl');
