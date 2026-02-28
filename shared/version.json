@@ -1,14 +1,23 @@
 {
-  "version": "2.1.0",
-  "updated": "2026-02-16",
+  "version": "2.2.0",
+  "updated": "2026-02-27",
   "files": {
     "css": "epc-sidebar.css",
     "js": "epc-sidebar.js",
     "html": "epc-sidebar.html",
     "header-css": "epc-header.css",
     "header-js": "epc-header.js",
+    "tokens-css": "epc-tokens.css",
     "markdown-css": "epc-markdown.css",
     "markdown-js": "epc-markdown.js",
-    "hljs-css": "epc-hljs.css"
+    "hljs-css": "epc-hljs.css",
+    "plugin-blocks-css": "epc-markdown-plugin-blocks.css",
+    "plugin-significance-css": "epc-markdown-plugin-significance.css",
+    "plugin-significance-js": "epc-markdown-plugin-significance.js",
+    "plugin-decision-banner-js": "epc-markdown-plugin-decision-banner.js",
+    "plugin-metric-cards-js": "epc-markdown-plugin-metric-cards.js",
+    "plugin-checks-js": "epc-markdown-plugin-checks.js",
+    "plugin-slack-tables-js": "epc-markdown-plugin-slack-tables.js",
+    "plugin-toc-js": "epc-markdown-plugin-toc.js"
   }
 }

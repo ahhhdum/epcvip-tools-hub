@@ -356,6 +356,76 @@
     font-style: italic;
 }
 
+/* ── Typography Enhancements ─────────────────────────── */
+/* Butterick: tabular figures for numeric alignment */
+/* Tufte: maximize data-ink ratio, context with numbers  */
+
+/* Tabular figures in table cells — numbers align vertically */
+.markdown-content td {
+    font-variant-numeric: tabular-nums;
+}
+
+/* Right-align cells that contain primarily numeric content.
+   Applies to cells with text-align: right from markdown syntax
+   (e.g., pipes with right-aligned colons: ---:) */
+.markdown-content td[align="right"],
+.markdown-content th[align="right"] {
+    font-variant-numeric: tabular-nums;
+    font-family: "SF Mono", Monaco, Consolas, monospace;
+    font-size: 0.875em;
+}
+
+/* Improved heading hierarchy — greater contrast between levels */
+.markdown-content h2 {
+    margin-top: 2.5rem;
+}
+
+.markdown-content h3 {
+    margin-top: 1.75rem;
+    color: var(--text-primary);
+}
+
+.markdown-content h4 {
+    margin-top: 1.25rem;
+    font-size: 1rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+    letter-spacing: 0.01em;
+}
+
+/* Tufte-inspired minimal table variant */
+.markdown-content .table-wrapper.table-minimal table,
+.markdown-content table.table-minimal {
+    border: none;
+    border-radius: 0;
+}
+
+.markdown-content .table-wrapper.table-minimal th,
+.markdown-content table.table-minimal th {
+    border: none;
+    border-bottom: 2px solid var(--text-primary);
+    background: transparent;
+    padding-bottom: 0.5rem;
+}
+
+.markdown-content .table-wrapper.table-minimal td,
+.markdown-content table.table-minimal td {
+    border: none;
+    border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+    padding: 0.6rem 1rem;
+}
+
+.markdown-content .table-wrapper.table-minimal tbody tr:hover,
+.markdown-content table.table-minimal tbody tr:hover {
+    background: rgba(255, 215, 0, 0.03);
+}
+
+/* Improved table cell padding for readability (Butterick) */
+.markdown-content th,
+.markdown-content td {
+    padding: 0.6rem 1rem;
+}
+
 /* ── Mobile ───────────────────────────────────────────── */
 
 @media (max-width: 768px) {

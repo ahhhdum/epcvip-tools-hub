@@ -85,20 +85,47 @@ Currently, sidebar HTML is manually synced. See `scripts/sync-sidebar.sh` for re
 
 Shared markdown rendering pipeline with a plugin architecture. Provides consistent markdown styling and behavior across apps that render markdown content.
 
-### Files
+### Core Files
 
 | File | Purpose | CDN URL |
 |------|---------|---------|
+| `epc-tokens.css` | Shared CSS custom properties (design tokens) | `epcvip.vip/shared/epc-tokens.css` |
 | `epc-markdown.css` | Styles for `.markdown-content` containers | `epcvip.vip/shared/epc-markdown.css` |
 | `epc-markdown.js` | Rendering pipeline with plugin hooks | `epcvip.vip/shared/epc-markdown.js` |
 | `epc-hljs.css` | Dark theme for highlight.js code blocks | `epcvip.vip/shared/epc-hljs.css` |
 
+### Shared Plugins
+
+Plugins that implement the EPCVIP directive syntax (`:::decision`, `:::metric`, `:::check`). These are the shared rendering layer — any app loading these gets our directive styling.
+
+| File | Plugin Name | Purpose |
+|------|-------------|---------|
+| `epc-markdown-plugin-blocks.css` | (CSS) | Styles for decision banners, metric cards, check tables |
+| `epc-markdown-plugin-significance.css` | (CSS) | Significance highlighting colors |
+| `epc-markdown-plugin-significance.js` | `xp-significance` | Text-node significance highlighting |
+| `epc-markdown-plugin-decision-banner.js` | `xp-decision-banner` | `:::decision[STATUS]` runtime rendering |
+| `epc-markdown-plugin-metric-cards.js` | `xp-metric-cards` | `:::metric[name\|value\|stat\|status]` rendering |
+| `epc-markdown-plugin-checks.js` | `xp-checks` | `:::check` / `:::guardrail` rendering (4 display modes) |
+| `epc-markdown-plugin-slack-tables.js` | `xp-slack-tables` | Copy-for-Slack button on tables |
+| `epc-markdown-plugin-toc.js` | `epc-toc` | Floating TOC (desktop) + mobile accordion |
+
+**Directive syntax spec:** See [`DIRECTIVE_SPEC.md`](DIRECTIVE_SPEC.md) for the full contract.
+
+### App-Specific Plugins (not shared)
+
+| App | Plugin | Why Local |
+|-----|--------|-----------|
+| experiments-dashboard | `xp-link-handling` | Coupled to XP's file-viewer modal |
+| docs-site | `docs-assets` | Coupled to docs-site's asset routing |
+| docs-site | `docs-mermaid` | Depends on mermaid.js (docs-site only) |
+
 ### Apps Using Markdown
 
-| App | Plugins | Fallback Paths |
-|-----|---------|----------------|
-| **Experiments Dashboard** (`xp.epcvip.vip`) | significance, link-handling, slack-tables | `static/{js,css}/shared/`, `static/css/hljs-epcvip.css` |
-| **Docs Site** (`docs.epcvip.vip`) | toc, mermaid, assets | `static/js/shared/`, `static/css/markdown.css`, `static/css/hljs-epcvip.css` |
+| App | Shared Plugins | App-Specific | Fallback Paths |
+|-----|---------------|--------------|----------------|
+| **Experiments Dashboard** (`xp.epcvip.vip`) | All 7 shared | link-handling | `static/{js,css}/shared/`, `static/css/hljs-epcvip.css` |
+| **Docs Site** (`docs.epcvip.vip`) | All 7 shared | assets, mermaid | `static/js/shared/`, `static/css/markdown.css`, `static/css/hljs-epcvip.css` |
+| **VS Code Extension** | None (forked for markdown-it) | All custom | No CDN (offline) |
 
 > **Note:** Fallback filenames differ between consumers (legacy naming). The sync script handles this automatically.
 
@@ -128,17 +155,21 @@ window.epcMarkdown.render({
 
 ### CSS Design Tokens
 
-`epc-markdown.css` references CSS custom properties that must be defined by the consumer app's own `:root` styles:
+`epc-markdown.css` and all plugins reference CSS custom properties. Two options:
+
+1. **Load `epc-tokens.css`** — provides EPCVIP brand defaults (dark theme on `:root`, light via `[data-theme="light"]`)
+2. **Define your own `:root`** — override with your app's theme
 
 ```css
-/* Required by epc-markdown.css */
+/* Required by epc-markdown.css + plugins */
 --bg-primary, --bg-secondary, --bg-tertiary, --bg-elevated
---text-primary, --text-secondary, --text-muted
---accent-primary, --accent-primary-hover
---border-primary, --border-secondary
+--text-primary, --text-secondary, --text-muted, --text-disabled
+--accent-primary, --accent-primary-hover, --accent-primary-dark
+--border-primary, --border-secondary, --border-subtle
+--success, --success-bg, --warning, --warning-bg, --error, --error-bg, --info, --info-bg
 ```
 
-If your app doesn't define these, the markdown will render without colors. See the EPCVIP Design System for the standard dark-theme values.
+If your app doesn't define these and doesn't load `epc-tokens.css`, the markdown will render without colors.
 
 ### Plugin Interface
 
@@ -191,14 +222,17 @@ Plugins are app-specific scripts that extend the shared renderer. They live in e
 
 **The `_pending` queue pattern is required.** Without it, plugins that load before `epc-markdown.js` (the fallback path in local dev) will silently fail — `window.epcMarkdown.use` doesn't exist yet, the call throws, and the plugin never registers. The queue pattern stores the plugin, and `epc-markdown.js` drains the queue on initialization.
 
-**Existing plugins by app:**
+**Plugin inventory:**
 
-| App | Plugin | Purpose |
-|-----|--------|---------|
-| experiments-dashboard | `xp-significance` | Highlights statistical significance keywords |
+| Location | Plugin | Purpose |
+|----------|--------|---------|
+| **CDN (shared)** | `xp-significance` | Statistical significance text highlighting |
+| **CDN (shared)** | `xp-decision-banner` | `:::decision` block rendering |
+| **CDN (shared)** | `xp-metric-cards` | `:::metric` card rendering |
+| **CDN (shared)** | `xp-checks` | `:::check` / `:::guardrail` rendering |
+| **CDN (shared)** | `xp-slack-tables` | Copy-for-Slack table button |
+| **CDN (shared)** | `epc-toc` | Floating TOC + mobile accordion |
 | experiments-dashboard | `xp-link-handling` | Rewrites relative links for test file viewer |
-| experiments-dashboard | `xp-slack-tables` | Formats Slack-pasted tables |
-| docs-site | `docs-toc` | Floating table of contents panel |
 | docs-site | `docs-mermaid` | Mermaid diagram rendering |
 | docs-site | `docs-assets` | Rewrites asset paths for doc images |
 
@@ -259,9 +293,9 @@ The `createElement`/`appendChild` approach loads the fallback **asynchronously**
 
 Consumer HTML files reference shared assets with a `?v=X.Y.Z` query parameter for cache busting. After bumping `version.json`, update these references:
 
-| Consumer | File |
-|----------|------|
-| experiments-dashboard | `static/test.html` |
+| Consumer | Files |
+|----------|-------|
+| experiments-dashboard | `static/test.html`, `static/guide-markdown.html`, `static/template-sandbox.html`, `static/template-sandbox-checks.html` |
 | docs-site | `templates/doc_viewer_markdown.html` |
 
 ---
@@ -272,24 +306,37 @@ To add markdown rendering to a new EPCVIP app:
 
 1. **Add CSS** to `<head>`:
    ```html
-   <link rel="stylesheet" href="https://epcvip.vip/shared/epc-hljs.css?v=1.4.0"
+   <link rel="stylesheet" href="https://epcvip.vip/shared/epc-tokens.css?v=1.0.0"
+         onerror="this.onerror=null; this.href='/static/css/shared/epc-tokens.css';">
+   <link rel="stylesheet" href="https://epcvip.vip/shared/epc-hljs.css?v=2.1.0"
          onerror="this.onerror=null; this.href='/static/css/hljs-epcvip.css';">
-   <link rel="stylesheet" href="https://epcvip.vip/shared/epc-markdown.css?v=1.4.0"
+   <link rel="stylesheet" href="https://epcvip.vip/shared/epc-markdown.css?v=2.2.0"
          onerror="this.onerror=null; this.href='/static/css/shared/epc-markdown.css';">
+   <link rel="stylesheet" href="https://epcvip.vip/shared/epc-markdown-plugin-significance.css?v=1.0.0"
+         onerror="this.onerror=null; this.href='/static/css/epc-markdown-plugin-significance.css';">
+   <link rel="stylesheet" href="https://epcvip.vip/shared/epc-markdown-plugin-blocks.css?v=1.0.0"
+         onerror="this.onerror=null; this.href='/static/css/epc-markdown-plugin-blocks.css';">
    ```
 
 2. **Add JS** before `</body>` (after `marked.js` and `highlight.js`):
    ```html
-   <script src="https://epcvip.vip/shared/epc-markdown.js?v=1.4.0"></script>
+   <script src="https://epcvip.vip/shared/epc-markdown.js?v=2.2.0"></script>
    <script>window.epcMarkdown || document.write('<script src="/static/js/shared/epc-markdown.js"><\/script>');</script>
+   <!-- Add plugins as needed (each with its own fallback) -->
+   <script src="https://epcvip.vip/shared/epc-markdown-plugin-checks.js?v=1.0.0"></script>
+   <script>(window.epcMarkdown && window.epcMarkdown._plugins['xp-checks']) || document.write('<script src="/static/js/plugins/epc-markdown-plugin-checks.js"><\/script>');</script>
+   <!-- Repeat for other plugins: significance, decision-banner, metric-cards, slack-tables, toc -->
    ```
 
 3. **Create fallback copies:**
    ```bash
-   mkdir -p static/js/shared static/css/shared
+   mkdir -p static/js/shared static/js/plugins static/css/shared
    cp PATH_TO/epcvip-tools-hub/shared/epc-markdown.js static/js/shared/
    cp PATH_TO/epcvip-tools-hub/shared/epc-markdown.css static/css/shared/
+   cp PATH_TO/epcvip-tools-hub/shared/epc-tokens.css static/css/shared/
    cp PATH_TO/epcvip-tools-hub/shared/epc-hljs.css static/css/hljs-epcvip.css
+   cp PATH_TO/epcvip-tools-hub/shared/epc-markdown-plugin-*.{css,js} static/js/plugins/
+   cp PATH_TO/epcvip-tools-hub/shared/epc-markdown-plugin-*.css static/css/
    ```
 
 4. **Add sync target** in `scripts/sync-shared.sh`

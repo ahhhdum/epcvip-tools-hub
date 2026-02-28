@@ -1,0 +1,758 @@
+/**
+ * Block Plugin Styles
+ * Used by: epc-markdown-plugin-decision-banner.js
+ *          epc-markdown-plugin-metric-cards.js
+ *          epc-markdown-plugin-checks.js (unified — handles both critical/guardrail and regular checks)
+ *
+ * Uses EPCVIP design tokens (CSS custom properties).
+ */
+
+/* ── Decision Banner ──────────────────────────────────── */
+
+.decision-banner {
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+    margin: 1.5rem 0;
+    border-left: 4px solid;
+}
+
+.decision-banner-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.decision-banner-icon {
+    font-size: 1.25rem;
+    font-weight: 700;
+    width: 1.75rem;
+    height: 1.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+.decision-banner-status {
+    font-size: 1.1rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.decision-banner-rationale {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: var(--text-secondary);
+}
+
+/* Decision status variants */
+
+.decision-implement {
+    background: var(--success-bg);
+    border-color: var(--success);
+}
+.decision-implement .decision-banner-icon {
+    background: var(--success);
+    color: var(--bg-primary);
+}
+.decision-implement .decision-banner-status {
+    color: var(--success);
+}
+
+.decision-revert {
+    background: var(--error-bg);
+    border-color: var(--error);
+}
+.decision-revert .decision-banner-icon {
+    background: var(--error);
+    color: var(--bg-primary);
+}
+.decision-revert .decision-banner-status {
+    color: var(--error);
+}
+
+.decision-inconclusive {
+    background: var(--warning-bg);
+    border-color: var(--warning);
+}
+.decision-inconclusive .decision-banner-icon {
+    background: var(--warning);
+    color: var(--bg-primary);
+}
+.decision-inconclusive .decision-banner-status {
+    color: var(--warning);
+}
+
+.decision-pending {
+    background: rgba(160, 160, 160, 0.1);
+    border-color: var(--text-muted);
+}
+.decision-pending .decision-banner-icon {
+    background: var(--text-muted);
+    color: var(--bg-primary);
+}
+.decision-pending .decision-banner-status {
+    color: var(--text-muted);
+}
+
+.decision-extend {
+    background: var(--info-bg);
+    border-color: var(--info);
+}
+.decision-extend .decision-banner-icon {
+    background: var(--info);
+    color: var(--bg-primary);
+}
+.decision-extend .decision-banner-status {
+    color: var(--info);
+}
+
+/* ── Metric Cards ─────────────────────────────────────── */
+
+.metric-cards-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin: 1rem 0;
+}
+
+.metric-card-block {
+    flex: 1 1 180px;
+    max-width: 280px;
+    padding: 1rem 1.25rem;
+    border-radius: 8px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-top: 3px solid var(--border-primary);
+}
+
+.metric-card-name {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin-bottom: 0.35rem;
+}
+
+.metric-card-value {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+}
+
+.metric-card-stat {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    margin-top: 0;
+    transition: max-height 0.25s ease, opacity 0.2s ease, margin-top 0.2s ease;
+}
+.metric-card-block:hover .metric-card-stat {
+    max-height: 4rem;
+    opacity: 1;
+    margin-top: 0.25rem;
+}
+
+/* Metric status variants — border-top color */
+
+.metric-card-win {
+    border-top-color: var(--success);
+}
+.metric-card-win .metric-card-value {
+    color: var(--success);
+}
+
+.metric-card-loss {
+    border-top-color: var(--error);
+}
+.metric-card-loss .metric-card-value {
+    color: var(--error);
+}
+
+.metric-card-flat {
+    border-top-color: var(--text-muted);
+}
+.metric-card-flat .metric-card-value {
+    color: var(--text-muted);
+}
+
+.metric-card-marginal {
+    border-top-color: var(--warning);
+}
+.metric-card-marginal .metric-card-value {
+    color: var(--warning);
+}
+
+.metric-card-context {
+    border-top-color: var(--border-primary);
+}
+
+.metric-card-pending {
+    border-top-color: var(--text-muted);
+    border-top-style: dashed;
+}
+.metric-card-pending .metric-card-value {
+    color: var(--text-muted);
+}
+
+/* ── Critical Row Emphasis (guardrail-level, uses .check-table grid) ── */
+/* Pass: no background — left stripe only (matches health check rows).
+   Warning/fail/pending: stronger tint so non-passing guardrails stand out. */
+
+.check-table-row.check-tr-critical.check-tr-fail {
+    background: rgba(248, 113, 113, 0.15);
+}
+.check-table-row.check-tr-critical.check-tr-warning {
+    background: rgba(245, 158, 11, 0.15);
+}
+.check-table-row.check-tr-critical.check-tr-pending {
+    background: rgba(160, 160, 160, 0.08);
+}
+
+/* ── Health Checks ──────────────────────────────────────
+ *
+ * Three genuinely different rendering modes, each with
+ * its own DOM structure (not CSS variations of the same HTML).
+ *
+ * Mode A "statusbar": Dashboard status bar + exception cards
+ * Mode B "pills":     Pill tags for passes, detail cards for exceptions
+ * Mode C "table":     CSS grid data table with status stripe
+ */
+
+/* Shared container */
+.check-list {
+    margin: 0.75rem 0;
+}
+
+/* Hide afterParse placeholders (replaced in afterRender) */
+.check-item {
+    display: none;
+}
+
+/* ── Hybrid: Status Bar + Expandable Table ────────────── */
+
+.check-mode-hybrid {
+    border: none;
+}
+
+.check-disclosure {
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+/* Remove default <details> marker (all browsers) */
+.check-disclosure > summary {
+    display: flex;
+    list-style: none;
+    list-style-type: none;
+}
+.check-disclosure > summary::marker,
+.check-disclosure > summary::before {
+    display: none !important;
+    content: '' !important;
+    font-size: 0 !important;
+    width: 0 !important;
+}
+.check-disclosure > summary::-webkit-details-marker {
+    display: none !important;
+}
+
+/* Chevron indicator */
+.check-sb-chevron {
+    margin-left: auto;
+    width: 1.25rem;
+    height: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: var(--text-disabled);
+    transition: transform 0.2s ease, color 0.2s ease;
+}
+.check-sb-chevron::before {
+    content: '\25B8'; /* ▸ right-pointing triangle */
+    font-size: 0.85rem;
+}
+.check-disclosure[open] .check-sb-chevron {
+    transform: rotate(90deg);
+    color: var(--text-muted);
+}
+
+/* Clickable status bar */
+.check-statusbar-clickable {
+    cursor: pointer;
+    user-select: none;
+    border-radius: 8px;
+}
+.check-statusbar-clickable:hover {
+    background: var(--bg-tertiary);
+}
+.check-disclosure[open] .check-statusbar-clickable {
+    border-radius: 8px 8px 0 0;
+    border-bottom: 1px solid var(--border-primary);
+}
+
+/* Expandable body */
+.check-disclosure-body {
+    animation: checkSlideDown 0.15s ease-out;
+}
+.check-disclosure-body .check-table {
+    border: none;
+    border-radius: 0;
+}
+
+@keyframes checkSlideDown {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Mode A: Status Bar ────────────────────────────────── */
+
+.check-mode-statusbar {
+    border: none;
+}
+
+/* Status bar with dot clusters (shared between standalone + hybrid) */
+.check-statusbar {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    padding: 0.5rem 0.85rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+    flex-wrap: wrap;
+}
+
+/* Standalone status bar (not inside disclosure) */
+.check-mode-statusbar .check-statusbar {
+    border: 1px solid var(--border-primary);
+}
+
+/* Inside disclosure — border comes from the parent */
+.check-disclosure .check-statusbar {
+    border: none;
+    border-radius: 0;
+}
+
+.check-sb-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.check-sb-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.check-sb-count {
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-left: 0.2rem;
+}
+
+.check-sb-pass .check-sb-dot { background: var(--success); }
+.check-sb-pass .check-sb-count { color: var(--success); }
+.check-sb-warning .check-sb-dot { background: var(--warning); }
+.check-sb-warning .check-sb-count { color: var(--warning); }
+.check-sb-fail .check-sb-dot { background: var(--error); }
+.check-sb-fail .check-sb-count { color: var(--error); }
+.check-sb-pending .check-sb-dot { background: var(--text-muted); opacity: 0.5; }
+.check-sb-pending .check-sb-count { color: var(--text-muted); }
+
+/* Exception cards below status bar */
+.check-exceptions {
+    margin-top: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.check-exception-card {
+    border-left: 3px solid var(--border-primary);
+    padding: 0.5rem 0.75rem;
+    border-radius: 0 6px 6px 0;
+    background: var(--bg-secondary);
+}
+
+.check-exception-warning {
+    border-left-color: var(--warning);
+    background: var(--warning-bg);
+}
+
+.check-exception-fail {
+    border-left-color: var(--error);
+    background: var(--error-bg);
+}
+
+.check-ex-header {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.25rem;
+}
+
+.check-ex-icon {
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.check-exception-warning .check-ex-icon { color: var(--warning); }
+.check-exception-fail .check-ex-icon { color: var(--error); }
+
+.check-ex-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.check-ex-detail {
+    display: flex;
+    gap: 0.5rem;
+    padding-left: 1.25rem;
+    font-size: 0.78rem;
+    line-height: 1.5;
+}
+
+.check-ex-label {
+    color: var(--text-muted);
+    min-width: 4.5rem;
+    font-weight: 500;
+}
+
+.check-ex-value {
+    color: var(--text-secondary);
+}
+
+.check-ex-observed {
+    font-weight: 600;
+}
+
+.check-exception-warning .check-ex-observed { color: var(--warning); }
+.check-exception-fail .check-ex-observed { color: var(--error); }
+
+/* ── Mode B: Pill Grid ─────────────────────────────────── */
+
+.check-mode-pills {
+    border: none;
+}
+
+/* Passing pills */
+.check-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 0.5rem;
+}
+
+.check-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.25rem 0.65rem;
+    border-radius: 999px;
+    border: 1px solid;
+    white-space: nowrap;
+    line-height: 1.3;
+}
+
+.check-pill-icon {
+    font-weight: 700;
+}
+
+.check-pill-pass {
+    color: var(--success);
+    border-color: rgba(16, 185, 129, 0.3);
+    background: rgba(16, 185, 129, 0.08);
+}
+
+/* Detail cards for non-passing items */
+.check-detail-card {
+    border: 1px solid var(--border-primary);
+    border-left: 3px solid var(--border-primary);
+    border-radius: 0 6px 6px 0;
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.35rem;
+}
+
+.check-detail-warning {
+    border-color: rgba(245, 158, 11, 0.3);
+    border-left-color: var(--warning);
+    background: var(--warning-bg);
+}
+
+.check-detail-fail {
+    border-color: rgba(248, 113, 113, 0.3);
+    border-left-color: var(--error);
+    background: var(--error-bg);
+}
+
+.check-dc-header {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.2rem;
+}
+
+.check-dc-icon {
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.check-detail-warning .check-dc-icon { color: var(--warning); }
+.check-detail-fail .check-dc-icon { color: var(--error); }
+
+.check-dc-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.check-dc-values {
+    padding-left: 1.25rem;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.check-dc-expected {
+    color: var(--text-muted);
+}
+
+.check-dc-arrow {
+    color: var(--text-disabled);
+    font-size: 0.75rem;
+}
+
+.check-dc-observed {
+    font-weight: 600;
+}
+
+.check-detail-warning .check-dc-observed { color: var(--warning); }
+.check-detail-fail .check-dc-observed { color: var(--error); }
+
+/* ── Mode C: Data Table ────────────────────────────────── */
+
+.check-mode-table {
+    border: none;
+}
+
+.check-table {
+    border: 1px solid var(--border-primary);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.check-table-header,
+.check-table-row {
+    display: grid;
+    grid-template-columns: 3px 1fr auto auto auto 1.5rem;
+    gap: 0.75rem;
+    align-items: center;
+    padding: 0 0.75rem 0 0;
+}
+
+.check-table-header {
+    background: var(--bg-tertiary);
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--border-primary);
+}
+
+.check-th-stripe {
+    width: 3px;
+    height: 100%;
+}
+
+.check-th-name,
+.check-th-expected,
+.check-th-observed,
+.check-th-status {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+}
+
+.check-th-arrow {
+    width: 0.8rem;
+}
+
+.check-table-row {
+    padding-top: 0.4rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border-subtle, var(--border-primary));
+}
+
+.check-table-row:last-child {
+    border-bottom: none;
+}
+
+/* Alternating row backgrounds */
+.check-table-row:nth-child(even) {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+/* Status stripe */
+.check-td-stripe {
+    width: 3px;
+    height: 100%;
+    min-height: 1.2rem;
+    border-radius: 0;
+}
+
+.check-tr-pass .check-td-stripe { background: var(--success); opacity: 0.4; }
+.check-tr-warning .check-td-stripe { background: var(--warning); }
+.check-tr-fail .check-td-stripe { background: var(--error); }
+.check-tr-pending .check-td-stripe { background: var(--text-muted); opacity: 0.3; }
+
+/* Warning/fail row tint — critical rows only (guardrails need emphasis).
+   Regular health check rows use the left stripe alone. */
+
+.check-td-name {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.check-tr-warning .check-td-name,
+.check-tr-fail .check-td-name {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.check-td-expected {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-align: right;
+    white-space: nowrap;
+}
+
+.check-td-arrow {
+    font-size: 0.75rem;
+    color: var(--text-disabled);
+    text-align: center;
+    width: 0.8rem;
+}
+
+.check-td-observed {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    font-variant-numeric: lining-nums tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+    background: var(--bg-tertiary);
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.check-tr-warning .check-td-observed {
+    background: rgba(245, 158, 11, 0.12);
+    border-color: rgba(245, 158, 11, 0.25);
+}
+.check-tr-fail .check-td-observed {
+    background: rgba(248, 113, 113, 0.12);
+    border-color: rgba(248, 113, 113, 0.25);
+}
+
+.check-tr-pass .check-td-observed { color: var(--text-muted); }
+.check-tr-warning .check-td-observed { color: var(--warning); }
+.check-tr-fail .check-td-observed { color: var(--error); }
+.check-tr-pending .check-td-observed { color: var(--text-muted); }
+
+.check-td-status {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    text-align: center;
+    width: 1.5rem;
+}
+
+.check-tr-pass .check-td-status { color: var(--success); }
+.check-tr-warning .check-td-status { color: var(--warning); }
+.check-tr-fail .check-td-status { color: var(--error); }
+.check-tr-pending .check-td-status { color: var(--text-muted); }
+
+/* ── Responsive ───────────────────────────────────────── */
+
+@media (max-width: 640px) {
+    .metric-cards-row {
+        flex-direction: column;
+    }
+
+    .metric-card-block {
+        max-width: none;
+    }
+
+    .check-pills {
+        gap: 0.3rem;
+    }
+
+    .check-table-header,
+    .check-table-row {
+        grid-template-columns: 3px 1fr auto auto auto 1.2rem;
+        gap: 0.4rem;
+    }
+}
+
+/* ── Print ────────────────────────────────────────────── */
+
+@media print {
+    .decision-banner {
+        border: 2px solid currentColor;
+        background: none !important;
+    }
+
+    .metric-card-block {
+        border: 1px solid #ccc;
+        background: none !important;
+    }
+
+    .check-disclosure {
+        border: 1px solid #ccc;
+    }
+    .check-disclosure-body {
+        animation: none;
+    }
+    /* Force all disclosure sections visible for print */
+    .check-disclosure:not([open]) > .check-disclosure-body {
+        display: block !important;
+    }
+
+    .check-statusbar,
+    .check-exception-card,
+    .check-detail-card,
+    .check-table {
+        border: 1px solid #ccc;
+    }
+
+    .check-exception-card,
+    .check-detail-card,
+    .check-table-row {
+        background: none !important;
+    }
+
+    .check-pill {
+        border-color: #ccc;
+        background: none !important;
+    }
+}

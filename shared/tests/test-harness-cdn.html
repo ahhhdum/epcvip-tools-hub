@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shared Markdown Renderer — CDN Fallback Test</title>
+
+  <!-- CDN CSS with fallback (same pattern as consumer apps) -->
+  <link rel="stylesheet" href="https://epcvip.vip/shared/epc-tokens.css?v=2.2.0"
+        onerror="this.onerror=null;this.href='/epc-tokens.css';">
+  <link rel="stylesheet" href="https://epcvip.vip/shared/epc-markdown-plugin-blocks.css?v=2.2.0"
+        onerror="this.onerror=null;this.href='/epc-markdown-plugin-blocks.css';">
+  <link rel="stylesheet" href="https://epcvip.vip/shared/epc-markdown-plugin-significance.css?v=2.2.0"
+        onerror="this.onerror=null;this.href='/epc-markdown-plugin-significance.css';">
+
+  <!-- External dependencies (CDN) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css">
+
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg-primary, #111113);
+      color: var(--text-primary, #f0f0f2);
+      margin: 0;
+      padding: 2rem;
+    }
+    .test-section {
+      margin-bottom: 3rem;
+      border: 1px solid var(--border-subtle, #333);
+      border-radius: 8px;
+      padding: 1.5rem;
+    }
+    .test-section h2 {
+      margin-top: 0;
+      color: var(--accent-primary, #f5c518);
+      font-size: 1rem;
+    }
+    .render-target { margin-top: 1rem; }
+    .markdown-body { line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <h1>CDN Fallback Test</h1>
+  <p>Loads JS/CSS from CDN URLs with <code>document.write</code> fallback to local paths.</p>
+
+  <!-- Same test sections as test-harness.html -->
+  <div class="test-section" data-testid="decision-implement" data-check-mode="hybrid">
+    <h2>Decision Banner + Metrics + Checks</h2>
+    <div class="render-target markdown-body"></div>
+  </div>
+
+  <!-- External dependencies -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/15.0.7/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+
+  <!-- CDN + fallback pattern (mirrors exact consumer app pattern) -->
+  <script src="https://epcvip.vip/shared/epc-markdown.js?v=2.2.0"></script>
+  <script>window.epcMarkdown || document.write('<script src="/epc-markdown.js"><\/script>');</script>
+
+  <script src="https://epcvip.vip/shared/epc-markdown-plugin-significance.js?v=2.2.0"></script>
+  <script>(window.epcMarkdown && window.epcMarkdown._plugins['xp-significance']) || document.write('<script src="/epc-markdown-plugin-significance.js"><\/script>');</script>
+
+  <script src="https://epcvip.vip/shared/epc-markdown-plugin-decision-banner.js?v=2.2.0"></script>
+  <script>(window.epcMarkdown && window.epcMarkdown._plugins['xp-decision-banner']) || document.write('<script src="/epc-markdown-plugin-decision-banner.js"><\/script>');</script>
+
+  <script src="https://epcvip.vip/shared/epc-markdown-plugin-metric-cards.js?v=2.2.0"></script>
+  <script>(window.epcMarkdown && window.epcMarkdown._plugins['xp-metric-cards']) || document.write('<script src="/epc-markdown-plugin-metric-cards.js"><\/script>');</script>
+
+  <script src="https://epcvip.vip/shared/epc-markdown-plugin-checks.js?v=2.2.0"></script>
+  <script>(window.epcMarkdown && window.epcMarkdown._plugins['xp-checks']) || document.write('<script src="/epc-markdown-plugin-checks.js"><\/script>');</script>
+
+  <script src="https://epcvip.vip/shared/epc-markdown-plugin-slack-tables.js?v=2.2.0"></script>
+  <script>(window.epcMarkdown && window.epcMarkdown._plugins['xp-slack-tables']) || document.write('<script src="/epc-markdown-plugin-slack-tables.js"><\/script>');</script>
+
+  <script src="https://epcvip.vip/shared/epc-markdown-plugin-toc.js?v=2.2.0"></script>
+  <script>(window.epcMarkdown && window.epcMarkdown._plugins['epc-toc']) || document.write('<script src="/epc-markdown-plugin-toc.js"><\/script>');</script>
+
+  <script>
+    var fixture = [
+      ':::decision[IMPLEMENT]',
+      'Strong EPL lift confirmed. Implementing treatment.',
+      ':::',
+      '',
+      ':::metric[EPL | +$0.33 (+3.51%) | p=0.007 | win]',
+      ':::metric[Revenue | +$12,450 (+2.8%) | p=0.040 | win]',
+      '',
+      ':::check[Traffic Balance | 50/50 | 49.97/50.03 | pass]',
+      ':::check[SRM Check | No SRM | p=0.892 | pass]',
+      ':::check[Data Quality | No gaps | 2 gap days | warning]',
+    ].join('\n');
+
+    document.addEventListener('DOMContentLoaded', function () {
+      var target = document.querySelector('[data-testid="decision-implement"] .render-target');
+      window.epcMarkdown.render({
+        container: target,
+        markdown: fixture,
+      }).then(function () {
+        console.log('[cdn-harness] Render complete');
+        document.body.setAttribute('data-render-complete', 'true');
+      });
+    });
+  </script>
+</body>
+</html>
