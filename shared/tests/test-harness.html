@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shared Markdown Renderer — Test Harness</title>
+
+  <!-- Shared CSS -->
+  <link rel="stylesheet" href="/epc-tokens.css">
+  <link rel="stylesheet" href="/epc-markdown-plugin-blocks.css">
+  <link rel="stylesheet" href="/epc-markdown-plugin-significance.css">
+
+  <!-- External dependencies (CDN) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css">
+
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      margin: 0;
+      padding: 2rem;
+    }
+    .test-section {
+      margin-bottom: 3rem;
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 1.5rem;
+    }
+    .test-section h2 {
+      margin-top: 0;
+      color: var(--accent-primary);
+      font-size: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .render-target {
+      margin-top: 1rem;
+    }
+    .markdown-body { line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <h1>Shared Markdown Renderer — Test Harness</h1>
+  <p>Each section renders via <code>epcMarkdown.render()</code> with test fixture markdown.</p>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- DECISION BANNERS                               -->
+  <!-- ══════════════════════════════════════════════ -->
+
+  <div class="test-section" data-testid="decision-implement">
+    <h2>Decision Banner: Implement</h2>
+    <div class="render-target markdown-body"></div>
+  </div>
+
+  <div class="test-section" data-testid="decision-revert">
+    <h2>Decision Banner: Revert</h2>
+    <div class="render-target markdown-body"></div>
+  </div>
+
+  <div class="test-section" data-testid="decision-inconclusive">
+    <h2>Decision Banner: Inconclusive</h2>
+    <div class="render-target markdown-body"></div>
+  </div>
+
+  <div class="test-section" data-testid="decision-pending">
+    <h2>Decision Banner: Pending</h2>
+    <div class="render-target markdown-body"></div>
+  </div>
+
+  <div class="test-section" data-testid="decision-extend">
+    <h2>Decision Banner: Extend</h2>
+    <div class="render-target markdown-body"></div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- METRIC CARDS                                    -->
+  <!-- ══════════════════════════════════════════════ -->
+
+  <div class="test-section" data-testid="metrics-row">
+    <h2>Metric Cards: 3 Consecutive (flex row)</h2>
+    <div class="render-target markdown-body"></div>
+  </div>
+
+  <div class="test-section" data-testid="metric-single">
+    <h2>Metric Card: Single (no row)</h2>
+    <div class="render-target markdown-body"></div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- CHECKS — 4 MODES                               -->
+  <!-- ══════════════════════════════════════════════ -->
+
+  <div class="test-section" data-testid="checks-hybrid" data-check-mode="hybrid">
+    <h2>Checks: Hybrid Mode (default)</h2>
+    <div class="render-target markdown-body"></div>
+  </div>
+
+  <div class="test-section" data-testid="checks-statusbar" data-check-mode="statusbar">
+    <h2>Checks: Statusbar Mode</h2>
+    <div class="render-target markdown-body"></div>
+  </div>
+
+  <div class="test-section" data-testid="checks-pills" data-check-mode="pills">
+    <h2>Checks: Pills Mode</h2>
+    <div class="render-target markdown-body"></div>
+  </div>
+
+  <div class="test-section" data-testid="checks-table" data-check-mode="table">
+    <h2>Checks: Table Mode</h2>
+    <div class="render-target markdown-body"></div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- CHECKS — CRITICAL                              -->
+  <!-- ══════════════════════════════════════════════ -->
+
+  <div class="test-section" data-testid="checks-critical-collapsible" data-check-critical-mode="collapsible">
+    <h2>Checks: Critical (Collapsible)</h2>
+    <div class="render-target markdown-body"></div>
+  </div>
+
+  <div class="test-section" data-testid="checks-critical-visible" data-check-critical-mode="visible">
+    <h2>Checks: Critical (Visible)</h2>
+    <div class="render-target markdown-body"></div>
+  </div>
+
+  <div class="test-section" data-testid="checks-mixed" data-check-mode="hybrid">
+    <h2>Checks: Mixed (Critical + Regular)</h2>
+    <div class="render-target markdown-body"></div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- SIGNIFICANCE                                    -->
+  <!-- ══════════════════════════════════════════════ -->
+
+  <div class="test-section" data-testid="significance-test">
+    <h2>Significance Highlighting</h2>
+    <div class="render-target markdown-body"></div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- SLACK TABLES                                    -->
+  <!-- ══════════════════════════════════════════════ -->
+
+  <div class="test-section" data-testid="slack-tables-test">
+    <h2>Slack Tables</h2>
+    <div class="render-target markdown-body"></div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- XSS TEST                                        -->
+  <!-- ══════════════════════════════════════════════ -->
+
+  <div class="test-section" data-testid="xss-test">
+    <h2>XSS Safety</h2>
+    <div class="render-target markdown-body"></div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- TOC (last — singleton plugin removes prior TOC) -->
+  <!-- ══════════════════════════════════════════════ -->
+
+  <div class="test-section" data-testid="toc-test">
+    <h2>Table of Contents</h2>
+    <div class="render-target markdown-body"></div>
+  </div>
+
+  <!-- External dependencies -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/15.0.7/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+
+  <!-- Shared JS (local) -->
+  <script src="/epc-markdown.js"></script>
+  <script src="/epc-markdown-plugin-decision-banner.js"></script>
+  <script src="/epc-markdown-plugin-metric-cards.js"></script>
+  <script src="/epc-markdown-plugin-checks.js"></script>
+  <script src="/epc-markdown-plugin-significance.js"></script>
+  <script src="/epc-markdown-plugin-slack-tables.js"></script>
+  <script src="/epc-markdown-plugin-toc.js"></script>
+
+  <script>
+    // ── Test fixtures ──────────────────────────────────
+
+    var fixtures = {
+      'decision-implement': ':::decision[IMPLEMENT]\nStrong EPL lift confirmed across all segments. Implementing treatment configuration.\n:::',
+
+      'decision-revert': ':::decision[REVERT]\nNo lift observed. Reverting to baseline configuration.\n:::',
+
+      'decision-inconclusive': ':::decision[INCONCLUSIVE]\nResults mixed across metrics. Recommend further analysis.\n:::',
+
+      'decision-pending': ':::decision[PENDING]\nData collection in progress. Checkpoint scheduled for next week.\n:::',
+
+      'decision-extend': ':::decision[EXTEND]\nTrending positive but insufficient sample size. Extending 2 weeks.\n:::',
+
+      'metrics-row': [
+        ':::metric[EPL | +$0.33 (+3.51%) | p=0.007 | win]',
+        ':::metric[Revenue | +$12,450 (+2.8%) | p=0.040 | win]',
+        ':::metric[Win Rate | +1.2pp | p=0.092 | marginal]',
+      ].join('\n'),
+
+      'metric-single': ':::metric[Sample Size | 45,231 | 52-day period | context]',
+
+      'checks-hybrid': [
+        ':::check[Traffic Balance | 50/50 | 49.97/50.03 | pass]',
+        ':::check[SRM Check | No SRM | p=0.892 | pass]',
+        ':::check[Min Sample Size | 10,000 per arm | 22,615 per arm | pass]',
+        ':::check[Data Quality | No gaps | 2 gap days | warning]',
+        ':::check[Novelty Effect | Stable after day 7 | Uplift decay detected | fail]',
+      ].join('\n'),
+
+      'checks-statusbar': [
+        ':::check[Traffic Balance | 50/50 | 49.97/50.03 | pass]',
+        ':::check[SRM Check | No SRM | p=0.892 | pass]',
+        ':::check[Min Sample Size | 10,000 per arm | 22,615 per arm | pass]',
+        ':::check[Data Quality | No gaps | 2 gap days | warning]',
+      ].join('\n'),
+
+      'checks-pills': [
+        ':::check[Traffic Balance | 50/50 | 49.97/50.03 | pass]',
+        ':::check[SRM Check | No SRM | p=0.892 | pass]',
+        ':::check[Data Quality | No gaps | 2 gap days | warning]',
+        ':::check[Novelty Effect | Stable | Decay detected | fail]',
+      ].join('\n'),
+
+      'checks-table': [
+        ':::check[Traffic Balance | 50/50 | 49.97/50.03 | pass]',
+        ':::check[SRM Check | No SRM | p=0.892 | pass]',
+        ':::check[Data Quality | No gaps | 2 gap days | warning]',
+        ':::check[Novelty Effect | Stable | Decay detected | fail]',
+      ].join('\n'),
+
+      'checks-critical-collapsible': [
+        ':::guardrail[EPL — Bootstrap CI | CI excludes 0 | 95% CI [$0.06, $0.60] | pass]',
+        ':::guardrail[Revenue — Bootstrap CI | CI excludes 0 | 95% CI [-$500, $25,400] | pass]',
+      ].join('\n'),
+
+      'checks-critical-visible': [
+        ':::guardrail[EPL — Bootstrap CI | CI excludes 0 | 95% CI [$0.06, $0.60] | pass]',
+        ':::guardrail[Win Rate — Bootstrap CI | CI includes 0 | 95% CI [-0.5pp, +2.9pp] | warning]',
+      ].join('\n'),
+
+      'checks-mixed': [
+        ':::guardrail[EPL — Bootstrap CI | CI excludes 0 | 95% CI [$0.06, $0.60] | pass]',
+        ':::guardrail[Revenue — Bootstrap CI | CI excludes 0 | 95% CI [-$500, $25,400] | pass]',
+        ':::check[Traffic Balance | 50/50 | 49.97/50.03 | pass]',
+        ':::check[SRM Check | No SRM | p=0.892 | pass]',
+        ':::check[Data Quality | No gaps | 2 gap days | warning]',
+      ].join('\n'),
+
+      'toc-test': [
+        '## Executive Summary',
+        'This test validates TOC generation.',
+        '## Methodology',
+        '### Test Design',
+        'A/B test with 50/50 traffic split.',
+        '### Duration',
+        'Running for 52 days.',
+        '## Results',
+        '### Primary Metrics',
+        'EPL improvement of +$0.33.',
+        '### Guardrail Metrics',
+        'All guardrails passed.',
+        '## Recommendation',
+        'Implement the treatment configuration.',
+      ].join('\n'),
+
+      'significance-test': [
+        'The result is **statistically significant** with `p < 0.01`.',
+        '',
+        'The secondary metric was **not significant** (`p = 0.482`).',
+        '',
+        'A **marginally significant** trend was observed for win rate (`p = 0.067`).',
+        '',
+        'Bootstrap analysis: **95% confidence** interval excludes zero.',
+        '',
+        'Control comparison was **statistically identical** to baseline.',
+      ].join('\n'),
+
+      'slack-tables-test': [
+        '| Partner | Treatment EPL | Control EPL | Lift |',
+        '|---------|--------------|-------------|------|',
+        '| Partner A | $9.45 | $9.12 | +$0.33 |',
+        '| Partner B | $7.80 | $7.92 | -$0.12 |',
+        '| Partner C | $11.20 | $10.85 | +$0.35 |',
+      ].join('\n'),
+
+      'xss-test': [
+        ':::decision[<img onerror=alert("xss-decision")>]',
+        '<scr' + 'ipt>alert("xss-banner")<\/scr' + 'ipt>',
+        ':::',
+        '',
+        ':::metric[<scr' + 'ipt>alert("xss-metric")<\/scr' + 'ipt> | +$0.33 | p=0.007 | win]',
+        '',
+        ':::check[" onmouseover="alert(1) | <scr' + 'ipt>alert(2)<\/scr' + 'ipt> | obs | pass]',
+        '',
+        'The result is statistically significant with p &lt; 0.05 and &lt;img onerror="alert(1)"&gt;.',
+      ].join('\n'),
+    };
+
+    // ── Render all fixtures ──────────────────────────
+
+    document.addEventListener('DOMContentLoaded', function () {
+      // Mark start time for performance tracking
+      var start = performance.now();
+
+      var sections = document.querySelectorAll('.test-section');
+      var renderPromises = [];
+
+      for (var i = 0; i < sections.length; i++) {
+        var section = sections[i];
+        var testId = section.getAttribute('data-testid');
+        var target = section.querySelector('.render-target');
+        var markdown = fixtures[testId];
+
+        if (markdown && target) {
+          renderPromises.push(
+            window.epcMarkdown.render({
+              container: target,
+              markdown: markdown,
+            })
+          );
+        }
+      }
+
+      // Signal completion for Playwright
+      Promise.all(renderPromises).then(function () {
+        var elapsed = Math.round(performance.now() - start);
+        console.log('[test-harness] All sections rendered in ' + elapsed + 'ms');
+        document.body.setAttribute('data-render-complete', 'true');
+      });
+    });
+  </script>
+</body>
+</html>

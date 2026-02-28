@@ -1,0 +1,52 @@
+/**
+ * Statistical Significance Highlighting Styles
+ * Used by epc-markdown-plugin-significance.js
+ *
+ * Three categories:
+ *   .sig-positive   — confirmed significance (green)
+ *   .sig-negative   — not significant (muted gray)
+ *   .sig-borderline — marginal / trending (orange)
+ */
+
+.sig-positive {
+    background: var(--success-bg);
+    color: var(--success);
+    padding: 0.1rem 0.25rem;
+    border-radius: 3px;
+    font-weight: 500;
+}
+
+.sig-negative {
+    background: rgba(160, 160, 160, 0.15);
+    color: var(--text-muted);
+    padding: 0.1rem 0.25rem;
+    border-radius: 3px;
+    font-weight: 500;
+}
+
+.sig-borderline {
+    background: var(--warning-bg);
+    color: var(--warning);
+    padding: 0.1rem 0.25rem;
+    border-radius: 3px;
+    font-weight: 500;
+}
+
+/* Significance highlighting for inline code p-values (e.g. `p=0.033`) */
+.markdown-body code.sig-positive {
+    background: var(--success-bg);
+    color: var(--success);
+    border-color: var(--success);
+}
+
+.markdown-body code.sig-negative {
+    background: rgba(160, 160, 160, 0.15);
+    color: var(--text-muted);
+    border-color: rgba(160, 160, 160, 0.3);
+}
+
+.markdown-body code.sig-borderline {
+    background: var(--warning-bg);
+    color: var(--warning);
+    border-color: var(--warning);
+}

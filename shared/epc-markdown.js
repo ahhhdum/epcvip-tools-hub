@@ -23,12 +23,13 @@
  *     ...extra                    // forwarded to plugins
  *   }
  *
- * CDN: https://epcvip.vip/shared/epc-markdown.js?v=X.Y.Z
+ * CDN: https://epcvip.vip/shared/epc-markdown.js?v=2.2.0
  */
 (function () {
   'use strict';
 
   var plugins = [];
+  var pluginMap = {};
 
   /* ── Plugin registration ────────────────────────────── */
 
@@ -38,6 +39,7 @@
       return;
     }
     plugins.push(plugin);
+    pluginMap[plugin.name] = plugin;
   }
 
   /* ── Core pipeline ──────────────────────────────────── */
@@ -175,16 +177,19 @@
 
   /* ── Public API ─────────────────────────────────────── */
 
+  // Capture pending queue BEFORE overwriting window.epcMarkdown
+  var pending = (window.epcMarkdown && window.epcMarkdown._pending) || [];
+
   window.epcMarkdown = {
     use: use,
     render: render,
     // Expose helpers for plugins that need them
     _highlightCode: highlightCode,
     _wrapTables: wrapTables,
+    // Expose plugin map for CDN fallback detection
+    _plugins: pluginMap,
   };
 
   // Drain any plugins that queued before this module loaded
-  var pending = (window.epcMarkdown && window.epcMarkdown._pending) || [];
   for (var k = 0; k < pending.length; k++) { use(pending[k]); }
-  delete window.epcMarkdown._pending;
 })();

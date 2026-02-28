@@ -1,13 +1,20 @@
 import { defineConfig, devices } from '@playwright/test';
 
 /**
- * Playwright configuration for Wordle Battle E2E tests.
+ * Playwright configuration for Tools Hub E2E tests.
  *
  * Run with:
  *   npx playwright test
  *   npx playwright test --headed  (watch mode)
  *   npx playwright test --ui      (UI mode)
+ *
+ * Override base URL:
+ *   BASE_URL=https://epcvip.vip npx playwright test
  */
+
+const baseURL = process.env.BASE_URL || 'http://localhost:2567';
+const isLocalhost = baseURL.includes('localhost');
+
 export default defineConfig({
   testDir: './test/e2e',
   fullyParallel: true,
@@ -17,7 +24,7 @@ export default defineConfig({
   reporter: 'html',
 
   use: {
-    baseURL: 'http://localhost:2567',
+    baseURL,
     trace: 'on-first-retry',
     video: 'on-first-retry',
     screenshot: 'only-on-failure',
@@ -41,10 +48,10 @@ export default defineConfig({
     },
   ],
 
-  webServer: {
+  webServer: isLocalhost ? {
     command: 'cd server && npm start',
     url: 'http://localhost:2567/health',
     reuseExistingServer: !process.env.CI,
     timeout: 30000,
-  },
+  } : undefined,
 });

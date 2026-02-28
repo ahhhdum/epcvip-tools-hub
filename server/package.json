@@ -7,7 +7,7 @@
     "start": "ts-node src/index.ts",
     "build": "tsc && npm run copy-static && npm run copy-shared",
     "copy-static": "mkdir -p public && cp -r ../index.html ../overworld.html ../login.html ../auth-callback.html ../style.css ../js ../css ../assets ../maps ../tools ./public/",
-    "copy-shared": "mkdir -p public/shared && cp ../shared/* public/shared/",
+    "copy-shared": "mkdir -p public/shared && find ../shared -maxdepth 1 -type f -exec cp {} public/shared/ \\;",
     "serve": "node dist/index.js",
     "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
     "test:watch": "jest --watch",

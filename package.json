@@ -11,6 +11,11 @@
     "format:check": "prettier --check \"js/**/*.js\" \"tools/js/**/*.js\"",
     "prepare": "husky",
     "test": "cd server && npm test",
+    "test:shared": "node shared/tests/test_core.cjs && node shared/tests/test_directive_parse.cjs",
+    "test:shared:e2e": "npx playwright test --config shared/tests/playwright.config.ts",
+    "test:shared:e2e:headed": "npx playwright test --config shared/tests/playwright.config.ts --headed",
+    "test:shared:e2e:visual": "npx playwright test --config shared/tests/playwright.config.ts visual.spec.ts",
+    "test:shared:all": "npm run test:shared && npm run test:shared:e2e",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:ui": "playwright test --ui"
