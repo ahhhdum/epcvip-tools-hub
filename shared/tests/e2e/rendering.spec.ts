@@ -297,4 +297,27 @@ test.describe('XSS Safety', () => {
     expect(html).toContain('metric-card-block');
     expect(html).toContain('check-list');
   });
+
+  test('significance highlighting: HTML entities in text nodes are not injected', async ({ page }) => {
+    const section = page.locator('[data-testid="xss-test"]');
+    const renderTarget = section.locator('.render-target');
+
+    // The harness contains: "statistically significant with p &lt; 0.05 and &lt;img onerror=...&gt;"
+    // The &lt;/&gt; entities decode to < / > in text nodes. The significance plugin
+    // must not inject these as raw HTML (old innerHTML path would have).
+    // With the DocumentFragment fix, text is inserted as createTextNode — safe.
+
+    // The <img> must not appear as a real element (onerror would fire)
+    const injectedImg = await renderTarget.locator('img').count();
+    expect(injectedImg).toBe(0);
+
+    // The significance mark DOES appear (keyword was highlighted)
+    const mark = renderTarget.locator('mark.sig-positive').first();
+    await expect(mark).toBeVisible();
+    expect(await mark.textContent()).toContain('statistically significant');
+
+    // The literal text containing < still renders as text, not as a tag
+    const text = await renderTarget.textContent();
+    expect(text).toContain('<img');  // visible as literal text
+  });
 });

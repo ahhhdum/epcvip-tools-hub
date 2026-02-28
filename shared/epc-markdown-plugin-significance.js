@@ -113,7 +113,7 @@
       var text = textNode.nodeValue;
       if (!text || !text.trim()) continue;
 
-      var replacements = [];
+      var matches = [];
       var result = text;
 
       for (var c = 0; c < orderedCategories.length; c++) {
@@ -124,20 +124,28 @@
         for (var p = 0; p < patterns.length; p++) {
           patterns[p].lastIndex = 0;
           result = result.replace(patterns[p], function (m) {
-            var placeholder = '\x00' + replacements.length + '\x00';
-            replacements.push('<mark class="' + cls + '">' + m + '</mark>');
+            var placeholder = '\x00' + matches.length + '\x00';
+            matches.push({ cls: cls, text: m });
             return placeholder;
           });
         }
       }
 
-      if (replacements.length > 0) {
-        for (var r = 0; r < replacements.length; r++) {
-          result = result.replace('\x00' + r + '\x00', replacements[r]);
+      if (matches.length > 0) {
+        var fragment = document.createDocumentFragment();
+        var parts = result.split(/\x00(\d+)\x00/);
+        for (var i = 0; i < parts.length; i++) {
+          if (i % 2 === 0) {
+            if (parts[i]) fragment.appendChild(document.createTextNode(parts[i]));
+          } else {
+            var idx = parseInt(parts[i], 10);
+            var mark = document.createElement('mark');
+            mark.className = matches[idx].cls;
+            mark.appendChild(document.createTextNode(matches[idx].text));
+            fragment.appendChild(mark);
+          }
         }
-        var span = document.createElement('span');
-        span.innerHTML = result;
-        textNode.parentNode.replaceChild(span, textNode);
+        textNode.parentNode.replaceChild(fragment, textNode);
       }
     }
   }

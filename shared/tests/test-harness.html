@@ -293,6 +293,8 @@
         ':::metric[<scr' + 'ipt>alert("xss-metric")<\/scr' + 'ipt> | +$0.33 | p=0.007 | win]',
         '',
         ':::check[" onmouseover="alert(1) | <scr' + 'ipt>alert(2)<\/scr' + 'ipt> | obs | pass]',
+        '',
+        'The result is statistically significant with p &lt; 0.05 and &lt;img onerror="alert(1)"&gt;.',
       ].join('\n'),
     };
 
