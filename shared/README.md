@@ -188,7 +188,12 @@ If your app doesn't define these and doesn't load `epc-tokens.css`, the markdown
 
 ### Plugin Authoring Guide
 
-Plugins are app-specific scripts that extend the shared renderer. They live in each consumer's `static/js/plugins/` directory, **not** in the shared module.
+Plugins come in two kinds:
+
+- **Shared plugins** live here in `epcvip-tools-hub/shared/` and are served via CDN. Use these for directive rendering and features that every markdown consumer needs.
+- **App-specific plugins** live in each consumer's `static/js/plugins/` directory and are not CDN-served. Use these when the plugin is tightly coupled to a single app (e.g. link rewrites that depend on that app's routing).
+
+When a new plugin is useful across multiple apps, start it app-specific and promote it to shared once it stabilises.
 
 **Template for a new plugin:**
 
