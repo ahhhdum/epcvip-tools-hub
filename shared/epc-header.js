@@ -44,7 +44,12 @@
     var match = document.cookie.match(/(?:^|;\s*)epc_visible_apps=([^;]*)/);
     if (!match) return null;
     try {
-      var ids = decodeURIComponent(match[1]).split(',').filter(function(v) { return v && v !== '_none'; });
+      var raw = match[1];
+      // Strip RFC quotes and decode \054 (octal comma) from Express cookie serialization
+      if (raw.charAt(0) === '"' && raw.charAt(raw.length - 1) === '"') {
+        raw = raw.slice(1, -1).replace(/\\054/g, ',');
+      }
+      var ids = decodeURIComponent(raw).split(',').filter(function(v) { return v && v !== '_none'; });
       return ids.length > 0 ? ids : null;
     } catch (e) {
       return null;

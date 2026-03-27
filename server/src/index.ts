@@ -533,7 +533,8 @@ app.use(async (req, res, next) => {
       try {
         const visibleApps = await getUserVisibleApps(payload.email, token);
         if (visibleApps !== null) {
-          const cookieVal = visibleApps.length > 0 ? visibleApps.join(',') : '_none';
+          const cookieVal =
+            visibleApps.length > 0 ? encodeURIComponent(visibleApps.join(',')) : '_none';
           const cookieDomain = getCookieDomain();
           const cookieOpts: express.CookieOptions = {
             path: '/',
