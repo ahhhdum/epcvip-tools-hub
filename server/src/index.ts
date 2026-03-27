@@ -438,8 +438,9 @@ app.get('/api/status', async (req, res) => {
 // Per-user app visibility (for shared header app-switcher)
 // ============================================================
 
-async function getUserVisibleApps(email: string, accessToken: string): Promise<string[]> {
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return [];
+async function getUserVisibleApps(email: string, accessToken: string): Promise<string[] | null> {
+  // Returns app IDs on success, null on failure (so callers can preserve stale cookies)
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
   try {
     const response = await fetch(
       `${SUPABASE_URL}/rest/v1/epcvip_app_roles?user_email=eq.${encodeURIComponent(email.toLowerCase())}&select=app_id`,
@@ -451,14 +452,12 @@ async function getUserVisibleApps(email: string, accessToken: string): Promise<s
         signal: AbortSignal.timeout(5000),
       }
     );
-    if (response.ok) {
-      const rows = (await response.json()) as Array<{ app_id: string }>;
-      return rows.map((r) => r.app_id);
-    }
-    return [];
+    if (!response.ok) return null; // Transient error: keep stale cookie
+    const rows = (await response.json()) as Array<{ app_id: string }>;
+    return rows.map((r) => r.app_id);
   } catch (e) {
     console.error('[Auth] Visible apps check error:', e);
-    return [];
+    return null; // Network/timeout: keep stale cookie
   }
 }
 
@@ -528,25 +527,27 @@ app.use(async (req, res, next) => {
     if (payload.email) {
       audit.logTokenValidated(payload.email, clientIp);
 
-      // Set epc_visible_apps cookie for shared header app-switcher
-      if (!req.cookies['epc_visible_apps']) {
-        try {
-          const visibleApps = await getUserVisibleApps(payload.email, token);
-          if (visibleApps.length > 0) {
-            const cookieDomain = getCookieDomain();
-            const cookieOpts: express.CookieOptions = {
-              path: '/',
-              httpOnly: false,
-              sameSite: 'lax',
-              secure: !!cookieDomain,
-              maxAge: 86400 * 1000,
-            };
-            if (cookieDomain) cookieOpts.domain = cookieDomain;
-            res.cookie('epc_visible_apps', visibleApps.join(','), cookieOpts);
-          }
-        } catch (err) {
-          console.error('[Auth] Failed to set visible apps cookie:', err);
+      // Refresh epc_visible_apps cookie on every authenticated request
+      // so role changes propagate without logout/expiry.
+      // null = fetch failed (keep stale cookie), [] = confirmed zero roles.
+      try {
+        const visibleApps = await getUserVisibleApps(payload.email, token);
+        if (visibleApps !== null) {
+          const cookieVal = visibleApps.length > 0 ? visibleApps.join(',') : '_none';
+          const cookieDomain = getCookieDomain();
+          const cookieOpts: express.CookieOptions = {
+            path: '/',
+            httpOnly: false,
+            sameSite: 'lax',
+            secure: !!cookieDomain,
+            maxAge: 86400 * 1000,
+          };
+          if (cookieDomain) cookieOpts.domain = cookieDomain;
+          res.cookie('epc_visible_apps', cookieVal, cookieOpts);
         }
+      } catch (err) {
+        // Non-fatal: stale cookie is better than no navigation
+        console.error('[Auth] Failed to refresh visible apps cookie:', err);
       }
     }
     next();
