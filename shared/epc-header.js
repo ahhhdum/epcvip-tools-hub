@@ -34,19 +34,18 @@
     { id: 'docs',            appId: 'docs-site',            icon: '\u{1F4D6}', label: 'Documentation',      url: 'https://docs.epcvip.vip' },
     { id: 'admin',           appId: 'epcvip-admin',         icon: '\u{1F527}', label: 'Admin',              url: 'https://admin.epcvip.vip' },
     { id: 'funnel-lab',      appId: 'funnel-step-lab',      icon: '\u{1F9E9}', label: 'Funnel Lab',         url: 'https://lab.epcvip.vip' },
+    { id: 'share',           appId: 'epcvip-share',         icon: '\u{1F517}', label: 'Share',              url: 'https://share.epcvip.vip' },
   ];
 
   /* ── Visibility filtering ───────────────────────── */
-  var DEFAULT_APP_IDS = [
-    'tools-hub', 'ping-tree-compare', 'experiments-dashboard',
-    'athena-monitor', 'reports-dashboard', 'funnel-analyzer'
-  ];
+  var FALLBACK_APP_IDS = ['docs-site', 'epcvip-share'];
 
   function getVisibleAppIds() {
     var match = document.cookie.match(/(?:^|;\s*)epc_visible_apps=([^;]*)/);
     if (!match) return null;
     try {
-      return decodeURIComponent(match[1]).split(',');
+      var ids = decodeURIComponent(match[1]).split(',').filter(Boolean);
+      return ids.length > 0 ? ids : null;
     } catch (e) {
       return null;
     }
@@ -55,8 +54,9 @@
   function getFilteredNavItems() {
     var visible = getVisibleAppIds();
     if (!visible) {
+      // No cookie: show minimal public apps only
       return NAV_ITEMS.filter(function(item) {
-        return DEFAULT_APP_IDS.indexOf(item.appId) !== -1;
+        return FALLBACK_APP_IDS.indexOf(item.appId) !== -1;
       });
     }
     return NAV_ITEMS.filter(function(item) {
