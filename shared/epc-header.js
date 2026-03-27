@@ -2,7 +2,7 @@
  * EPCVIP Shared Header — Web Component + Legacy Enhancement
  *
  * Usage (new — web component):
- *   <epc-header current="tool-id" app-name="App Name"></epc-header>
+ *   <epc-header current="tool-id" app-name="App Name" app-url="/"></epc-header>
  *   The element generates header markup in light DOM on connect.
  *
  * Usage (legacy — existing markup):
@@ -34,6 +34,7 @@
     { id: 'docs',            appId: 'docs-site',            icon: '\u{1F4D6}', label: 'Documentation',      url: 'https://docs.epcvip.vip' },
     { id: 'admin',           appId: 'epcvip-admin',         icon: '\u{1F527}', label: 'Admin',              url: 'https://admin.epcvip.vip' },
     { id: 'funnel-lab',      appId: 'funnel-step-lab',      icon: '\u{1F9E9}', label: 'Funnel Lab',         url: 'https://lab.epcvip.vip' },
+    { id: 'share',           appId: 'epcvip-share',         icon: '\u{1F517}', label: 'Share',              url: 'https://share.epcvip.vip' },
   ];
 
   /* ── Visibility filtering ───────────────────────── */
@@ -53,14 +54,15 @@
   }
 
   function getFilteredNavItems() {
-    var visible = getVisibleAppIds();
-    if (!visible) {
+    var cookie = getVisibleAppIds();
+    if (!cookie) {
       return NAV_ITEMS.filter(function(item) {
         return DEFAULT_APP_IDS.indexOf(item.appId) !== -1;
       });
     }
+    // Merge: always show defaults + any additional apps from the cookie
     return NAV_ITEMS.filter(function(item) {
-      return visible.indexOf(item.appId) !== -1;
+      return DEFAULT_APP_IDS.indexOf(item.appId) !== -1 || cookie.indexOf(item.appId) !== -1;
     });
   }
 
@@ -153,6 +155,11 @@
 
       var current = this.getAttribute('current') || '';
       var appName = this.getAttribute('app-name') || '';
+      var appUrl = this.getAttribute('app-url') || '';
+
+      var appNameTag = appUrl
+        ? '<a href="' + esc(appUrl) + '" class="epc-header-app-name">' + esc(appName) + '</a>'
+        : '<span class="epc-header-app-name">' + esc(appName) + '</span>';
 
       this.innerHTML =
         '<header class="epc-header" id="epc-header">' +
@@ -168,7 +175,7 @@
           '<div class="epc-header-brand">' +
             '<a href="https://epcvip.vip" class="epc-header-logo">EPCVIP</a>' +
             '<span class="epc-header-separator">/</span>' +
-            '<span class="epc-header-app-name">' + esc(appName) + '</span>' +
+            appNameTag +
           '</div>' +
           '<div class="epc-header-spacer"></div>' +
           '<div class="epc-header-user">' +
