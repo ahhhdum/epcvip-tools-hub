@@ -528,25 +528,24 @@ app.use(async (req, res, next) => {
     if (payload.email) {
       audit.logTokenValidated(payload.email, clientIp);
 
-      // Set epc_visible_apps cookie for shared header app-switcher
-      if (!req.cookies['epc_visible_apps']) {
-        try {
-          const visibleApps = await getUserVisibleApps(payload.email, token);
-          if (visibleApps.length > 0) {
-            const cookieDomain = getCookieDomain();
-            const cookieOpts: express.CookieOptions = {
-              path: '/',
-              httpOnly: false,
-              sameSite: 'lax',
-              secure: !!cookieDomain,
-              maxAge: 86400 * 1000,
-            };
-            if (cookieDomain) cookieOpts.domain = cookieDomain;
-            res.cookie('epc_visible_apps', visibleApps.join(','), cookieOpts);
-          }
-        } catch (err) {
-          console.error('[Auth] Failed to set visible apps cookie:', err);
-        }
+      // Refresh epc_visible_apps cookie on every authenticated request
+      // so role changes propagate without logout/expiry
+      try {
+        const visibleApps = await getUserVisibleApps(payload.email, token);
+        const cookieVal = visibleApps.length > 0 ? visibleApps.join(',') : '_none';
+        const cookieDomain = getCookieDomain();
+        const cookieOpts: express.CookieOptions = {
+          path: '/',
+          httpOnly: false,
+          sameSite: 'lax',
+          secure: !!cookieDomain,
+          maxAge: 86400 * 1000,
+        };
+        if (cookieDomain) cookieOpts.domain = cookieDomain;
+        res.cookie('epc_visible_apps', cookieVal, cookieOpts);
+      } catch (err) {
+        // Non-fatal: stale cookie is better than no navigation
+        console.error('[Auth] Failed to refresh visible apps cookie:', err);
       }
     }
     next();

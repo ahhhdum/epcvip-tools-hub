@@ -51,16 +51,17 @@
     }
   }
 
-  function getFilteredNavItems() {
+  function getFilteredNavItems(currentId) {
     var visible = getVisibleAppIds();
     if (!visible) {
-      // No cookie: show minimal public apps only
+      // No cookie: show minimal public apps + current app
       return NAV_ITEMS.filter(function(item) {
-        return FALLBACK_APP_IDS.indexOf(item.appId) !== -1;
+        return FALLBACK_APP_IDS.indexOf(item.appId) !== -1 || item.id === currentId;
       });
     }
+    // Cookie present: show cookie apps + current app
     return NAV_ITEMS.filter(function(item) {
-      return visible.indexOf(item.appId) !== -1;
+      return visible.indexOf(item.appId) !== -1 || item.id === currentId;
     });
   }
 
@@ -78,7 +79,7 @@
   /* ── Dropdown ───────────────────────────────────── */
   function populateDropdown(currentTool) {
     if (!_dropdown) return;
-    var items = getFilteredNavItems();
+    var items = getFilteredNavItems(currentTool);
     var html = '';
     for (var i = 0; i < items.length; i++) {
       var item = items[i];
